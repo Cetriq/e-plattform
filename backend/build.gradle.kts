@@ -5,7 +5,7 @@ plugins {
 }
 
 group = "se.eplatform"
-version = "0.0.1-SNAPSHOT"
+version = "0.1.0-SNAPSHOT"
 
 java {
     sourceCompatibility = JavaVersion.VERSION_21

@@ -1,51 +1,59 @@
 # e-Plattform
 
-Modern e-tjänstplattform för offentlig förvaltning, inspirerad av Open-ePlatform men byggd med modern teknologi.
+> **EXPERIMENTAL PROJECT**
+>
+> This project is under active development and is **not ready for production**.
+> APIs, database schema, and functionality may change without notice.
+> Use only for evaluation and development purposes.
+>
+> See [EXPERIMENTAL_STATUS.md](docs/EXPERIMENTAL_STATUS.md) for details.
 
-## Teknologistack
+Modern e-service platform for public administration, inspired by Open-ePlatform but built with contemporary technology.
+
+## Technology Stack
 
 ### Backend
-- **Java 21** med Spring Boot 3.2
-- **PostgreSQL 16** för databas
-- **Redis 7** för cache och sessions
-- **Meilisearch** för fulltextsökning
-- **MinIO** för fillagring (S3-kompatibel)
-- **RabbitMQ** för meddelandekö
+- **Java 21** with Spring Boot 3.2
+- **PostgreSQL 16** for database
+- **Redis 7** for cache and sessions
+- **Meilisearch** for full-text search
+- **MinIO** for file storage (S3-compatible)
+- **RabbitMQ** for message queue
 
 ### Frontend
-- **Next.js 14** med React 18
-- **TypeScript** för typsäkerhet
-- **Tailwind CSS** för styling
-- **TanStack Query** för server state
-- **React Hook Form** + **Zod** för formulär
+- **Next.js 14** with React 18
+- **TypeScript** for type safety
+- **Tailwind CSS** for styling
+- **TanStack Query** for server state
+- **React Hook Form** + **Zod** for forms
 
 ### DevOps
 - **Docker** & **Docker Compose**
-- **Traefik** som reverse proxy
-- **Prometheus** + **Grafana** för observabilitet
+- **Traefik** as reverse proxy
+- **Prometheus** + **Grafana** for observability
 
-## Kom igång
+## Getting Started
 
-### Förutsättningar
+### Prerequisites
 
 - Docker Desktop
-- Java 21 (för lokal utveckling utan Docker)
-- Node.js 20 (för lokal utveckling utan Docker)
+- Java 21 (for local development without Docker)
+- Node.js 20 (for local development without Docker)
 
-### Snabbstart med Docker
+### Quick Start with Docker
 
 ```bash
-# Klona och gå till projektmappen
+# Clone and navigate to project folder
 cd Open-E_Plattform
 
-# Skapa .env-fil
+# Create .env file
 cp .env.example .env
 
-# Starta alla tjänster
+# Start all services
 make dev
 ```
 
-Öppna sedan:
+Then open:
 - **Frontend**: http://localhost:3000
 - **API**: http://localhost:8080
 - **API Docs**: http://localhost:8080/graphiql
@@ -54,53 +62,55 @@ make dev
 - **RabbitMQ Management**: http://localhost:15672
 - **Grafana**: http://localhost:3001
 
-### Lokal utveckling
+### Local Development
 
 ```bash
-# Starta infrastruktur (databas, cache, etc.)
+# Start infrastructure (database, cache, etc.)
 make infra
 
-# I en terminal - starta backend
+# In one terminal - start backend
 make backend
 
-# I en annan terminal - starta frontend
+# In another terminal - start frontend
 make frontend-install
 make frontend
 ```
 
-## Projektstruktur
+## Project Structure
 
 ```
 Open-E_Plattform/
 ├── backend/                    # Java Spring Boot backend
 │   ├── src/main/java/se/eplatform/
-│   │   ├── common/            # Gemensam kod (config, exceptions)
-│   │   ├── flow/              # Formulär/flöden
-│   │   ├── cases/             # Ärenden
-│   │   ├── user/              # Användare
+│   │   ├── common/            # Shared code (config, exceptions)
+│   │   ├── flow/              # Forms/flows
+│   │   ├── cases/             # Cases
+│   │   ├── user/              # Users
 │   │   └── ...
 │   └── src/main/resources/
-│       ├── db/migration/      # Flyway SQL-migrationer
-│       └── application*.yml   # Konfiguration
+│       ├── db/migration/      # Flyway SQL migrations
+│       └── application*.yml   # Configuration
 │
 ├── frontend/                   # Next.js frontend
 │   └── src/
 │       ├── app/               # App Router pages
-│       ├── components/        # React-komponenter
+│       ├── components/        # React components
 │       ├── lib/               # Utilities
-│       └── types/             # TypeScript-typer
+│       └── types/             # TypeScript types
 │
-├── docker/                     # Docker-konfiguration
+├── docker/                     # Docker configuration
 │   ├── postgres/
 │   ├── grafana/
 │   └── prometheus/
 │
-├── docs/                       # Dokumentation
-│   └── architecture/          # Arkitekturdokumentation
+├── docs/                       # Documentation
+│   ├── architecture/          # Architecture documentation
+│   ├── EXPERIMENTAL_STATUS.md # Current status report
+│   └── DEVELOPER_GUIDE.md     # Developer guide
 │
-├── docker-compose.yml         # Utvecklingsmiljö
-├── docker-compose.prod.yml    # Produktionsmiljö
-└── Makefile                   # Genvägar
+├── docker-compose.yml         # Development environment
+├── docker-compose.prod.yml    # Production environment
+└── Makefile                   # Shortcuts
 ```
 
 ## API
@@ -108,64 +118,68 @@ Open-E_Plattform/
 ### REST API
 
 ```
-GET  /api/v1/flows              # Lista publicerade flöden
-GET  /api/v1/flows/{id}         # Hämta ett flöde med alla detaljer
-GET  /api/v1/flows/search?q=    # Sök flöden
+GET  /api/v1/flows              # List published flows
+GET  /api/v1/flows/{id}         # Get a flow with all details
+GET  /api/v1/flows/search?q=    # Search flows
 
-POST /api/v1/cases              # Skapa nytt ärende
-GET  /api/v1/cases/{id}         # Hämta ärende
-PUT  /api/v1/cases/{id}/values  # Uppdatera ärendevärden
-POST /api/v1/cases/{id}/submit  # Skicka in ärende
-PUT  /api/v1/cases/{id}/status  # Ändra status
+POST /api/v1/cases              # Create new case
+GET  /api/v1/cases/{id}         # Get case
+PUT  /api/v1/cases/{id}/values  # Update case values
+POST /api/v1/cases/{id}/submit  # Submit case
+PUT  /api/v1/cases/{id}/status  # Change status
 ```
 
 ### GraphQL
 
-GraphQL-endpoint: `http://localhost:8080/graphql`
+GraphQL endpoint: `http://localhost:8080/graphql`
 GraphiQL: `http://localhost:8080/graphiql`
 
-## Databas
+## Database
 
-Schemat hanteras med Flyway. Migrationer finns i `backend/src/main/resources/db/migration/`.
+Schema is managed with Flyway. Migrations are in `backend/src/main/resources/db/migration/`.
 
 ```bash
-# Kör migrationer
+# Run migrations
 make migrate
 
-# Öppna psql
+# Open psql
 make psql
 ```
 
-## Testdata
+## Test Data
 
-Vid start skapas testdata automatiskt:
+Test data is created automatically on startup:
 
-**Användare:**
+**Users:**
 - admin@example.com (Admin)
-- handlaggare@example.com (Handläggare)
-- medborgare@example.com (Medborgare)
+- handlaggare@example.com (Manager)
+- medborgare@example.com (Citizen)
 
-**Flöden:**
-- Ansökan om bygglov (med steg och frågor)
+**Flows:**
+- Building Permit Application (with steps and questions)
 
-## Kommandon
+## Commands
 
 ```bash
-make dev           # Starta utvecklingsmiljö
-make up            # Starta i bakgrunden
-make down          # Stoppa tjänster
-make logs          # Visa loggar
-make clean         # Rensa allt
-make test          # Kör tester
-make health        # Hälsokontroll
-make psql          # Öppna databas-CLI
-make redis-cli     # Öppna Redis-CLI
+make dev           # Start development environment
+make up            # Start in background
+make down          # Stop services
+make logs          # Show logs
+make clean         # Clean everything
+make test          # Run tests
+make health        # Health check
+make psql          # Open database CLI
+make redis-cli     # Open Redis CLI
 ```
 
-## Arkitektur
+## Documentation
 
-Se [docs/architecture/ARCHITECTURE.md](docs/architecture/ARCHITECTURE.md) för detaljerad arkitekturdokumentation.
+- [Architecture](docs/architecture/ARCHITECTURE.md) - Detailed architecture documentation
+- [Experimental Status](docs/EXPERIMENTAL_STATUS.md) - Current implementation status
+- [Developer Guide](docs/DEVELOPER_GUIDE.md) - Development guide and code structure
 
-## Licens
+## License
 
-AGPLv3 (samma som Open-ePlatform)
+AGPL-3.0 (same as Open-ePlatform)
+
+**DISCLAIMER:** This software is experimental and provided "AS IS" without warranty of any kind. It is not suitable for production use.

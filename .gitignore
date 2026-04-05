@@ -1,8 +1,115 @@
-# Compiled class file
+# ========================
+# IDE
+# ========================
+.idea/
+*.iml
+.vscode/
+*.swp
+*.swo
+.DS_Store
+
+# ========================
+# Backend (Java/Gradle)
+# ========================
+backend/build/
+backend/.gradle/
+backend/bin/
+backend/out/
 *.class
+*.jar
+*.war
+*.nar
+*.ear
+*.zip
+*.tar.gz
+*.rar
 
-# Log file
+# Gradle
+.gradle/
+**/build/
+!src/**/build/
+
+# ========================
+# Frontend (Node/Next.js)
+# ========================
+frontend/node_modules/
+frontend/.next/
+frontend/out/
+frontend/.pnp
+frontend/.pnp.js
+frontend/coverage/
+frontend/.vercel
+
+# Next.js
+.next/
+out/
+*.tsbuildinfo
+next-env.d.ts
+
+# ========================
+# Environment
+# ========================
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+*.env
+
+# ========================
+# Logs
+# ========================
+logs/
 *.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
 
-# Subversion
+# ========================
+# Docker
+# ========================
+# Don't ignore docker-compose files
+
+# ========================
+# OS
+# ========================
+.DS_Store
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# ========================
+# Testing
+# ========================
+coverage/
+.nyc_output/
+test-results/
+playwright-report/
+
+# ========================
+# Misc
+# ========================
+*.bak
+*.tmp
+*.temp
+
+# ========================
+# Original Open-ePlatform (inspiration code - not ours)
+# ========================
+openeplatform/
 .svn/
+
+# ========================
+# Playwright MCP (local testing artifacts)
+# ========================
+.playwright-mcp/
+
+# ========================
+# Test files (local testing)
+# ========================
+test-files/
+
+# ========================
+# Screenshots (temporary)
+# ========================
+*.png

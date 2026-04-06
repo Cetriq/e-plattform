@@ -3,6 +3,8 @@ package se.eplatform.cases.api;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.web.PageableDefault;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import se.eplatform.cases.api.dto.CaseDTO;
@@ -11,6 +13,9 @@ import se.eplatform.cases.domain.Case;
 import se.eplatform.cases.domain.ExternalMessage;
 import se.eplatform.cases.domain.InternalMessage;
 import se.eplatform.cases.service.CaseService;
+import se.eplatform.pdf.PdfService;
+
+import java.io.IOException;
 
 import java.net.URI;
 import java.util.List;
@@ -22,9 +27,11 @@ import java.util.UUID;
 public class CaseController {
 
     private final CaseService caseService;
+    private final PdfService pdfService;
 
-    public CaseController(CaseService caseService) {
+    public CaseController(CaseService caseService, PdfService pdfService) {
         this.caseService = caseService;
+        this.pdfService = pdfService;
     }
 
     /**
@@ -173,6 +180,29 @@ public class CaseController {
             @RequestBody MessageRequest request) {
         ExternalMessage msg = caseService.addExternalMessage(id, request.userId(), request.message(), true);
         return ResponseEntity.ok(ManagerCaseDTO.ExternalMessageDTO.from(msg));
+    }
+
+    /**
+     * Generate PDF document for a case.
+     */
+    @GetMapping("/{id}/pdf")
+    public ResponseEntity<byte[]> generatePdf(@PathVariable UUID id) {
+        return caseService.getCaseForManager(id)
+                .map(caseEntity -> {
+                    try {
+                        byte[] pdfBytes = pdfService.generateCasePdf(caseEntity, caseEntity.getFlow());
+                        String filename = "case-" + caseEntity.getReferenceNumber() + ".pdf";
+
+                        return ResponseEntity.ok()
+                                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + filename + "\"")
+                                .contentType(MediaType.APPLICATION_PDF)
+                                .contentLength(pdfBytes.length)
+                                .body(pdfBytes);
+                    } catch (IOException e) {
+                        throw new RuntimeException("Failed to generate PDF", e);
+                    }
+                })
+                .orElse(ResponseEntity.notFound().build());
     }
 
     // Request records

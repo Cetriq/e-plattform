@@ -88,6 +88,19 @@ services:
       - eplatform-network
 
   # ===================
+  # E-POST (utveckling)
+  # ===================
+
+  mailpit:
+    image: axllent/mailpit:latest
+    container_name: eplatform-mail
+    ports:
+      - "1025:1025"   # SMTP
+      - "8025:8025"   # Web UI
+    networks:
+      - eplatform-network
+
+  # ===================
   # MEDDELANDEKÖ
   # ===================
 
@@ -135,6 +148,11 @@ services:
       SPRING_RABBITMQ_HOST: rabbitmq
       SPRING_RABBITMQ_USERNAME: ${RABBITMQ_USER:-guest}
       SPRING_RABBITMQ_PASSWORD: ${RABBITMQ_PASS:-guest}
+      MAIL_HOST: mailpit
+      MAIL_PORT: 1025
+      EMAIL_ENABLED: "true"
+      EMAIL_FROM: noreply@eplatform.se
+      EMAIL_BASE_URL: http://localhost:3000
     volumes:
       - ./backend/src:/app/src:delegated
       - gradle_cache:/root/.gradle
@@ -152,6 +170,8 @@ services:
         condition: service_healthy
       rabbitmq:
         condition: service_healthy
+      mailpit:
+        condition: service_started
     networks:
       - eplatform-network
 

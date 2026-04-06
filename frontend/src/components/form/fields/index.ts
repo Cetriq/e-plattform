@@ -8,3 +8,9 @@ export { CheckboxField } from './CheckboxField';
 export { DateField } from './DateField';
 export { FileField } from './FileField';
 export { HeadingElement, ParagraphElement, DividerElement } from './LayoutElements';
+// Special fields
+export { PersonField } from './PersonField';
+export { OrganizationField } from './OrganizationField';
+export { LocationField } from './LocationField';
+export { MapField } from './MapField';
+export { SignatureField } from './SignatureField';

@@ -21,8 +21,18 @@ export interface CaseSummary {
   submittedAt?: string;
 }
 
+export interface QueryInstance {
+  id: string;
+  queryDefinitionId: string;
+  queryName: string;
+  state: 'VISIBLE' | 'HIDDEN' | 'DISABLED' | 'READONLY';
+  value: unknown;
+  populated: boolean;
+  validated: boolean;
+}
+
 export interface CaseDetail extends CaseSummary {
-  values: Record<string, unknown>;
+  values: QueryInstance[];
   categoryName?: string;
   typeName?: string;
 }

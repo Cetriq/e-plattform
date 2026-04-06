@@ -5,7 +5,9 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import se.eplatform.flow.domain.*;
+import se.eplatform.flow.repository.CategoryRepository;
 import se.eplatform.flow.repository.FlowRepository;
+import se.eplatform.flow.repository.FlowTypeRepository;
 import se.eplatform.flow.repository.StepRepository;
 import se.eplatform.flow.repository.QueryDefinitionRepository;
 
@@ -24,14 +26,20 @@ public class AdminFlowService {
     private final FlowRepository flowRepository;
     private final StepRepository stepRepository;
     private final QueryDefinitionRepository queryDefinitionRepository;
+    private final FlowTypeRepository flowTypeRepository;
+    private final CategoryRepository categoryRepository;
 
     public AdminFlowService(
             FlowRepository flowRepository,
             StepRepository stepRepository,
-            QueryDefinitionRepository queryDefinitionRepository) {
+            QueryDefinitionRepository queryDefinitionRepository,
+            FlowTypeRepository flowTypeRepository,
+            CategoryRepository categoryRepository) {
         this.flowRepository = flowRepository;
         this.stepRepository = stepRepository;
         this.queryDefinitionRepository = queryDefinitionRepository;
+        this.flowTypeRepository = flowTypeRepository;
+        this.categoryRepository = categoryRepository;
     }
 
     /**
@@ -102,6 +110,8 @@ public class AdminFlowService {
             String shortDescription,
             String longDescription,
             String submittedMessage,
+            UUID typeId,
+            UUID categoryId,
             Boolean requireAuth,
             Boolean requireSigning,
             Boolean sequentialSigning,
@@ -127,7 +137,34 @@ public class AdminFlowService {
         if (externalLink != null) flow.setExternalLink(externalLink);
         if (tags != null) flow.setTags(tags);
 
-        return flowRepository.save(flow);
+        // Update type and category
+        if (typeId != null) {
+            FlowType type = flowTypeRepository.findById(typeId).orElse(null);
+            flow.setType(type);
+        }
+        if (categoryId != null) {
+            Category category = categoryRepository.findById(categoryId).orElse(null);
+            flow.setCategory(category);
+        }
+
+        Flow saved = flowRepository.save(flow);
+
+        // Initialize lazy loaded relationships for response
+        if (saved.getType() != null) {
+            org.hibernate.Hibernate.initialize(saved.getType());
+        }
+        if (saved.getCategory() != null) {
+            org.hibernate.Hibernate.initialize(saved.getCategory());
+        }
+        org.hibernate.Hibernate.initialize(saved.getSteps());
+        for (var step : saved.getSteps()) {
+            org.hibernate.Hibernate.initialize(step.getQueryDefinitions());
+            for (var query : step.getQueryDefinitions()) {
+                org.hibernate.Hibernate.initialize(query.getEvaluators());
+            }
+        }
+
+        return saved;
     }
 
     /**

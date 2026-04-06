@@ -1,5 +1,5 @@
 import { api } from './client';
-import type { CaseSummary, CaseDetail } from './cases';
+import type { CaseSummary, CaseDetail, QueryInstance } from './cases';
 
 /**
  * Manager-specific API calls.
@@ -143,4 +143,41 @@ export async function addExternalMessage(
     userId,
     message,
   });
+}
+
+/**
+ * Download case as PDF.
+ */
+export async function downloadCasePdf(caseId: string): Promise<void> {
+  const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080';
+  const response = await fetch(`${API_BASE_URL}/api/v1/cases/${caseId}/pdf`, {
+    headers: {
+      // Don't set Content-Type for downloads
+    },
+  });
+
+  if (!response.ok) {
+    throw new Error('Failed to download PDF');
+  }
+
+  // Get filename from Content-Disposition header or use default
+  const contentDisposition = response.headers.get('Content-Disposition');
+  let filename = `case-${caseId}.pdf`;
+  if (contentDisposition) {
+    const match = contentDisposition.match(/filename="?([^"]+)"?/);
+    if (match) {
+      filename = match[1];
+    }
+  }
+
+  // Create blob and trigger download
+  const blob = await response.blob();
+  const url = window.URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  window.URL.revokeObjectURL(url);
 }

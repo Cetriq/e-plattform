@@ -2,10 +2,11 @@
 
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
-import { useState } from 'react';
+import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/context/AuthContext';
-import { getManagerCaseDetail, changeCaseStatus, type ChangeStatusRequest, type ManagerCaseDetail } from '@/lib/api/manager';
+import { getManagerCaseDetail, changeCaseStatus, downloadCasePdf, type ChangeStatusRequest, type ManagerCaseDetail } from '@/lib/api/manager';
+import type { QueryInstance } from '@/lib/api/cases';
 
 const statusTypeLabels: Record<string, string> = {
   DRAFT: 'Utkast',
@@ -35,6 +36,7 @@ export default function ManagerCaseDetailPage() {
   const [showStatusModal, setShowStatusModal] = useState(false);
   const [selectedStatus, setSelectedStatus] = useState<string>('');
   const [statusComment, setStatusComment] = useState('');
+  const [isDownloadingPdf, setIsDownloadingPdf] = useState(false);
 
   const { data: caseData, isLoading, error } = useQuery({
     queryKey: ['manager-case', caseId],
@@ -62,6 +64,17 @@ export default function ManagerCaseDetailPage() {
     });
   };
 
+  const handleDownloadPdf = async () => {
+    setIsDownloadingPdf(true);
+    try {
+      await downloadCasePdf(caseId);
+    } catch (error) {
+      console.error('Failed to download PDF:', error);
+    } finally {
+      setIsDownloadingPdf(false);
+    }
+  };
+
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString('sv-SE', {
       year: 'numeric',
@@ -72,10 +85,18 @@ export default function ManagerCaseDetailPage() {
     });
   };
 
-  const formatFieldValue = (value: unknown): string => {
+  const formatFieldValue = (value: unknown): string | React.ReactNode => {
     if (value === null || value === undefined) return '-';
     if (typeof value === 'boolean') return value ? 'Ja' : 'Nej';
-    if (Array.isArray(value)) return value.join(', ');
+    if (Array.isArray(value)) {
+      // Check if it's a file array
+      if (value.length > 0 && typeof value[0] === 'object' && 'originalFilename' in (value[0] as object)) {
+        return value.map((file: { originalFilename: string; fileSizeFormatted: string }) =>
+          file.originalFilename
+        ).join(', ');
+      }
+      return value.join(', ');
+    }
     if (typeof value === 'object') return JSON.stringify(value);
     return String(value);
   };
@@ -99,7 +120,7 @@ export default function ManagerCaseDetailPage() {
   if (isLoading) {
     return (
       <div className="min-h-screen bg-gray-100">
-        <ManagerHeader userName={user?.name} />
+        <ManagerHeader userName={user?.displayName} />
         <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           <div className="flex items-center justify-center py-12">
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
@@ -113,7 +134,7 @@ export default function ManagerCaseDetailPage() {
   if (error || !caseData) {
     return (
       <div className="min-h-screen bg-gray-100">
-        <ManagerHeader userName={user?.name} />
+        <ManagerHeader userName={user?.displayName} />
         <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           <div className="bg-red-50 border border-red-200 rounded-lg p-8 text-center">
             <h3 className="text-lg font-medium text-red-900 mb-2">
@@ -135,7 +156,7 @@ export default function ManagerCaseDetailPage() {
 
   return (
     <div className="min-h-screen bg-gray-100">
-      <ManagerHeader userName={user?.name} />
+      <ManagerHeader userName={user?.displayName} />
 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Breadcrumb */}
@@ -226,16 +247,18 @@ export default function ManagerCaseDetailPage() {
                 </h2>
               </div>
               <div className="p-6">
-                {caseData.values && Object.keys(caseData.values).length > 0 ? (
+                {caseData.values && caseData.values.length > 0 ? (
                   <dl className="space-y-4">
-                    {Object.entries(caseData.values).map(([key, value]) => (
-                      <div key={key} className="border-b pb-4 last:border-b-0 last:pb-0">
-                        <dt className="text-sm font-medium text-gray-500">{key}</dt>
-                        <dd className="mt-1 text-gray-900">
-                          {formatFieldValue(value)}
-                        </dd>
-                      </div>
-                    ))}
+                    {(caseData.values as QueryInstance[])
+                      .filter((qi) => qi.state !== 'HIDDEN' && qi.populated)
+                      .map((qi) => (
+                        <div key={qi.id} className="border-b pb-4 last:border-b-0 last:pb-0">
+                          <dt className="text-sm font-medium text-gray-500">{qi.queryName}</dt>
+                          <dd className="mt-1 text-gray-900">
+                            {formatFieldValue(qi.value)}
+                          </dd>
+                        </div>
+                      ))}
                   </dl>
                 ) : (
                   <p className="text-gray-500 text-center py-4">
@@ -269,11 +292,22 @@ export default function ManagerCaseDetailPage() {
                   </svg>
                   Skicka meddelande
                 </button>
-                <button className="w-full px-4 py-2 text-left text-sm rounded hover:bg-gray-50 flex items-center gap-2">
-                  <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
-                  </svg>
-                  Skriv ut
+                <button
+                  onClick={handleDownloadPdf}
+                  disabled={isDownloadingPdf}
+                  className="w-full px-4 py-2 text-left text-sm rounded hover:bg-gray-50 flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {isDownloadingPdf ? (
+                    <svg className="w-5 h-5 text-gray-400 animate-spin" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                  ) : (
+                    <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                    </svg>
+                  )}
+                  {isDownloadingPdf ? 'Laddar ner...' : 'Ladda ner PDF'}
                 </button>
               </div>
             </div>

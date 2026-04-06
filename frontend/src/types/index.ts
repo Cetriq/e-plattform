@@ -68,7 +68,7 @@ export type QueryType =
   | 'PARAGRAPH'
   | 'DIVIDER';
 
-export type QueryState = 'VISIBLE' | 'VISIBLE_REQUIRED' | 'HIDDEN';
+export type QueryState = 'VISIBLE' | 'VISIBLE_REQUIRED' | 'HIDDEN' | 'DISABLED' | 'READONLY';
 
 export interface Evaluator {
   id: string;

@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Nytt meddelande från medborgare</title>
+</head>
+<body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
+    <div style="background-color: #7c3aed; padding: 20px; text-align: center; border-radius: 8px 8px 0 0;">
+        <h1 style="color: white; margin: 0; font-size: 24px;">e-Plattform - Handläggare</h1>
+    </div>
+
+    <div style="background-color: #f8fafc; padding: 30px; border: 1px solid #e2e8f0; border-top: none;">
+        <h2 style="color: #6d28d9; margin-top: 0;">Nytt meddelande från medborgare</h2>
+
+        <p>Hej <span th:text="${managerName}">Handläggare</span>,</p>
+
+        <p>Det finns ett nytt meddelande i ett ärende som du hanterar.</p>
+
+        <div style="background-color: white; border: 1px solid #e2e8f0; border-radius: 8px; padding: 20px; margin: 20px 0;">
+            <table style="width: 100%; border-collapse: collapse;">
+                <tr>
+                    <td style="padding: 8px 0; color: #64748b; width: 140px;">Ärendenummer:</td>
+                    <td style="padding: 8px 0; font-weight: bold;" th:text="${referenceNumber}">E-2026-001</td>
+                </tr>
+                <tr>
+                    <td style="padding: 8px 0; color: #64748b;">E-tjänst:</td>
+                    <td style="padding: 8px 0;" th:text="${flowName}">Ansökan om bygglov</td>
+                </tr>
+                <tr>
+                    <td style="padding: 8px 0; color: #64748b;">Från:</td>
+                    <td style="padding: 8px 0;" th:text="${citizenName}">Maria Medborgare</td>
+                </tr>
+            </table>
+        </div>
+
+        <div style="background-color: #f5f3ff; border-left: 4px solid #7c3aed; padding: 15px 20px; margin: 20px 0;">
+            <p style="margin: 0; color: #6d28d9; font-style: italic;" th:text="${messagePreview}">
+                Meddelande...
+            </p>
+        </div>
+
+        <div style="text-align: center; margin: 30px 0;">
+            <a th:href="${caseUrl}"
+               style="display: inline-block; background-color: #7c3aed; color: white; padding: 12px 30px; text-decoration: none; border-radius: 6px; font-weight: bold;">
+                Gå till ärendet
+            </a>
+        </div>
+    </div>
+
+    <div style="background-color: #f1f5f9; padding: 20px; text-align: center; border-radius: 0 0 8px 8px; border: 1px solid #e2e8f0; border-top: none;">
+        <p style="margin: 0; color: #64748b; font-size: 12px;">
+            Detta är ett automatiskt meddelande från e-Plattform.<br>
+            Vänligen svara inte på detta e-postmeddelande.
+        </p>
+    </div>
+</body>
+</html>

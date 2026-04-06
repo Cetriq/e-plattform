@@ -123,12 +123,33 @@ export interface Category {
   name: string;
   description?: string;
   sortOrder: number;
+  flowTypeId?: string;
+  flowTypeName?: string;
 }
 
 export interface FlowType {
   id: string;
   name: string;
   description?: string;
+  color?: string;
+  icon?: string;
+  sortOrder: number;
+  categories: Category[];
+}
+
+export interface CreateCategoryRequest {
+  name: string;
+  description?: string;
+  sortOrder?: number;
+  flowTypeId?: string;
+}
+
+export interface CreateFlowTypeRequest {
+  name: string;
+  description?: string;
+  color?: string;
+  icon?: string;
+  sortOrder?: number;
 }
 
 // Flow API
@@ -288,8 +309,66 @@ export async function getCategories(): Promise<Category[]> {
 }
 
 /**
+ * Get a single category.
+ */
+export async function getCategory(id: string): Promise<Category> {
+  return api.get<Category>(`/api/v1/admin/categories/${id}`);
+}
+
+/**
+ * Create a new category.
+ */
+export async function createCategory(request: CreateCategoryRequest): Promise<Category> {
+  return api.post<Category>('/api/v1/admin/categories', request);
+}
+
+/**
+ * Update a category.
+ */
+export async function updateCategory(id: string, request: CreateCategoryRequest): Promise<Category> {
+  return api.put<Category>(`/api/v1/admin/categories/${id}`, request);
+}
+
+/**
+ * Delete a category.
+ */
+export async function deleteCategory(id: string): Promise<void> {
+  return api.delete(`/api/v1/admin/categories/${id}`);
+}
+
+// Flow Types API
+
+/**
  * Get all flow types.
  */
 export async function getFlowTypes(): Promise<FlowType[]> {
   return api.get<FlowType[]>('/api/v1/admin/flow-types');
+}
+
+/**
+ * Get a single flow type.
+ */
+export async function getFlowType(id: string): Promise<FlowType> {
+  return api.get<FlowType>(`/api/v1/admin/flow-types/${id}`);
+}
+
+/**
+ * Create a new flow type.
+ */
+export async function createFlowType(request: CreateFlowTypeRequest): Promise<FlowType> {
+  return api.post<FlowType>('/api/v1/admin/flow-types', request);
+}
+
+/**
+ * Update a flow type.
+ */
+export async function updateFlowType(id: string, request: CreateFlowTypeRequest): Promise<FlowType> {
+  return api.put<FlowType>(`/api/v1/admin/flow-types/${id}`, request);
+}
+
+/**
+ * Delete a flow type.
+ */
+export async function deleteFlowType(id: string): Promise<void> {
+  return api.delete(`/api/v1/admin/flow-types/${id}`);
 }

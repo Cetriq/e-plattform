@@ -9,8 +9,10 @@ import se.eplatform.cases.repository.CaseRepository;
 import se.eplatform.flow.domain.Flow;
 import se.eplatform.flow.domain.QueryDefinition;
 import se.eplatform.flow.domain.StatusDefinition;
+import se.eplatform.flow.domain.StatusType;
 import se.eplatform.flow.domain.Step;
 import se.eplatform.flow.repository.FlowRepository;
+import se.eplatform.notification.service.NotificationService;
 import se.eplatform.user.domain.User;
 import se.eplatform.user.repository.UserRepository;
 
@@ -26,12 +28,14 @@ public class CaseService {
     private final CaseRepository caseRepository;
     private final FlowRepository flowRepository;
     private final UserRepository userRepository;
+    private final NotificationService notificationService;
 
     public CaseService(CaseRepository caseRepository, FlowRepository flowRepository,
-                       UserRepository userRepository) {
+                       UserRepository userRepository, NotificationService notificationService) {
         this.caseRepository = caseRepository;
         this.flowRepository = flowRepository;
         this.userRepository = userRepository;
+        this.notificationService = notificationService;
     }
 
     /**
@@ -77,6 +81,15 @@ public class CaseService {
             c.getExternalMessages().forEach(msg -> {
                 org.hibernate.Hibernate.initialize(msg.getCreatedBy());
             });
+
+            // Initialize flow structure for PDF generation
+            if (c.getFlow() != null) {
+                Flow flow = c.getFlow();
+                org.hibernate.Hibernate.initialize(flow.getSteps());
+                flow.getSteps().forEach(step -> {
+                    org.hibernate.Hibernate.initialize(step.getQueryDefinitions());
+                });
+            }
         });
         return caseOpt;
     }
@@ -143,7 +156,7 @@ public class CaseService {
 
         // Set initial status (draft)
         flow.getStatusDefinitionsSorted().stream()
-                .filter(s -> s.getStatusType() == se.eplatform.flow.domain.StatusType.DRAFT)
+                .filter(s -> s.getStatusType() == StatusType.DRAFT)
                 .findFirst()
                 .ifPresent(newCase::setStatus);
 
@@ -199,11 +212,16 @@ public class CaseService {
 
         // Change to submitted status
         caseEntity.getFlow().getStatusDefinitionsSorted().stream()
-                .filter(s -> s.getStatusType() == se.eplatform.flow.domain.StatusType.SUBMITTED)
+                .filter(s -> s.getStatusType() == StatusType.SUBMITTED)
                 .findFirst()
                 .ifPresent(status -> caseEntity.changeStatus(status, caseEntity.getCreatedBy(), null));
 
-        return caseRepository.save(caseEntity);
+        Case savedCase = caseRepository.save(caseEntity);
+
+        // Send notification to the user who submitted the case
+        notificationService.notifyCaseSubmitted(savedCase, savedCase.getCreatedBy());
+
+        return savedCase;
     }
 
     /**
@@ -217,6 +235,8 @@ public class CaseService {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new IllegalArgumentException("User not found: " + userId));
 
+        StatusDefinition oldStatus = caseEntity.getStatus();
+
         StatusDefinition newStatus = caseEntity.getFlow().getStatusDefinitionsSorted().stream()
                 .filter(s -> s.getId().equals(statusId))
                 .findFirst()
@@ -224,7 +244,17 @@ public class CaseService {
 
         caseEntity.changeStatus(newStatus, user, comment);
 
-        return caseRepository.save(caseEntity);
+        Case savedCase = caseRepository.save(caseEntity);
+
+        // Notify case owner about status change
+        User caseOwner = savedCase.getCreatedBy();
+        if (newStatus.getStatusType() == StatusType.COMPLETED) {
+            notificationService.notifyCaseCompleted(savedCase, caseOwner);
+        } else {
+            notificationService.notifyCaseStatusChanged(savedCase, caseOwner, oldStatus, newStatus);
+        }
+
+        return savedCase;
     }
 
     /**
@@ -251,7 +281,7 @@ public class CaseService {
      */
     @Transactional
     public ExternalMessage addExternalMessage(UUID caseId, UUID userId, String message, boolean fromManager) {
-        Case caseEntity = caseRepository.findById(caseId)
+        Case caseEntity = caseRepository.findByIdWithAllData(caseId)
                 .orElseThrow(() -> new IllegalArgumentException("Case not found: " + caseId));
 
         User user = userRepository.findById(userId)
@@ -265,6 +295,20 @@ public class CaseService {
         caseEntity.addEvent(CaseEvent.messageSent(caseEntity, user, true));
 
         caseRepository.save(caseEntity);
+
+        // Send notifications
+        if (fromManager) {
+            // Notify case owner about new message from manager
+            User caseOwner = caseEntity.getCreatedBy();
+            notificationService.notifyNewMessageFromManager(caseEntity, caseOwner, msg);
+        } else {
+            // Notify all managers/owners about new message from citizen
+            org.hibernate.Hibernate.initialize(caseEntity.getOwners());
+            for (User manager : caseEntity.getOwners()) {
+                notificationService.notifyManagersNewMessage(caseEntity, manager, msg);
+            }
+        }
+
         return msg;
     }
 

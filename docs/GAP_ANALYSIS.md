@@ -6,15 +6,17 @@ This document analyzes the features in the original Open-ePlatform and identifie
 
 ## Executive Summary
 
-| Category | Open-ePlatform | Modern e-Plattform | Gap |
-|----------|----------------|-------------------|-----|
-| Query Types | 15+ types | 13 types | 2 missing (MAP, SIGNATURE) |
-| Signing | BankID, Multi-party | Stubbed | Full implementation needed |
-| PDF Generation | iText-based | Not implemented | Full implementation needed |
-| Notifications | Email templates | Stubbed | Full implementation needed |
-| Statistics | Built-in module | Not implemented | Needed |
-| Integration API | Callback system | Stubbed | Needed |
-| Authentication | SAML, BankID | Mock only | BankID/OAuth2 needed |
+| Category | Open-ePlatform | Modern e-Plattform | Gap | Status |
+|----------|----------------|-------------------|-----|--------|
+| Query Types | 15+ types | 13 types | 2 missing (MAP, SIGNATURE) | ✅ Core done |
+| Signing | BankID, Multi-party | Stubbed | Full implementation needed | ⏳ Requires contract |
+| PDF Generation | iText-based | ✅ OpenHTMLToPDF | Basic implementation done | ✅ Done |
+| Notifications | Email templates | Stubbed | Full implementation needed | 🔴 Next priority |
+| Statistics | Built-in module | Not implemented | Needed | ⏳ Planned |
+| Integration API | Callback system | Stubbed | Needed | ⏳ Planned |
+| Authentication | SAML, BankID | Mock only | BankID/OAuth2 needed | ⏳ Requires contract |
+
+**Last updated:** 2026-04-06
 
 ---
 
@@ -135,7 +137,7 @@ BankIdService (stubbed)
 
 ---
 
-## 4. PDF Generation
+## 4. PDF Generation ✅ IMPLEMENTED
 
 ### Open-ePlatform PDF
 
@@ -152,16 +154,26 @@ FlowInstancePDFGenerator module
 ### Modern e-Plattform PDF
 
 ```
-(Not implemented)
+PdfService.java
+├── OpenHTMLToPDF library
+├── HTML-to-PDF conversion
+├── Styled templates (CSS)
+├── Swedish character support
+├── Case data rendering
+└── Download endpoint (/api/v1/cases/{id}/pdf)
 ```
 
-### Required Implementation
+### Implementation Status
 
-1. PDF generation service using modern library (OpenPDF, iText 7, or Apache PDFBox)
-2. Template system for PDF layout
-3. Support for Swedish characters
-4. Attachment embedding
-5. Digital signature embedding
+| Feature | Status |
+|---------|--------|
+| PDF generation service | ✅ Implemented |
+| HTML template system | ✅ Implemented |
+| Swedish characters | ✅ Works |
+| Case data in PDF | ✅ Implemented |
+| Frontend download button | ✅ Implemented |
+| Attachment embedding | ⏳ Not yet |
+| Digital signature embedding | ⏳ Requires BankID |
 
 ---
 
@@ -338,42 +350,91 @@ auth/
 
 ### Phase 1: Critical (Required for Basic Usage)
 
-1. **BankID authentication** - Required for production
-2. **PDF generation** - Required for case documents
-3. **Email notifications** - Required for user communication
+1. ~~**PDF generation** - Required for case documents~~ ✅ DONE
+2. **Email notifications** - Required for user communication 🔴 NEXT
+3. **Security hardening** - CORS, authorization, input validation 🔴 NEXT
+4. **BankID authentication** - Required for production ⏳ Requires contract
 
 ### Phase 2: High Priority
 
-4. **MAP query type** - Common requirement for permits
-5. **Multi-party signing** - Required for complex flows
-6. **Statistics dashboard** - Required for administrators
-7. **Flow import/export** - Required for flow management
+5. **Statistics dashboard** - Required for administrators
+6. **API authorization** - Role-based access control on endpoints
+7. **Rate limiting** - Prevent API abuse
+8. **Audit logging** - Track user actions
 
 ### Phase 3: Medium Priority
 
-8. **Tree query types** - For hierarchical selections
-9. **Integration webhooks** - For external systems
-10. **Read receipts** - For message tracking
-11. **Flow versioning improvements** - For flow management
+9. **MAP query type** - Common requirement for permits
+10. **Multi-party signing** - Required for complex flows (requires BankID)
+11. **Flow import/export** - Required for flow management
+12. **Integration webhooks** - For external systems
 
 ### Phase 4: Lower Priority
 
-12. **Feedback surveys** - Nice to have
-13. **Operating messages** - Nice to have
-14. **PUD-specific queries** - Sweden-specific
-15. **Advanced flow approval** - Complex workflow
+13. **Tree query types** - For hierarchical selections
+14. **Read receipts** - For message tracking
+15. **Feedback surveys** - Nice to have
+16. **Operating messages** - Nice to have
 
 ---
 
-## 12. Conclusion
+## 12. Security Review Findings (2026-04-06)
 
-The modern e-Plattform has successfully implemented the core functionality of Open-ePlatform with a cleaner, more maintainable architecture. The main gaps are in:
+A security review identified the following areas requiring attention:
 
-1. **Authentication** - BankID/SAML integration
-2. **Signing** - Multi-party digital signing
-3. **PDF Generation** - Document creation
-4. **Notifications** - Email/SMS system
-5. **Statistics** - Reporting and analytics
-6. **Special query types** - MAP, TREE, SIGNATURE
+### Critical (Before Production)
+
+| Issue | Status | Notes |
+|-------|--------|-------|
+| Mock authentication | ⚠️ Known | Requires BankID contract |
+| Missing API authorization | 🔴 TODO | Add @PreAuthorize |
+| Open CORS policy | 🔴 TODO | Restrict to specific origins |
+| File upload validation | 🔴 TODO | Validate MIME types |
+| PII encryption | ⏳ Planned | Encrypt personnummer etc. |
+
+### High Priority
+
+| Issue | Status | Notes |
+|-------|--------|-------|
+| Rate limiting | 🔴 TODO | Prevent brute force |
+| Audit logging | 🔴 TODO | Track user actions |
+| PDF injection | ✅ Mitigated | HTML escaping in place |
+
+### Medium Priority
+
+| Issue | Status | Notes |
+|-------|--------|-------|
+| Token in localStorage | ⏳ Planned | Move to httpOnly cookies |
+| CSP headers | 🔴 TODO | Add Content-Security-Policy |
+| Debug logging | ⏳ Review | Check for PII leaks |
+
+---
+
+## 13. Conclusion
+
+The modern e-Plattform has successfully implemented the core functionality of Open-ePlatform with a cleaner, more maintainable architecture.
+
+### Completed ✅
+- Core domain model (Flow, Case, QueryInstance)
+- 13 query types
+- File upload with MinIO
+- PDF generation with download
+- Admin portal for flow management
+- Manager portal for case handling
+- Citizen portal for applications
+
+### In Progress 🔄
+- Security hardening
+- Email notifications
+
+### Blocked ⏳
+- BankID authentication (requires contract)
+- Digital signing (requires BankID)
+
+### Remaining Gaps
+1. **Notifications** - Email/SMS system
+2. **Statistics** - Reporting and analytics
+3. **Special query types** - MAP, TREE
+4. **Security** - Authorization, rate limiting, audit logging
 
 The modern architecture makes it easier to implement these features incrementally, and the technology choices (Spring Boot, React, PostgreSQL) provide a solid foundation for future development.

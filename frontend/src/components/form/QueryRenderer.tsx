@@ -15,6 +15,11 @@ import {
   HeadingElement,
   ParagraphElement,
   DividerElement,
+  PersonField,
+  OrganizationField,
+  LocationField,
+  MapField,
+  SignatureField,
 } from './fields';
 
 interface QueryRendererProps {
@@ -75,19 +80,21 @@ export function QueryRenderer({ query }: QueryRendererProps) {
     case 'DIVIDER':
       return <DividerElement query={query} />;
 
-    // Special types (to be implemented)
-    case 'MAP':
-    case 'LOCATION':
-    case 'SIGNATURE':
-    case 'ORGANIZATION':
+    // Special types
     case 'PERSON':
-      return (
-        <div className="col-span-full p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
-          <p className="text-sm text-yellow-800">
-            Fälttyp &quot;{query.queryType}&quot; stöds inte ännu.
-          </p>
-        </div>
-      );
+      return <PersonField query={query} />;
+
+    case 'ORGANIZATION':
+      return <OrganizationField query={query} />;
+
+    case 'LOCATION':
+      return <LocationField query={query} />;
+
+    case 'MAP':
+      return <MapField query={query} />;
+
+    case 'SIGNATURE':
+      return <SignatureField query={query} />;
 
     default:
       return (

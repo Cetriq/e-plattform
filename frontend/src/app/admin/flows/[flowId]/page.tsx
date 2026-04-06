@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   getFlowForEdit,
@@ -14,30 +14,47 @@ import {
   addQueryDefinition,
   updateQueryDefinition,
   deleteQueryDefinition,
+  getFlowTypes,
   type FlowDetail,
   type StepDetail,
   type StepInput,
   type QueryDefinitionInput,
   type QueryDefinitionDetail,
+  type FlowType,
+  type Category,
 } from '@/lib/api/admin';
 
-// Query types available
+// Query types available - grouped by category
 const queryTypes = [
-  { value: 'TEXT', label: 'Textfält', icon: 'A' },
-  { value: 'TEXTAREA', label: 'Flerradigt textfält', icon: '¶' },
-  { value: 'NUMBER', label: 'Nummer', icon: '#' },
-  { value: 'EMAIL', label: 'E-post', icon: '@' },
-  { value: 'PHONE', label: 'Telefon', icon: '☎' },
-  { value: 'DATE', label: 'Datum', icon: '📅' },
-  { value: 'SELECT', label: 'Rullgardinsmeny', icon: '▼' },
-  { value: 'RADIO', label: 'Radioknappar', icon: '◉' },
-  { value: 'CHECKBOX', label: 'Kryssrutor', icon: '☑' },
-  { value: 'FILE', label: 'Filuppladdning', icon: '📎' },
-  { value: 'HEADING', label: 'Rubrik', icon: 'H' },
-  { value: 'PARAGRAPH', label: 'Text/Information', icon: 'P' },
-  { value: 'DIVIDER', label: 'Avdelare', icon: '—' },
-  { value: 'PERSONAL_NUMBER', label: 'Personnummer', icon: 'ID' },
-  { value: 'ADDRESS', label: 'Adress', icon: '🏠' },
+  // Text inputs
+  { value: 'TEXT', label: 'Textfält', icon: 'A', category: 'text' },
+  { value: 'TEXTAREA', label: 'Flerradigt textfält', icon: '¶', category: 'text' },
+  { value: 'NUMBER', label: 'Nummer', icon: '#', category: 'text' },
+  { value: 'EMAIL', label: 'E-post', icon: '@', category: 'text' },
+  { value: 'PHONE', label: 'Telefon', icon: '☎', category: 'text' },
+  { value: 'URL', label: 'Webbadress', icon: '🔗', category: 'text' },
+  // Date/Time
+  { value: 'DATE', label: 'Datum', icon: '📅', category: 'datetime' },
+  { value: 'DATETIME', label: 'Datum och tid', icon: '📅', category: 'datetime' },
+  { value: 'TIME', label: 'Tid', icon: '🕐', category: 'datetime' },
+  // Selection
+  { value: 'SELECT', label: 'Rullgardinsmeny', icon: '▼', category: 'selection' },
+  { value: 'MULTISELECT', label: 'Flerval lista', icon: '☑', category: 'selection' },
+  { value: 'RADIO', label: 'Radioknappar', icon: '◉', category: 'selection' },
+  { value: 'CHECKBOX', label: 'Kryssrutor', icon: '☑', category: 'selection' },
+  // Files
+  { value: 'FILE', label: 'Filuppladdning', icon: '📎', category: 'file' },
+  { value: 'IMAGE', label: 'Bilduppladdning', icon: '🖼', category: 'file' },
+  // Special
+  { value: 'PERSON', label: 'Personuppgifter', icon: '👤', category: 'special' },
+  { value: 'ORGANIZATION', label: 'Organisationsuppgifter', icon: '🏢', category: 'special' },
+  { value: 'LOCATION', label: 'Platsväljare', icon: '📍', category: 'special' },
+  { value: 'MAP', label: 'Kartmarkering', icon: '🗺', category: 'special' },
+  { value: 'SIGNATURE', label: 'Signatur', icon: '✍', category: 'special' },
+  // Layout elements (non-input)
+  { value: 'HEADING', label: 'Rubrik', icon: 'H', category: 'layout' },
+  { value: 'PARAGRAPH', label: 'Text/Information', icon: 'P', category: 'layout' },
+  { value: 'DIVIDER', label: 'Avdelare', icon: '—', category: 'layout' },
 ];
 
 type Tab = 'steps' | 'settings' | 'preview';
@@ -63,12 +80,20 @@ export default function FlowEditorPage() {
     enabled: !isNew,
   });
 
+  // Flow types for category selection
+  const { data: flowTypes } = useQuery({
+    queryKey: ['flow-types'],
+    queryFn: getFlowTypes,
+  });
+
   // Form state for flow settings
   const [flowForm, setFlowForm] = useState({
     name: '',
     shortDescription: '',
     longDescription: '',
     submittedMessage: '',
+    typeId: '' as string | undefined,
+    categoryId: '' as string | undefined,
     requireAuth: true,
     requireSigning: false,
     allowSaveDraft: true,
@@ -77,13 +102,15 @@ export default function FlowEditorPage() {
   });
 
   // Update form when flow data loads
-  useState(() => {
+  useEffect(() => {
     if (flow) {
       setFlowForm({
         name: flow.name,
         shortDescription: flow.shortDescription || '',
         longDescription: flow.longDescription || '',
         submittedMessage: flow.submittedMessage || '',
+        typeId: flow.typeId || '',
+        categoryId: flow.categoryId || '',
         requireAuth: flow.requireAuth,
         requireSigning: flow.requireSigning,
         allowSaveDraft: flow.allowSaveDraft,
@@ -94,7 +121,7 @@ export default function FlowEditorPage() {
         setSelectedStepId(flow.steps[0].id);
       }
     }
-  });
+  }, [flow]);
 
   // Mutations
   const updateFlowMutation = useMutation({
@@ -499,6 +526,61 @@ export default function FlowEditorPage() {
                 className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
                 placeholder="Visas efter inskickat ärende"
               />
+            </div>
+
+            {/* Category and Type Selection */}
+            <div className="border-t pt-6">
+              <h3 className="font-medium text-gray-900 mb-4">Kategorisering</h3>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Tjänstetyp
+                  </label>
+                  <select
+                    value={flowForm.typeId || ''}
+                    onChange={(e) => {
+                      const newTypeId = e.target.value || undefined;
+                      setFlowForm({
+                        ...flowForm,
+                        typeId: newTypeId,
+                        categoryId: undefined // Reset category when type changes
+                      });
+                    }}
+                    className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 bg-white"
+                  >
+                    <option value="">Ingen tjänstetyp</option>
+                    {flowTypes?.map((type) => (
+                      <option key={type.id} value={type.id}>
+                        {type.name}
+                      </option>
+                    ))}
+                  </select>
+                  <p className="text-xs text-gray-500 mt-1">Huvudkategori för e-tjänsten</p>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Kategori
+                  </label>
+                  <select
+                    value={flowForm.categoryId || ''}
+                    onChange={(e) => setFlowForm({ ...flowForm, categoryId: e.target.value || undefined })}
+                    disabled={!flowForm.typeId}
+                    className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 bg-white disabled:bg-gray-100 disabled:text-gray-500"
+                  >
+                    <option value="">Ingen kategori</option>
+                    {flowTypes
+                      ?.find((t) => t.id === flowForm.typeId)
+                      ?.categories.map((cat) => (
+                        <option key={cat.id} value={cat.id}>
+                          {cat.name}
+                        </option>
+                      ))}
+                  </select>
+                  <p className="text-xs text-gray-500 mt-1">
+                    {flowForm.typeId ? 'Underkategori inom tjänstetypen' : 'Välj tjänstetyp först'}
+                  </p>
+                </div>
+              </div>
             </div>
 
             <div className="border-t pt-6">

@@ -79,6 +79,24 @@ logging:
     org.hibernate.SQL: DEBUG
     org.hibernate.type.descriptor.sql.BasicBinder: TRACE
 
+# Mail configuration
+spring.mail:
+  host: ${MAIL_HOST:localhost}
+  port: ${MAIL_PORT:1025}
+  username: ${MAIL_USERNAME:}
+  password: ${MAIL_PASSWORD:}
+  properties:
+    mail.smtp.auth: false
+    mail.smtp.starttls.enable: false
+
+# Thymeleaf
+spring.thymeleaf:
+  prefix: classpath:/templates/
+  suffix: .html
+  mode: HTML
+  encoding: UTF-8
+  cache: false
+
 # Application specific
 eplatform:
   cors:
@@ -86,6 +104,13 @@ eplatform:
       - http://localhost:3000
       - http://localhost:8080
   security:
+    # Set to true in production to enforce role-based access control
+    enforce-roles: ${ENFORCE_ROLES:false}
     jwt:
       issuer: ${JWT_ISSUER:eplatform}
       expiration: 3600
+  email:
+    enabled: ${EMAIL_ENABLED:false}
+    from-address: ${EMAIL_FROM:noreply@eplatform.se}
+    from-name: e-Plattform
+    base-url: ${EMAIL_BASE_URL:http://localhost:3000}

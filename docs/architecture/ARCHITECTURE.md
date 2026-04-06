@@ -1,59 +1,62 @@
-# Modern e-Plattform - Arkitekturförslag
+# Modern e-Plattform - Architecture
 
-## 1. Översikt
+> **EXPERIMENTAL** - This document describes the target architecture.
+> See [EXPERIMENTAL_STATUS.md](../EXPERIMENTAL_STATUS.md) for current implementation status.
 
-En modern ersättning för Open-ePlatform, byggd med Java 21+ och containeriserad med Docker.
+## 1. Overview
 
-### Kärnprinciper
-- **Cloud-native** - Containeriserad, skalbar, observerbar
-- **API-first** - REST + GraphQL för flexibilitet
-- **Event-driven** - Asynkron kommunikation mellan tjänster
-- **Domain-driven** - Tydlig domänmodell och bounded contexts
+A modern replacement for Open-ePlatform, built with Java 21+ and containerized with Docker.
+
+### Core Principles
+- **Cloud-native** - Containerized, scalable, observable
+- **API-first** - REST + GraphQL for flexibility
+- **Event-driven** - Asynchronous communication between services
+- **Domain-driven** - Clear domain model and bounded contexts
 
 ---
 
-## 2. Teknologistack
+## 2. Technology Stack
 
 ### Backend
-| Komponent | Teknologi | Motivering |
-|-----------|-----------|------------|
-| **Runtime** | Java 21+ (GraalVM) | Virtual threads, pattern matching, records |
-| **Framework** | Spring Boot 3.2+ | Mogen, vältestat, stort ekosystem |
-| **API** | Spring WebFlux + GraphQL | Reaktivt, flexibelt |
-| **ORM** | Spring Data JPA + Hibernate 6 | Standard, kraftfullt |
-| **Validering** | Jakarta Validation + custom | Deklarativ validering |
-| **Säkerhet** | Spring Security 6 + OAuth2/OIDC | Modern autentisering |
+| Component | Technology | Status | Rationale |
+|-----------|------------|--------|-----------|
+| **Runtime** | Java 21+ (GraalVM) | Implemented | Virtual threads, pattern matching, records |
+| **Framework** | Spring Boot 3.2+ | Implemented | Mature, well-tested, large ecosystem |
+| **API** | Spring WebFlux + GraphQL | Partial | REST implemented, GraphQL planned |
+| **ORM** | Spring Data JPA + Hibernate 6 | Implemented | Standard, powerful |
+| **Validation** | Jakarta Validation + custom | Implemented | Declarative validation |
+| **Security** | Spring Security 6 + OAuth2/OIDC | Partial | Mock auth only, OAuth2 planned |
 
-### Databas & Lagring
-| Komponent | Teknologi | Motivering |
-|-----------|-----------|------------|
-| **Primär DB** | PostgreSQL 16 | JSON-stöd, robusthet, partitionering |
-| **Cache** | Redis 7 | Sessions, cache, pub/sub |
-| **Sökning** | Meilisearch / Elasticsearch | Snabb fulltextsökning |
-| **Fillagring** | MinIO (S3-kompatibel) | Skalbar objektlagring |
-| **Meddelandekö** | RabbitMQ / Apache Kafka | Event-driven arkitektur |
+### Database & Storage
+| Component | Technology | Status | Rationale |
+|-----------|------------|--------|-----------|
+| **Primary DB** | PostgreSQL 16 | Implemented | JSON support, robustness, partitioning |
+| **Cache** | Redis 7 | Implemented | Sessions, cache, pub/sub |
+| **Search** | Meilisearch / Elasticsearch | Planned | Fast full-text search |
+| **File Storage** | MinIO (S3-compatible) | Implemented | Scalable object storage |
+| **Message Queue** | RabbitMQ / Apache Kafka | Partial | Configured, not actively used |
 
 ### Frontend
-| Komponent | Teknologi | Motivering |
-|-----------|-----------|------------|
-| **Framework** | React 18 + TypeScript | Komponentbaserat, typesafe |
-| **Meta-framework** | Next.js 14 / Vite | SSR, optimering |
-| **State** | TanStack Query + Zustand | Server state + client state |
-| **Formulär** | React Hook Form + Zod | Dynamiska formulär, validering |
-| **UI** | Tailwind CSS + Radix UI | Tillgängligt, modernt |
+| Component | Technology | Status | Rationale |
+|-----------|------------|--------|-----------|
+| **Framework** | React 18 + TypeScript | Implemented | Component-based, typesafe |
+| **Meta-framework** | Next.js 14 / Vite | Implemented | SSR, optimization |
+| **State** | TanStack Query + Zustand | Implemented | Server state + client state |
+| **Forms** | React Hook Form + Zod | Implemented | Dynamic forms, validation |
+| **UI** | Tailwind CSS + Radix UI | Implemented | Accessible, modern |
 
-### DevOps & Infrastruktur
-| Komponent | Teknologi | Motivering |
-|-----------|-----------|------------|
-| **Container** | Docker + Docker Compose | Lokal utveckling, deployment |
-| **Orkestrering** | Kubernetes (produktion) | Skalning, self-healing |
-| **CI/CD** | GitHub Actions | Automatiserad pipeline |
-| **Observabilitet** | OpenTelemetry + Grafana | Traces, metrics, logs |
-| **Reverse Proxy** | Traefik / nginx | Load balancing, SSL |
+### DevOps & Infrastructure
+| Component | Technology | Status | Rationale |
+|-----------|------------|--------|-----------|
+| **Container** | Docker + Docker Compose | Implemented | Local development, deployment |
+| **Orchestration** | Kubernetes (production) | Planned | Scaling, self-healing |
+| **CI/CD** | GitHub Actions | Planned | Automated pipeline |
+| **Observability** | OpenTelemetry + Grafana | Partial | Basic metrics, full tracing planned |
+| **Reverse Proxy** | Traefik / nginx | Implemented | Load balancing, SSL |
 
 ---
 
-## 3. Systemarkitektur
+## 3. System Architecture
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────┐
@@ -123,40 +126,40 @@ En modern ersättning för Open-ePlatform, byggd med Java 21+ och containerisera
 
 ---
 
-## 4. Domänmodell
+## 4. Domain Model
 
 ### 4.1 Bounded Contexts
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────┐
-│                         FLOW CONTEXT                                     │
-│  Ansvarar för: Formulärdefinitioner, steg, frågor, villkorslogik        │
+│                         FLOW CONTEXT (Implemented)                       │
+│  Responsible for: Form definitions, steps, queries, conditional logic   │
 │                                                                          │
-│  Aggregat:                                                               │
+│  Aggregates:                                                             │
 │  • Flow (root) → Step → QueryDefinition → EvaluatorDefinition           │
 │  • FlowFamily, FlowType, Category                                        │
 └─────────────────────────────────────────────────────────────────────────┘
 
 ┌─────────────────────────────────────────────────────────────────────────┐
-│                         CASE CONTEXT                                     │
-│  Ansvarar för: Ärendeinstanser, status, värden, meddelanden             │
+│                         CASE CONTEXT (Implemented)                       │
+│  Responsible for: Case instances, status, values, messages              │
 │                                                                          │
-│  Aggregat:                                                               │
+│  Aggregates:                                                             │
 │  • Case (root) → QueryInstance → QueryValue                              │
 │  • CaseStatus, CaseEvent, Message                                        │
 └─────────────────────────────────────────────────────────────────────────┘
 
 ┌─────────────────────────────────────────────────────────────────────────┐
-│                         IDENTITY CONTEXT                                 │
-│  Ansvarar för: Användare, grupper, roller, behörigheter                 │
+│                         IDENTITY CONTEXT (Implemented)                   │
+│  Responsible for: Users, groups, roles, permissions                     │
 │                                                                          │
-│  Aggregat:                                                               │
+│  Aggregates:                                                             │
 │  • User (root) → UserProfile                                             │
 │  • Organization → Group → Role                                           │
 └─────────────────────────────────────────────────────────────────────────┘
 ```
 
-### 4.2 Entitetsdiagram
+### 4.2 Entity Diagram
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────┐
@@ -227,12 +230,12 @@ En modern ersättning för Open-ePlatform, byggd med Java 21+ och containerisera
 
 ---
 
-## 5. Databasschema (PostgreSQL)
+## 5. Database Schema (PostgreSQL) - Implemented
 
-### 5.1 Flow-tabeller
+### 5.1 Flow Tables
 
 ```sql
--- Tjänstfamiljer (gruppering av versioner)
+-- Flow families (version grouping)
 CREATE TABLE flow_families (
     id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     name            VARCHAR(255) NOT NULL,
@@ -688,7 +691,7 @@ CREATE TABLE user_roles (
 
 ---
 
-## 6. API-design
+## 6. API Design - Partially Implemented
 
 ### 6.1 REST API
 
@@ -882,7 +885,7 @@ enum Priority {
 
 ---
 
-## 7. Docker-arkitektur
+## 7. Docker Architecture - Implemented
 
 ### 7.1 Utvecklingsmiljö
 
@@ -1368,7 +1371,7 @@ volumes:
 
 ---
 
-## 8. Projektstruktur
+## 8. Project Structure - Implemented
 
 ```
 eplatform/
@@ -1506,7 +1509,7 @@ eplatform/
 
 ---
 
-## 9. Java 21+ Features att utnyttja
+## 9. Java 21+ Features - Partially Used
 
 ### 9.1 Records för DTOs
 
@@ -1658,7 +1661,7 @@ public CaseDetails getCaseWithDetails(UUID caseId) throws Exception {
 
 ---
 
-## 10. Säkerhet
+## 10. Security - Planned (Mock Only)
 
 ### 10.1 Autentisering
 
@@ -1726,7 +1729,7 @@ public class BankIdService {
 
 ---
 
-## 11. Nästa steg
+## 11. Next Steps (Roadmap)
 
 ### Fas 1: Foundation (MVP)
 1. Sätt upp Docker-miljö med alla tjänster
@@ -1754,7 +1757,7 @@ public class BankIdService {
 
 ---
 
-## 12. Fördelar jämfört med Open-ePlatform
+## 12. Advantages vs Open-ePlatform
 
 | Aspekt | Open-ePlatform | Modern version |
 |--------|----------------|----------------|

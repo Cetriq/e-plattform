@@ -18,14 +18,17 @@ e-Plattform is a modern e-service platform for public administration, inspired b
 |--------|--------|-------------|
 | Case Management | Complete | Full CRUD, status transitions, messages, attachments |
 | Flow Definitions | Complete | Steps, query definitions, evaluator system |
-| File Handling (MinIO) | Complete | Upload, download, validation, virus scanning placeholder |
+| File Handling (MinIO) | Complete | Upload, download, validation, MIME type detection with Apache Tika |
 | User Management | Complete | Roles, permissions, group assignments |
 | Mock Authentication | Partial | Development only - NOT for production |
+| Rate Limiting | Complete | Bucket4j-based, configurable per endpoint type |
+| Audit Logging | Complete | Async logging with PII sanitization |
+| API Documentation | Complete | OpenAPI/Swagger with Swedish descriptions |
+| Statistics Dashboard | Complete | Overview, case counts, audit events |
 | BankID Integration | Not Started | Service interface exists, implementation stubbed |
 | Payment Integration | Not Started | Service interface exists, implementation stubbed |
-| Email Notifications | Not Started | Service exists but empty |
+| Email Notifications | Partial | Templates exist, sending via Mailpit in dev |
 | Full-text Search | Not Started | Meilisearch configured but not integrated |
-| GraphQL API | Not Started | Schema declared, resolvers not implemented |
 | Unit Tests | Not Started | No test coverage |
 
 ### Frontend Features
@@ -75,19 +78,23 @@ frontend/src/components/form/FormRenderer.tsx:58
 
 1. **Mock Authentication** - Users can log in with any email without password verification
 2. **No CSRF Protection** - Not configured for API endpoints
-3. **No Rate Limiting** - API endpoints are not rate-limited
-4. **Hardcoded Secrets** - Development environment uses hardcoded credentials
-5. **No Audit Logging** - User actions are not comprehensively logged
+3. **Hardcoded Secrets** - Development environment uses hardcoded credentials
+
+### Implemented Security Features
+
+1. **Rate Limiting** - Configurable per endpoint type (100/min general, 10/min auth, 20/min uploads)
+2. **Audit Logging** - Comprehensive async logging with PII sanitization (personnummer, emails, card numbers)
+3. **File Upload Validation** - MIME type detection with Apache Tika, whitelist of allowed types, blocked dangerous extensions
+4. **Path Traversal Protection** - Filename sanitization in file uploads
+5. **JWT Authentication** - Token-based authentication with configurable expiration
 
 ### Required for Production
 
 1. Implement proper OAuth2/OIDC authentication (BankID, Freja eID)
 2. Enable CSRF protection
-3. Configure rate limiting
-4. Use secrets management (Vault, AWS Secrets Manager, etc.)
-5. Implement comprehensive audit logging
-6. Add input sanitization review
-7. Security penetration testing
+3. Use secrets management (Vault, AWS Secrets Manager, etc.)
+4. Security penetration testing
+5. Review and harden rate limiting configuration
 
 ---
 
@@ -109,13 +116,16 @@ frontend/src/components/form/FormRenderer.tsx:58
 
 ### What Works
 
-- Docker Compose development environment
-- PostgreSQL with Flyway migrations
-- Redis for caching
-- MinIO for file storage
-- RabbitMQ for message queuing (not actively used)
+- Docker Compose development environment (10 containers)
+- PostgreSQL 16 with Flyway migrations
+- Redis 7 for caching
+- MinIO for file storage (S3-compatible)
+- RabbitMQ for message queuing
+- MeiliSearch for full-text search (configured, not integrated)
 - Prometheus metrics endpoint
-- Grafana dashboards (basic)
+- Grafana dashboards
+- Mailpit for email testing
+- Swagger UI for API documentation
 
 ### What Needs Work
 
@@ -162,6 +172,7 @@ frontend/src/components/form/FormRenderer.tsx:58
 | Version | Date | Notes |
 |---------|------|-------|
 | 0.1.0 | 2024-XX | Initial experimental release |
+| 0.1.1 | 2026-04 | Added security features (rate limiting, audit logging, file validation), Swagger API documentation, statistics dashboard |
 
 ---
 

@@ -37,9 +37,6 @@ dependencies {
     implementation("org.springframework.boot:spring-boot-starter-mail")
     implementation("org.springframework.boot:spring-boot-starter-thymeleaf")
 
-    // GraphQL
-    implementation("org.springframework.boot:spring-boot-starter-graphql")
-
     // Database
     runtimeOnly("org.postgresql:postgresql")
     implementation("org.flywaydb:flyway-core")
@@ -59,6 +56,9 @@ dependencies {
 
     // File type detection
     implementation("org.apache.tika:tika-core:2.9.1")
+
+    // API Documentation (OpenAPI/Swagger)
+    implementation("org.springdoc:springdoc-openapi-starter-webmvc-ui:2.3.0")
 
     // Utilities
     implementation("org.apache.commons:commons-lang3:3.14.0")
@@ -82,7 +82,6 @@ dependencies {
     // Testing
     testImplementation("org.springframework.boot:spring-boot-starter-test")
     testImplementation("org.springframework.security:spring-security-test")
-    testImplementation("org.springframework.graphql:spring-graphql-test")
     testImplementation("org.testcontainers:junit-jupiter")
     testImplementation("org.testcontainers:postgresql")
     testImplementation("io.rest-assured:rest-assured")

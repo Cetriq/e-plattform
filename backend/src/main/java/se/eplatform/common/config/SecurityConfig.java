@@ -80,8 +80,13 @@ public class SecurityConfig {
                         "/actuator/health",
                         "/actuator/info",
                         "/api/v1/public/**",
-                        "/graphiql",
-                        "/graphql"
+                        // Swagger/OpenAPI endpoints
+                        "/swagger-ui.html",
+                        "/swagger-ui/**",
+                        "/api-docs",
+                        "/api-docs/**",
+                        "/v3/api-docs",
+                        "/v3/api-docs/**"
                 ).permitAll()
                 // Public read-only flow endpoints (e-tjänster)
                 .requestMatchers(
@@ -107,8 +112,13 @@ public class SecurityConfig {
                         "/actuator/health",
                         "/actuator/info",
                         "/api/v1/public/**",
-                        "/graphiql",
-                        "/graphql"
+                        // Swagger/OpenAPI endpoints
+                        "/swagger-ui.html",
+                        "/swagger-ui/**",
+                        "/api-docs",
+                        "/api-docs/**",
+                        "/v3/api-docs",
+                        "/v3/api-docs/**"
                 ).permitAll()
                 // Public read-only flow endpoints (e-tjänster)
                 .requestMatchers(

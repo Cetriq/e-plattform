@@ -56,11 +56,13 @@ make dev
 Then open:
 - **Frontend**: http://localhost:3000
 - **API**: http://localhost:8080
-- **API Docs**: http://localhost:8080/graphiql
+- **API Documentation (Swagger)**: http://localhost:8080/swagger-ui.html
 - **Meilisearch**: http://localhost:7700
 - **MinIO Console**: http://localhost:9001
 - **RabbitMQ Management**: http://localhost:15672
+- **Mailpit (Email)**: http://localhost:8025
 - **Grafana**: http://localhost:3001
+- **Prometheus**: http://localhost:9090
 
 ### Local Development
 
@@ -115,7 +117,20 @@ Open-E_Plattform/
 
 ## API
 
-### REST API
+### API Documentation
+
+Full API documentation is available via Swagger UI:
+- **Swagger UI**: http://localhost:8080/swagger-ui.html
+- **OpenAPI JSON**: http://localhost:8080/api-docs
+
+The documentation includes:
+- All available endpoints with Swedish descriptions
+- Request/response schemas with examples
+- Authentication information (JWT Bearer tokens)
+- Rate limiting details
+- Test user credentials
+
+### REST API Examples
 
 ```
 GET  /api/v1/flows              # List published flows
@@ -128,11 +143,6 @@ PUT  /api/v1/cases/{id}/values  # Update case values
 POST /api/v1/cases/{id}/submit  # Submit case
 PUT  /api/v1/cases/{id}/status  # Change status
 ```
-
-### GraphQL
-
-GraphQL endpoint: `http://localhost:8080/graphql`
-GraphiQL: `http://localhost:8080/graphiql`
 
 ## Database
 

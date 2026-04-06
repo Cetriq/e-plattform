@@ -54,6 +54,12 @@ dependencies {
     implementation("com.openhtmltopdf:openhtmltopdf-core:1.0.10")
     implementation("com.openhtmltopdf:openhtmltopdf-pdfbox:1.0.10")
 
+    // Rate Limiting
+    implementation("com.bucket4j:bucket4j-core:8.10.1")
+
+    // File type detection
+    implementation("org.apache.tika:tika-core:2.9.1")
+
     // Utilities
     implementation("org.apache.commons:commons-lang3:3.14.0")
     implementation("com.google.guava:guava:33.0.0-jre")

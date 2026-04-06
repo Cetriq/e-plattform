@@ -87,6 +87,40 @@ public interface CaseRepository extends JpaRepository<Case, UUID> {
     long countByStatusId(UUID statusId);
 
     /**
+     * Count cases by status name.
+     */
+    @Query("SELECT COUNT(c) FROM Case c WHERE c.status.name = :statusName")
+    long countByStatusName(@Param("statusName") String statusName);
+
+    /**
+     * Count cases created after a certain time.
+     */
+    long countByCreatedAtAfter(Instant timestamp);
+
+    /**
+     * Find cases created after a certain time.
+     */
+    List<Case> findByCreatedAtAfter(Instant timestamp);
+
+    /**
+     * Find cases by status name.
+     */
+    @Query("SELECT c FROM Case c WHERE c.status.name = :statusName")
+    List<Case> findByStatusName(@Param("statusName") String statusName);
+
+    /**
+     * Count cases grouped by status.
+     */
+    @Query("SELECT c.status.name, COUNT(c) FROM Case c GROUP BY c.status.name")
+    List<Object[]> countGroupByStatus();
+
+    /**
+     * Count cases grouped by flow.
+     */
+    @Query("SELECT c.flow.id, c.flow.name, COUNT(c) FROM Case c GROUP BY c.flow.id, c.flow.name ORDER BY COUNT(c) DESC")
+    List<Object[]> countGroupByFlow();
+
+    /**
      * Find cases submitted within a date range.
      */
     @Query("SELECT c FROM Case c WHERE c.submittedAt BETWEEN :start AND :end")

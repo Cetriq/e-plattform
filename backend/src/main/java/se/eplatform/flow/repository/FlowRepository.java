@@ -73,6 +73,11 @@ public interface FlowRepository extends JpaRepository<Flow, UUID> {
     boolean existsByFamilyIdAndVersion(UUID familyId, Integer version);
 
     /**
+     * Count flows by status.
+     */
+    long countByStatus(FlowStatus status);
+
+    /**
      * Find a flow by ID with basic relations eagerly loaded.
      */
     @Query("SELECT f FROM Flow f " +

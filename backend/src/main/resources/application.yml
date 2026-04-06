@@ -109,8 +109,16 @@ eplatform:
     jwt:
       issuer: ${JWT_ISSUER:eplatform}
       expiration: 3600
+    rate-limit:
+      enabled: ${RATE_LIMIT_ENABLED:true}
+      requests-per-minute: 100
+      auth-requests-per-minute: 10
+      upload-requests-per-minute: 20
   email:
     enabled: ${EMAIL_ENABLED:false}
     from-address: ${EMAIL_FROM:noreply@eplatform.se}
     from-name: e-Plattform
     base-url: ${EMAIL_BASE_URL:http://localhost:3000}
+  upload:
+    max-file-size: 52428800  # 50MB
+    max-filename-length: 255

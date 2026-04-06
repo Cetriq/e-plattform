@@ -8,13 +8,14 @@ This document analyzes the features in the original Open-ePlatform and identifie
 
 | Category | Open-ePlatform | Modern e-Plattform | Gap | Status |
 |----------|----------------|-------------------|-----|--------|
-| Query Types | 15+ types | 13 types | 2 missing (MAP, SIGNATURE) | ✅ Core done |
+| Query Types | 15+ types | 23 types | None for core types | ✅ Done |
 | Signing | BankID, Multi-party | Stubbed | Full implementation needed | ⏳ Requires contract |
 | PDF Generation | iText-based | ✅ OpenHTMLToPDF | Basic implementation done | ✅ Done |
-| Notifications | Email templates | Stubbed | Full implementation needed | 🔴 Next priority |
+| Notifications | Email templates | ✅ Thymeleaf + Spring Mail | SMS not implemented | ✅ Done |
 | Statistics | Built-in module | Not implemented | Needed | ⏳ Planned |
 | Integration API | Callback system | Stubbed | Needed | ⏳ Planned |
-| Authentication | SAML, BankID | Mock only | BankID/OAuth2 needed | ⏳ Requires contract |
+| Authentication | SAML, BankID | Mock + JWT | BankID/OAuth2 needed | ⏳ Requires contract |
+| Security | Basic | ✅ JWT + RBAC | Rate limiting needed | ✅ Core done |
 
 **Last updated:** 2026-04-06
 
@@ -65,41 +66,45 @@ This document analyzes the features in the original Open-ePlatform and identifie
 
 ## 2. Query Types (Form Fields)
 
-### Implemented in Modern Version
+### Implemented in Modern Version (23 types)
 
 | Query Type | Open-ePlatform | Modern | Notes |
 |------------|----------------|--------|-------|
-| TextField | `TextFieldQuery` | `TEXT` | Implemented |
-| TextArea | `TextAreaQuery` | `TEXTAREA` | Implemented |
-| DropDown | `DropDownQuery` | `SELECT` | Implemented |
-| Checkbox | `CheckboxQuery` | `CHECKBOX` | Implemented |
-| RadioButton | `RadioButtonQuery` | `RADIO` | Implemented |
-| FileUpload | `FileUploadQuery` | `FILE` | Implemented |
-| ContactDetail | `ContactDetailQuery` | Separate fields | Different approach |
-| OrganizationDetail | `OrganizationDetailQuery` | Not specific | Could use TEXT |
-| Hidden | Implicit | `HIDDEN` | Implemented |
-| Number | - | `NUMBER` | Added |
-| Date | - | `DATE` | Added |
-| DateTime | - | `DATETIME` | Added |
-| Email | - | `EMAIL` | Added |
-| Phone | - | `PHONE` | Added |
-| PersonNumber | - | `PERSONNUMMER` | Added |
+| TextField | `TextFieldQuery` | `TEXT` | ✅ Implemented |
+| TextArea | `TextAreaQuery` | `TEXTAREA` | ✅ Implemented |
+| DropDown | `DropDownQuery` | `SELECT` | ✅ Implemented |
+| Checkbox | `CheckboxQuery` | `CHECKBOX` | ✅ Implemented |
+| RadioButton | `RadioButtonQuery` | `RADIO` | ✅ Implemented |
+| FileUpload | `FileUploadQuery` | `FILE` | ✅ Implemented |
+| ContactDetail | `ContactDetailQuery` | `PERSON` | ✅ Implemented (PersonField.tsx) |
+| OrganizationDetail | `OrganizationDetailQuery` | `ORGANIZATION` | ✅ Implemented (OrganizationField.tsx) |
+| Hidden | Implicit | `HIDDEN` | ✅ Implemented |
+| Number | - | `NUMBER` | ✅ Added |
+| Date | - | `DATE` | ✅ Added |
+| DateTime | - | `DATETIME` | ✅ Added |
+| Time | - | `TIME` | ✅ Added |
+| Email | - | `EMAIL` | ✅ Added |
+| Phone | - | `PHONE` | ✅ Added |
+| PersonNumber | - | `PERSONNUMMER` | ✅ Added |
+| URL | - | `URL` | ✅ Added |
+| Currency | - | `CURRENCY` | ✅ Added |
+| MultiSelect | - | `MULTISELECT` | ✅ Added |
+| Image | - | `IMAGE` | ✅ Added |
+| Location/Address | - | `LOCATION` | ✅ Implemented (LocationField.tsx) |
+| Map | `BaseMapQuery` | `MAP` | ✅ Implemented (MapField.tsx) |
+| Signature | - | `SIGNATURE` | ✅ Implemented (SignatureField.tsx) |
 
-### Missing Query Types
+### Missing/Future Query Types
 
 | Query Type | Open-ePlatform | Priority | Notes |
 |------------|----------------|----------|-------|
 | TreeQuery | Hierarchical selection | Medium | Complex component |
 | MultiTreeQuery | Multiple trees | Low | Complex component |
-| BaseMapQuery | Map selection | High | Requires map library |
-| SinglePolygonMapQuery | Polygon drawing | Medium | Requires map library |
+| SinglePolygonMapQuery | Polygon drawing | Low | Advanced map feature |
 | MultiGeometryMapQuery | Multiple geometries | Low | Complex |
-| GeneralMapQuery | General map | Medium | Requires map library |
 | PUDMapQuery | PUD-specific | Low | Sweden-specific |
-| ManualMultiSignQuery | Multi-party signing | High | For signing flow |
-| StopQuery | Flow stopper | Low | Can use evaluators |
+| ManualMultiSignQuery | Multi-party signing | High | Requires BankID |
 | ChildQuery | Child data | Low | Sweden-specific |
-| FileInfoQuery | File metadata | Low | Can extend FILE |
 
 ---
 
@@ -177,7 +182,7 @@ PdfService.java
 
 ---
 
-## 5. Notification System
+## 5. Notification System ✅ IMPLEMENTED
 
 ### Open-ePlatform Notifications
 
@@ -195,17 +200,35 @@ StandardFlowNotificationHandler
 
 ```
 notification/
-└── (empty package)
+├── config/
+│   └── EmailConfig.java          # Spring Mail configuration
+├── domain/
+│   └── NotificationType.java     # Enum for notification types
+└── service/
+    ├── EmailService.java         # Thymeleaf email rendering
+    └── NotificationService.java  # High-level notification API
+
+templates/email/
+├── case-submitted.html           # New case confirmation
+├── case-status-changed.html      # Status update notification
+├── case-completed.html           # Case completion notification
+├── new-message.html              # New message to citizen
+└── new-message-manager.html      # New message to manager
 ```
 
-### Required Implementation
+### Implementation Status
 
-1. Email service (Spring Mail)
-2. Template engine (Thymeleaf or similar)
-3. SMS integration
-4. Push notifications (optional)
-5. Notification preferences per user
-6. Notification triggers on status change
+| Feature | Status |
+|---------|--------|
+| Email service (Spring Mail) | ✅ Implemented |
+| Template engine (Thymeleaf) | ✅ Implemented |
+| Case submission notification | ✅ Implemented |
+| Status change notification | ✅ Implemented |
+| Message notification | ✅ Implemented |
+| MailHog for development | ✅ Configured in docker-compose |
+| SMS integration | ⏳ Not yet |
+| Push notifications | ⏳ Not yet |
+| Notification preferences | ⏳ Not yet |
 
 ---
 
@@ -269,7 +292,7 @@ integration/
 
 ---
 
-## 8. Authentication & Authorization
+## 8. Authentication & Authorization ✅ CORE IMPLEMENTED
 
 ### Open-ePlatform Auth
 
@@ -285,19 +308,35 @@ integration/
 
 ```
 auth/
-├── MockAuthService
-├── SecurityConfig (basic)
-└── AuthController
+├── MockAuthService              # Development accounts
+├── AuthController               # Login/logout endpoints
+└── AuthResponse                 # JWT token response
+
+common/
+├── config/
+│   └── SecurityConfig.java      # Spring Security configuration
+│       ├── Dev mode (relaxed)   # enforce-roles: false
+│       └── Prod mode (strict)   # enforce-roles: true
+└── security/
+    └── JwtAuthenticationFilter.java  # JWT token validation
 ```
 
-### Required Implementation
+### Implementation Status
 
-1. OAuth2/OIDC integration
-2. BankID authentication
-3. Freja eID authentication
-4. Role-based access control (partially done)
-5. Organization-based access
-6. API key authentication for integrations
+| Feature | Status |
+|---------|--------|
+| JWT authentication | ✅ Implemented |
+| Role-based access control | ✅ Implemented (ADMIN, MANAGER, USER) |
+| Development accounts | ✅ Implemented (3 test users) |
+| CORS configuration | ✅ Configured for specific origins |
+| Dev/prod security modes | ✅ Switchable via config |
+| Admin endpoint protection | ✅ Requires ADMIN/FLOW_EDITOR role |
+| Manager endpoint protection | ✅ Requires MANAGER role |
+| OAuth2/OIDC integration | ⏳ Not yet |
+| BankID authentication | ⏳ Requires contract |
+| Freja eID authentication | ⏳ Not yet |
+| Organization-based access | ⏳ Not yet |
+| API key authentication | ⏳ Not yet |
 
 ---
 
@@ -348,26 +387,26 @@ auth/
 
 ## 11. Recommended Implementation Priorities
 
-### Phase 1: Critical (Required for Basic Usage)
+### Phase 1: Critical (Required for Basic Usage) ✅ COMPLETE
 
 1. ~~**PDF generation** - Required for case documents~~ ✅ DONE
-2. **Email notifications** - Required for user communication 🔴 NEXT
-3. **Security hardening** - CORS, authorization, input validation 🔴 NEXT
+2. ~~**Email notifications** - Required for user communication~~ ✅ DONE
+3. ~~**Security hardening** - CORS, authorization, input validation~~ ✅ DONE
 4. **BankID authentication** - Required for production ⏳ Requires contract
 
-### Phase 2: High Priority
+### Phase 2: High Priority 🔴 NEXT
 
 5. **Statistics dashboard** - Required for administrators
-6. **API authorization** - Role-based access control on endpoints
-7. **Rate limiting** - Prevent API abuse
-8. **Audit logging** - Track user actions
+6. **Rate limiting** - Prevent API abuse
+7. **Audit logging** - Track user actions
+8. **File upload validation** - Validate MIME types, scan for malware
 
 ### Phase 3: Medium Priority
 
-9. **MAP query type** - Common requirement for permits
-10. **Multi-party signing** - Required for complex flows (requires BankID)
-11. **Flow import/export** - Required for flow management
-12. **Integration webhooks** - For external systems
+9. **Multi-party signing** - Required for complex flows (requires BankID)
+10. **Flow import/export** - Required for flow management
+11. **Integration webhooks** - For external systems
+12. **PII encryption** - Encrypt personnummer etc. in database
 
 ### Phase 4: Lower Priority
 
@@ -375,6 +414,7 @@ auth/
 14. **Read receipts** - For message tracking
 15. **Feedback surveys** - Nice to have
 16. **Operating messages** - Nice to have
+17. **httpOnly cookies** - Move JWT from localStorage
 
 ---
 
@@ -387,8 +427,8 @@ A security review identified the following areas requiring attention:
 | Issue | Status | Notes |
 |-------|--------|-------|
 | Mock authentication | ⚠️ Known | Requires BankID contract |
-| Missing API authorization | 🔴 TODO | Add @PreAuthorize |
-| Open CORS policy | 🔴 TODO | Restrict to specific origins |
+| Missing API authorization | ✅ DONE | JWT filter + role-based security config |
+| Open CORS policy | ✅ DONE | Restricted to specific origins |
 | File upload validation | 🔴 TODO | Validate MIME types |
 | PII encryption | ⏳ Planned | Encrypt personnummer etc. |
 
@@ -416,25 +456,45 @@ The modern e-Plattform has successfully implemented the core functionality of Op
 
 ### Completed ✅
 - Core domain model (Flow, Case, QueryInstance)
-- 13 query types
+- **23 query types** including Person, Organization, Location, Map, Signature
 - File upload with MinIO
 - PDF generation with download
-- Admin portal for flow management
+- **Email notification system** with Thymeleaf templates
+- **JWT authentication** with role-based access control
+- **CORS and security configuration** (dev/prod modes)
+- Admin portal for flow management (categories, flow types, flows)
 - Manager portal for case handling
 - Citizen portal for applications
 
 ### In Progress 🔄
-- Security hardening
-- Email notifications
+- Rate limiting
+- Audit logging
+- File upload validation
 
 ### Blocked ⏳
 - BankID authentication (requires contract)
 - Digital signing (requires BankID)
+- Multi-party signing (requires BankID)
 
 ### Remaining Gaps
-1. **Notifications** - Email/SMS system
-2. **Statistics** - Reporting and analytics
-3. **Special query types** - MAP, TREE
-4. **Security** - Authorization, rate limiting, audit logging
+1. **Statistics** - Reporting and analytics dashboard
+2. **Rate limiting** - Prevent API abuse
+3. **Audit logging** - Track user actions for compliance
+4. **Tree query types** - For hierarchical selections
+5. **SMS notifications** - Mobile notifications
 
 The modern architecture makes it easier to implement these features incrementally, and the technology choices (Spring Boot, React, PostgreSQL) provide a solid foundation for future development.
+
+---
+
+## Appendix: Recent Changes Log
+
+### 2026-04-06 - Major Update
+- ✅ Added 10 new query types (23 total)
+- ✅ Implemented email notification system with 5 templates
+- ✅ Added JWT authentication filter
+- ✅ Configured role-based access control (ADMIN, MANAGER, USER)
+- ✅ Added dev/prod security mode switching
+- ✅ Configured CORS for production
+- ✅ Added MailHog to docker-compose for email testing
+- ✅ Added category management admin page

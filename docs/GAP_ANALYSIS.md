@@ -12,10 +12,11 @@ This document analyzes the features in the original Open-ePlatform and identifie
 | Signing | BankID, Multi-party | Stubbed | Full implementation needed | ⏳ Requires contract |
 | PDF Generation | iText-based | ✅ OpenHTMLToPDF | Basic implementation done | ✅ Done |
 | Notifications | Email templates | ✅ Thymeleaf + Spring Mail | SMS not implemented | ✅ Done |
-| Statistics | Built-in module | Not implemented | Needed | ⏳ Planned |
+| Statistics | Built-in module | ✅ Statistics dashboard | Basic implementation | ✅ Done |
 | Integration API | Callback system | Stubbed | Needed | ⏳ Planned |
 | Authentication | SAML, BankID | Mock + JWT | BankID/OAuth2 needed | ⏳ Requires contract |
-| Security | Basic | ✅ JWT + RBAC | Rate limiting needed | ✅ Core done |
+| Security | Basic | ✅ JWT + RBAC + Rate Limiting + Audit | PII encryption needed | ✅ Done |
+| API Documentation | None | ✅ Swagger/OpenAPI | Full documentation | ✅ Done |
 
 **Last updated:** 2026-04-06
 
@@ -232,7 +233,7 @@ templates/email/
 
 ---
 
-## 6. Statistics & Reporting
+## 6. Statistics & Reporting ✅ IMPLEMENTED
 
 ### Open-ePlatform Statistics
 
@@ -248,16 +249,26 @@ StatisticsModule
 ### Modern e-Plattform Statistics
 
 ```
-(Not implemented)
+statistics/
+├── StatisticsController.java    # REST endpoints for statistics
+└── StatisticsService.java       # Aggregation queries
+
+Endpoints:
+├── GET /api/v1/admin/statistics/overview     # System overview
+├── GET /api/v1/admin/statistics/cases        # Case counts by status
+└── GET /api/v1/admin/statistics/audit        # Recent audit events
 ```
 
-### Required Implementation
+### Implementation Status
 
-1. Case statistics (count, processing time, etc.)
-2. Flow usage statistics
-3. User activity statistics
-4. Export to Excel/CSV
-5. Dashboard visualizations
+| Feature | Status |
+|---------|--------|
+| Case count by status | ✅ Implemented |
+| System overview (totals) | ✅ Implemented |
+| Audit event listing | ✅ Implemented |
+| Flow usage statistics | ⏳ Not yet |
+| Export to Excel/CSV | ⏳ Not yet |
+| Dashboard visualizations | ✅ Basic frontend page |
 
 ---
 
@@ -394,12 +405,12 @@ common/
 3. ~~**Security hardening** - CORS, authorization, input validation~~ ✅ DONE
 4. **BankID authentication** - Required for production ⏳ Requires contract
 
-### Phase 2: High Priority 🔴 NEXT
+### Phase 2: High Priority ✅ COMPLETE
 
-5. **Statistics dashboard** - Required for administrators
-6. **Rate limiting** - Prevent API abuse
-7. **Audit logging** - Track user actions
-8. **File upload validation** - Validate MIME types, scan for malware
+5. ~~**Statistics dashboard** - Required for administrators~~ ✅ DONE
+6. ~~**Rate limiting** - Prevent API abuse~~ ✅ DONE (Bucket4j, configurable)
+7. ~~**Audit logging** - Track user actions~~ ✅ DONE (async, PII sanitization)
+8. ~~**File upload validation** - Validate MIME types, scan for malware~~ ✅ DONE (Apache Tika)
 
 ### Phase 3: Medium Priority
 
@@ -429,15 +440,15 @@ A security review identified the following areas requiring attention:
 | Mock authentication | ⚠️ Known | Requires BankID contract |
 | Missing API authorization | ✅ DONE | JWT filter + role-based security config |
 | Open CORS policy | ✅ DONE | Restricted to specific origins |
-| File upload validation | 🔴 TODO | Validate MIME types |
+| File upload validation | ✅ DONE | Apache Tika MIME detection, whitelist, blocked extensions |
 | PII encryption | ⏳ Planned | Encrypt personnummer etc. |
 
 ### High Priority
 
 | Issue | Status | Notes |
 |-------|--------|-------|
-| Rate limiting | 🔴 TODO | Prevent brute force |
-| Audit logging | 🔴 TODO | Track user actions |
+| Rate limiting | ✅ DONE | Bucket4j, 100/min general, 10/min auth, 20/min uploads |
+| Audit logging | ✅ DONE | Async logging with PII sanitization |
 | PDF injection | ✅ Mitigated | HTML escaping in place |
 
 ### Medium Priority
@@ -465,11 +476,14 @@ The modern e-Plattform has successfully implemented the core functionality of Op
 - Admin portal for flow management (categories, flow types, flows)
 - Manager portal for case handling
 - Citizen portal for applications
+- **Rate limiting** with Bucket4j (configurable per endpoint type)
+- **Audit logging** with async processing and PII sanitization
+- **File upload validation** with Apache Tika MIME detection
+- **Statistics dashboard** with case counts and audit events
+- **API documentation** with Swagger/OpenAPI (Swedish descriptions)
 
 ### In Progress 🔄
-- Rate limiting
-- Audit logging
-- File upload validation
+- PII encryption for sensitive data
 
 ### Blocked ⏳
 - BankID authentication (requires contract)
@@ -477,17 +491,26 @@ The modern e-Plattform has successfully implemented the core functionality of Op
 - Multi-party signing (requires BankID)
 
 ### Remaining Gaps
-1. **Statistics** - Reporting and analytics dashboard
-2. **Rate limiting** - Prevent API abuse
-3. **Audit logging** - Track user actions for compliance
-4. **Tree query types** - For hierarchical selections
-5. **SMS notifications** - Mobile notifications
+1. **PII encryption** - Encrypt personnummer etc. in database
+2. **Tree query types** - For hierarchical selections
+3. **SMS notifications** - Mobile notifications
+4. **Flow import/export** - XML/JSON format
+5. **httpOnly cookies** - Move JWT from localStorage
 
 The modern architecture makes it easier to implement these features incrementally, and the technology choices (Spring Boot, React, PostgreSQL) provide a solid foundation for future development.
 
 ---
 
 ## Appendix: Recent Changes Log
+
+### 2026-04-07 - Security & Documentation Update
+- ✅ Added Swagger/OpenAPI documentation with Swedish descriptions
+- ✅ Implemented rate limiting with Bucket4j (configurable per endpoint)
+- ✅ Added audit logging with async processing and PII sanitization
+- ✅ Added file upload validation with Apache Tika MIME detection
+- ✅ Implemented statistics dashboard (overview, case counts, audit events)
+- ✅ Removed GraphQL (not needed)
+- ✅ Updated SecurityConfig for Swagger endpoints
 
 ### 2026-04-06 - Major Update
 - ✅ Added 10 new query types (23 total)
@@ -496,5 +519,5 @@ The modern architecture makes it easier to implement these features incrementall
 - ✅ Configured role-based access control (ADMIN, MANAGER, USER)
 - ✅ Added dev/prod security mode switching
 - ✅ Configured CORS for production
-- ✅ Added MailHog to docker-compose for email testing
+- ✅ Added Mailpit to docker-compose for email testing
 - ✅ Added category management admin page

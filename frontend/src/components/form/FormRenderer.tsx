@@ -182,7 +182,13 @@ function FormBody({ steps, onSubmit, onCancel, onSaveDraft, autoSave }: FormBody
     setShowErrorSummary(invalid.length > 0);
     if (invalid.length > 0 && step === currentStep) {
       // Focus the first invalid field after the error messages have rendered
-      requestAnimationFrame(() => document.getElementById(invalid[0])?.focus());
+      // (radio groups have no element with the field id, so fall back to the input name)
+      requestAnimationFrame(() => {
+        const target =
+          document.getElementById(invalid[0]) ??
+          document.querySelector<HTMLElement>(`[name="${CSS.escape(invalid[0])}"]`);
+        target?.focus();
+      });
     }
     return invalid.length === 0;
   };

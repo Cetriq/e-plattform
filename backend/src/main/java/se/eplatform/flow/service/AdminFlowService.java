@@ -124,7 +124,8 @@ public class AdminFlowService {
             Boolean allowMultiple,
             Boolean enabled,
             String externalLink,
-            String[] tags) {
+            String[] tags,
+            Integer retentionMonths) {
 
         Flow flow = flowRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Flow not found: " + id));
@@ -141,6 +142,8 @@ public class AdminFlowService {
         if (enabled != null) flow.setEnabled(enabled);
         if (externalLink != null) flow.setExternalLink(externalLink);
         if (tags != null) flow.setTags(tags);
+        // 0 clears the gallringsfrist (cases are kept), null leaves it unchanged
+        if (retentionMonths != null) flow.setRetentionMonths(retentionMonths > 0 ? retentionMonths : null);
 
         // Update type and category
         if (typeId != null) {

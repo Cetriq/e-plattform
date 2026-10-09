@@ -1,5 +1,7 @@
 package se.eplatform.flow.api;
 
+import se.eplatform.audit.domain.AuditAction;
+import se.eplatform.audit.web.Audited;
 import org.springframework.http.ResponseEntity;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
@@ -57,6 +59,7 @@ public class AdminCategoryController {
     /**
      * Create a new flow type.
      */
+    @Audited(value = AuditAction.CATEGORY_CHANGE, entity = "CATEGORY")
     @PostMapping("/flow-types")
     @Transactional
     public ResponseEntity<FlowTypeDTO> createFlowType(@RequestBody FlowTypeRequest request) {
@@ -75,6 +78,7 @@ public class AdminCategoryController {
     /**
      * Update a flow type.
      */
+    @Audited(value = AuditAction.CATEGORY_CHANGE, entity = "CATEGORY", idParam = "id")
     @PutMapping("/flow-types/{id}")
     @Transactional
     public ResponseEntity<FlowTypeDTO> updateFlowType(
@@ -99,6 +103,7 @@ public class AdminCategoryController {
     /**
      * Delete a flow type (only if it has no flows).
      */
+    @Audited(value = AuditAction.CATEGORY_CHANGE, entity = "CATEGORY", idParam = "id")
     @DeleteMapping("/flow-types/{id}")
     @Transactional
     public ResponseEntity<Void> deleteFlowType(@PathVariable UUID id) {
@@ -151,6 +156,7 @@ public class AdminCategoryController {
     /**
      * Create a new category.
      */
+    @Audited(value = AuditAction.CATEGORY_CHANGE, entity = "CATEGORY")
     @PostMapping("/categories")
     @Transactional
     public ResponseEntity<CategoryDTO> createCategory(@RequestBody CategoryRequest request) {
@@ -172,6 +178,7 @@ public class AdminCategoryController {
     /**
      * Update a category.
      */
+    @Audited(value = AuditAction.CATEGORY_CHANGE, entity = "CATEGORY", idParam = "id")
     @PutMapping("/categories/{id}")
     @Transactional
     public ResponseEntity<CategoryDTO> updateCategory(
@@ -198,6 +205,7 @@ public class AdminCategoryController {
     /**
      * Delete a category (only if it has no flows).
      */
+    @Audited(value = AuditAction.CATEGORY_CHANGE, entity = "CATEGORY", idParam = "id")
     @DeleteMapping("/categories/{id}")
     @Transactional
     public ResponseEntity<Void> deleteCategory(@PathVariable UUID id) {

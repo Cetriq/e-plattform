@@ -9,6 +9,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.server.ResponseStatusException;
 import se.eplatform.auth.service.DemoCleanupJob;
+import se.eplatform.privacy.service.RetentionService;
 
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
@@ -24,10 +25,13 @@ import java.util.Map;
 public class CronController {
 
     private final DemoCleanupJob demoCleanupJob;
+    private final RetentionService retentionService;
     private final byte[] cronSecret;
 
-    public CronController(DemoCleanupJob demoCleanupJob, @Value("${eplatform.cron.secret:}") String cronSecret) {
+    public CronController(DemoCleanupJob demoCleanupJob, RetentionService retentionService,
+                          @Value("${eplatform.cron.secret:}") String cronSecret) {
         this.demoCleanupJob = demoCleanupJob;
+        this.retentionService = retentionService;
         this.cronSecret = cronSecret.getBytes(StandardCharsets.UTF_8);
     }
 
@@ -36,6 +40,12 @@ public class CronController {
         requireCronSecret(authorization);
         demoCleanupJob.removeExpiredDemoUsers();
         return Map.of("status", "ok");
+    }
+
+    @GetMapping("/retention")
+    public RetentionService.Result retention(@RequestHeader(value = "Authorization", required = false) String authorization) {
+        requireCronSecret(authorization);
+        return retentionService.run();
     }
 
     private void requireCronSecret(String authorization) {

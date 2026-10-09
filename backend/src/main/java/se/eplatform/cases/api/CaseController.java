@@ -1,5 +1,8 @@
 package se.eplatform.cases.api;
 
+import se.eplatform.audit.domain.AuditAction;
+import se.eplatform.audit.web.AuditContext;
+import se.eplatform.audit.web.Audited;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
@@ -72,6 +75,7 @@ public class CaseController {
             """
     )
     @ApiResponse(responseCode = "200", description = "Lista med ärenden")
+    @Audited(AuditAction.CASE_LIST)
     @GetMapping
     public Page<CaseDTO> getCases(
             @RequestParam(defaultValue = "all") String assignee,
@@ -97,6 +101,7 @@ public class CaseController {
         summary = "Tilldela ärende",
         description = "Sätter ansvarig handläggare. `userId: null` tar bort tilldelningen."
     )
+    @Audited(value = AuditAction.CASE_ASSIGN, entity = "CASE")
     @PutMapping("/{id}/assignee")
     public ResponseEntity<CaseDTO> assignCase(
             @PathVariable UUID id,
@@ -110,6 +115,7 @@ public class CaseController {
         summary = "Meddelanden i ärendet",
         description = "Meddelanden mellan medborgaren och handläggaren, äldst först. Interna anteckningar ingår inte."
     )
+    @Audited(value = AuditAction.MESSAGE_VIEW, entity = "CASE")
     @GetMapping("/{id}/messages")
     public List<CaseMessageDTO> getMessages(@PathVariable UUID id) {
         UserInfo user = caseAccess.requireRead(id);
@@ -120,6 +126,7 @@ public class CaseController {
     }
 
     @Operation(summary = "Skicka meddelande till handläggaren", description = "Medborgarens svar i sitt eget ärende.")
+    @Audited(value = AuditAction.MESSAGE_SEND, entity = "CASE")
     @PostMapping("/{id}/messages")
     public ResponseEntity<CaseMessageDTO> sendCitizenMessage(
             @PathVariable UUID id,
@@ -145,6 +152,7 @@ public class CaseController {
         @ApiResponse(responseCode = "200", description = "Ärendet hittades"),
         @ApiResponse(responseCode = "404", description = "Ärendet hittades inte")
     })
+    @Audited(value = AuditAction.CASE_VIEW, entity = "CASE")
     @GetMapping("/{id}")
     public ResponseEntity<CaseDTO> getCase(
             @Parameter(description = "Ärendets UUID", required = true)
@@ -170,6 +178,7 @@ public class CaseController {
         @ApiResponse(responseCode = "200", description = "Ärendet med handläggardata"),
         @ApiResponse(responseCode = "404", description = "Ärendet hittades inte")
     })
+    @Audited(value = AuditAction.CASE_VIEW, entity = "CASE")
     @GetMapping("/{id}/manager")
     public ResponseEntity<ManagerCaseDTO> getManagerCase(
             @Parameter(description = "Ärendets UUID", required = true)
@@ -189,6 +198,7 @@ public class CaseController {
         @ApiResponse(responseCode = "200", description = "Ärendet hittades"),
         @ApiResponse(responseCode = "404", description = "Ärendet hittades inte")
     })
+    @Audited(value = AuditAction.CASE_VIEW, entity = "CASE", idParam = "referenceNumber")
     @GetMapping("/ref/{referenceNumber}")
     public ResponseEntity<CaseDTO> getCaseByReference(
             @Parameter(description = "Referensnummer", example = "EP-2024-000001", required = true)
@@ -196,6 +206,10 @@ public class CaseController {
         UserInfo user = CurrentUser.require();
         return caseService.getCaseByReferenceNumber(referenceNumber)
                 .filter(c -> caseAccess.canRead(c.getId(), user))
+                .map(c -> {
+                    AuditContext.entityId(c.getId());
+                    return c;
+                })
                 .map(CaseDTO::from)
                 .map(ResponseEntity::ok)
                 .orElse(ResponseEntity.notFound().build());
@@ -206,6 +220,7 @@ public class CaseController {
         description = "Hämtar alla ärenden som tillhör en användare. Medborgare kan bara hämta sina egna."
     )
     @ApiResponse(responseCode = "200", description = "Användarens ärenden")
+    @Audited(value = AuditAction.CASE_LIST, entity = "USER", idParam = "userId")
     @GetMapping("/user/{userId}")
     public Page<CaseDTO> getCasesForUser(
             @Parameter(description = "Användarens UUID", required = true)
@@ -220,6 +235,7 @@ public class CaseController {
         description = "Hämtar alla ej inskickade ärenden (utkast) för en användare."
     )
     @ApiResponse(responseCode = "200", description = "Lista med utkast")
+    @Audited(value = AuditAction.CASE_LIST, entity = "USER", idParam = "userId")
     @GetMapping("/user/{userId}/drafts")
     public List<CaseDTO> getDraftsForUser(
             @Parameter(description = "Användarens UUID", required = true)
@@ -246,6 +262,7 @@ public class CaseController {
         @ApiResponse(responseCode = "201", description = "Ärendet skapades"),
         @ApiResponse(responseCode = "400", description = "Ogiltig begäran")
     })
+    @Audited(value = AuditAction.CASE_CREATE, entity = "CASE")
     @PostMapping
     public ResponseEntity<CaseDTO> createCase(
             @io.swagger.v3.oas.annotations.parameters.RequestBody(
@@ -261,6 +278,7 @@ public class CaseController {
             )
             @RequestBody CreateCaseRequest request) {
         Case newCase = caseService.createCase(request.flowId(), CurrentUser.requireId());
+        AuditContext.entityId(newCase.getId());
         CaseDTO dto = CaseDTO.from(newCase);
         return ResponseEntity
                 .created(URI.create("/api/v1/cases/" + newCase.getId()))
@@ -286,6 +304,7 @@ public class CaseController {
         @ApiResponse(responseCode = "200", description = "Svaren uppdaterades"),
         @ApiResponse(responseCode = "404", description = "Ärendet hittades inte")
     })
+    @Audited(value = AuditAction.CASE_UPDATE, entity = "CASE")
     @PutMapping("/{id}/values")
     public ResponseEntity<CaseDTO> updateCaseValues(
             @Parameter(description = "Ärendets UUID", required = true)
@@ -310,6 +329,7 @@ public class CaseController {
         @ApiResponse(responseCode = "400", description = "Ärendet är redan inskickat"),
         @ApiResponse(responseCode = "404", description = "Ärendet hittades inte")
     })
+    @Audited(value = AuditAction.CASE_SUBMIT, entity = "CASE")
     @PostMapping("/{id}/submit")
     public ResponseEntity<CaseDTO> submitCase(
             @Parameter(description = "Ärendets UUID", required = true)
@@ -332,6 +352,7 @@ public class CaseController {
         @ApiResponse(responseCode = "200", description = "Status ändrades"),
         @ApiResponse(responseCode = "404", description = "Ärendet eller statusen hittades inte")
     })
+    @Audited(value = AuditAction.CASE_STATUS_CHANGE, entity = "CASE")
     @PutMapping("/{id}/status")
     public ResponseEntity<CaseDTO> changeStatus(
             @Parameter(description = "Ärendets UUID", required = true)
@@ -339,6 +360,7 @@ public class CaseController {
             @RequestBody ChangeStatusRequest request) {
         UserInfo staff = CurrentUser.requireStaff();
         Case updated = caseService.changeStatus(id, request.statusId(), UUID.fromString(staff.id()), request.comment());
+        AuditContext.details("Ny status: " + updated.getStatus().getName());
         return ResponseEntity.ok(CaseDTO.from(updated));
     }
 
@@ -347,6 +369,7 @@ public class CaseController {
         description = "Fritextsökning bland ärenden. Söker i referensnummer och beskrivning. Kräver handläggarbehörighet."
     )
     @ApiResponse(responseCode = "200", description = "Sökresultat")
+    @Audited(AuditAction.CASE_SEARCH)
     @GetMapping("/search")
     public Page<CaseDTO> searchCases(
             @Parameter(description = "Sökfras", required = true, example = "EP-2024")
@@ -365,11 +388,14 @@ public class CaseController {
         @ApiResponse(responseCode = "400", description = "Kan inte ta bort inskickat ärende"),
         @ApiResponse(responseCode = "404", description = "Ärendet hittades inte")
     })
+    @Audited(value = AuditAction.CASE_DELETE, entity = "CASE")
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> deleteCase(
             @Parameter(description = "Ärendets UUID", required = true)
             @PathVariable UUID id) {
-        caseAccess.requireOwner(id);
+        UserInfo owner = caseAccess.requireOwner(id);
+        // The case is gone once the audit entry is written, so name the owner here
+        AuditContext.subject(UUID.fromString(owner.id()));
         caseService.deleteCase(id);
         return ResponseEntity.noContent().build();
     }
@@ -379,6 +405,7 @@ public class CaseController {
         description = "Lägger till ett internt meddelande som endast är synligt för handläggare."
     )
     @ApiResponse(responseCode = "200", description = "Meddelandet lades till")
+    @Audited(value = AuditAction.NOTE_ADD, entity = "CASE")
     @PostMapping("/{id}/messages/internal")
     public ResponseEntity<ManagerCaseDTO.InternalMessageDTO> addInternalMessage(
             @Parameter(description = "Ärendets UUID", required = true)
@@ -394,6 +421,7 @@ public class CaseController {
         description = "Lägger till ett meddelande som är synligt för medborgaren."
     )
     @ApiResponse(responseCode = "200", description = "Meddelandet lades till")
+    @Audited(value = AuditAction.MESSAGE_SEND, entity = "CASE")
     @PostMapping("/{id}/messages/external")
     public ResponseEntity<ManagerCaseDTO.ExternalMessageDTO> addExternalMessage(
             @Parameter(description = "Ärendets UUID", required = true)
@@ -416,6 +444,7 @@ public class CaseController {
         ),
         @ApiResponse(responseCode = "404", description = "Ärendet hittades inte")
     })
+    @Audited(value = AuditAction.CASE_EXPORT_PDF, entity = "CASE")
     @GetMapping("/{id}/pdf")
     public ResponseEntity<byte[]> generatePdf(
             @Parameter(description = "Ärendets UUID", required = true)
@@ -489,6 +518,7 @@ public class CaseController {
         @ApiResponse(responseCode = "403", description = "Saknar behörighet"),
         @ApiResponse(responseCode = "404", description = "Ärendet hittades inte")
     })
+    @Audited(value = AuditAction.CASE_EXPORT_PDF, entity = "CASE")
     @GetMapping("/{id}/pdf/own")
     @Transactional(readOnly = true)
     public ResponseEntity<byte[]> generateOwnPdf(

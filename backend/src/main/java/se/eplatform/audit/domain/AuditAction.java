@@ -1,55 +1,61 @@
 package se.eplatform.audit.domain;
 
 /**
- * Enumeration of auditable actions in the system.
+ * Actions recorded in the traceability log, each with its category.
  */
 public enum AuditAction {
-    // Authentication
-    LOGIN_SUCCESS,
-    LOGIN_FAILURE,
-    LOGOUT,
-    TOKEN_REFRESH,
+    // Authentication and security
+    LOGIN_SUCCESS(AuditCategory.SECURITY),
+    LOGIN_FAILURE(AuditCategory.SECURITY),
+    DEMO_ACCOUNT_CREATED(AuditCategory.SECURITY),
+    ACCESS_DENIED(AuditCategory.SECURITY),
+    RATE_LIMIT_EXCEEDED(AuditCategory.SECURITY),
 
-    // Cases
-    CASE_CREATE,
-    CASE_VIEW,
-    CASE_UPDATE,
-    CASE_SUBMIT,
-    CASE_DELETE,
-    CASE_STATUS_CHANGE,
-    CASE_ASSIGN,
-    CASE_EXPORT_PDF,
+    // Reading personal data
+    CASE_VIEW(AuditCategory.DATA_ACCESS),
+    CASE_LIST(AuditCategory.DATA_ACCESS),
+    CASE_SEARCH(AuditCategory.DATA_ACCESS),
+    CASE_EXPORT_PDF(AuditCategory.DATA_ACCESS),
+    MESSAGE_VIEW(AuditCategory.DATA_ACCESS),
+    FILE_DOWNLOAD(AuditCategory.DATA_ACCESS),
+    FILE_VIEW(AuditCategory.DATA_ACCESS),
+    USER_LIST(AuditCategory.DATA_ACCESS),
+    PROFILE_VIEW(AuditCategory.DATA_ACCESS),
 
-    // Messages
-    MESSAGE_SEND,
-    MESSAGE_VIEW,
+    // Changing personal data
+    CASE_CREATE(AuditCategory.DATA_CHANGE),
+    CASE_UPDATE(AuditCategory.DATA_CHANGE),
+    CASE_SUBMIT(AuditCategory.DATA_CHANGE),
+    CASE_DELETE(AuditCategory.DATA_CHANGE),
+    CASE_STATUS_CHANGE(AuditCategory.DATA_CHANGE),
+    CASE_ASSIGN(AuditCategory.DATA_CHANGE),
+    MESSAGE_SEND(AuditCategory.DATA_CHANGE),
+    NOTE_ADD(AuditCategory.DATA_CHANGE),
+    FILE_UPLOAD(AuditCategory.DATA_CHANGE),
+    FILE_DELETE(AuditCategory.DATA_CHANGE),
+    PROFILE_UPDATE(AuditCategory.DATA_CHANGE),
 
-    // Files
-    FILE_UPLOAD,
-    FILE_DOWNLOAD,
-    FILE_DELETE,
+    // Administration
+    FLOW_CHANGE(AuditCategory.ADMIN),
+    CATEGORY_CHANGE(AuditCategory.ADMIN),
+    USER_ROLE_CHANGE(AuditCategory.ADMIN),
 
-    // Flows (Admin)
-    FLOW_CREATE,
-    FLOW_UPDATE,
-    FLOW_DELETE,
-    FLOW_PUBLISH,
-    FLOW_UNPUBLISH,
+    // Data protection
+    AUDIT_VIEW(AuditCategory.PRIVACY),
+    AUDIT_EXPORT(AuditCategory.PRIVACY),
+    AUDIT_VERIFY(AuditCategory.PRIVACY),
+    REGISTER_EXTRACT(AuditCategory.PRIVACY),
+    USER_ERASED(AuditCategory.PRIVACY),
+    CASE_PURGED(AuditCategory.PRIVACY),
+    DRAFT_PURGED(AuditCategory.PRIVACY);
 
-    // Categories (Admin)
-    CATEGORY_CREATE,
-    CATEGORY_UPDATE,
-    CATEGORY_DELETE,
+    private final AuditCategory category;
 
-    // Users (Admin)
-    USER_CREATE,
-    USER_UPDATE,
-    USER_DELETE,
-    USER_ROLE_CHANGE,
+    AuditAction(AuditCategory category) {
+        this.category = category;
+    }
 
-    // System
-    SETTINGS_UPDATE,
-    RATE_LIMIT_EXCEEDED,
-    UNAUTHORIZED_ACCESS,
-    INVALID_INPUT
+    public AuditCategory category() {
+        return category;
+    }
 }

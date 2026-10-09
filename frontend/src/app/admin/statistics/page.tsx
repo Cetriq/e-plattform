@@ -25,20 +25,10 @@ interface FlowCount {
   count: number;
 }
 
-interface AuditSummary {
-  timestamp: string;
-  action: string;
-  userId: string;
-  userName: string;
-  entityType: string;
-  details: string;
-}
-
 export default function StatisticsPage() {
   const [overview, setOverview] = useState<OverviewStats | null>(null);
   const [statusCounts, setStatusCounts] = useState<StatusCount[]>([]);
   const [flowCounts, setFlowCounts] = useState<FlowCount[]>([]);
-  const [auditEvents, setAuditEvents] = useState<AuditSummary[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -47,17 +37,15 @@ export default function StatisticsPage() {
       try {
         setLoading(true);
 
-        const [overviewData, statusData, flowData, auditData] = await Promise.all([
+        const [overviewData, statusData, flowData] = await Promise.all([
           api.get<OverviewStats>('/api/v1/admin/statistics/overview').catch(() => null),
           api.get<StatusCount[]>('/api/v1/admin/statistics/cases/by-status').catch(() => []),
           api.get<FlowCount[]>('/api/v1/admin/statistics/cases/by-flow').catch(() => []),
-          api.get<AuditSummary[]>('/api/v1/admin/statistics/audit/recent?limit=10').catch(() => []),
         ]);
 
         if (overviewData) setOverview(overviewData);
         setStatusCounts(statusData || []);
         setFlowCounts(flowData || []);
-        setAuditEvents(auditData || []);
 
         setError(null);
       } catch (err) {
@@ -209,44 +197,9 @@ export default function StatisticsPage() {
         </div>
       </div>
 
-      {/* Recent Audit Events */}
-      <div className="bg-white rounded-lg shadow p-6">
-        <h2 className="text-lg font-medium text-gray-900 mb-4">Senaste aktivitet</h2>
-        {auditEvents.length === 0 ? (
-          <p className="text-gray-500 text-sm">Ingen aktivitet loggad än</p>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-gray-200">
-              <thead>
-                <tr>
-                  <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Tid</th>
-                  <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Åtgärd</th>
-                  <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Användare</th>
-                  <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Entitet</th>
-                  <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Detaljer</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-200">
-                {auditEvents.map((event, index) => (
-                  <tr key={index} className="hover:bg-gray-50">
-                    <td className="px-3 py-2 text-sm text-gray-600 whitespace-nowrap">{event.timestamp}</td>
-                    <td className="px-3 py-2 text-sm">
-                      <span className="px-2 py-1 bg-gray-100 rounded text-xs font-mono">
-                        {formatAction(event.action)}
-                      </span>
-                    </td>
-                    <td className="px-3 py-2 text-sm text-gray-900">{event.userName || event.userId}</td>
-                    <td className="px-3 py-2 text-sm text-gray-600">{event.entityType || '-'}</td>
-                    <td className="px-3 py-2 text-sm text-gray-500 truncate max-w-[200px]">
-                      {event.details || '-'}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </div>
+      <p className="text-sm text-gray-500">
+        Spårbarhetsloggen (vem som läst och ändrat uppgifter) finns hos rollen Informationssäkerhet &amp; dataskydd.
+      </p>
     </div>
   );
 }
@@ -286,25 +239,3 @@ function StatCard({
   );
 }
 
-function formatAction(action: string): string {
-  const labels: Record<string, string> = {
-    LOGIN_SUCCESS: 'Inloggning',
-    LOGIN_FAILURE: 'Misslyckad inloggning',
-    LOGOUT: 'Utloggning',
-    CASE_CREATE: 'Skapa ärende',
-    CASE_VIEW: 'Visa ärende',
-    CASE_UPDATE: 'Uppdatera ärende',
-    CASE_SUBMIT: 'Skicka in ärende',
-    CASE_STATUS_CHANGE: 'Statusändring',
-    FILE_UPLOAD: 'Ladda upp fil',
-    FILE_DOWNLOAD: 'Ladda ner fil',
-    FILE_DELETE: 'Ta bort fil',
-    FLOW_CREATE: 'Skapa e-tjänst',
-    FLOW_UPDATE: 'Uppdatera e-tjänst',
-    FLOW_DELETE: 'Ta bort e-tjänst',
-    FLOW_PUBLISH: 'Publicera e-tjänst',
-    RATE_LIMIT_EXCEEDED: 'Rate limit',
-    UNAUTHORIZED_ACCESS: 'Obehörig åtkomst',
-  };
-  return labels[action] || action;
-}

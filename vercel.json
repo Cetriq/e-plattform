@@ -24,6 +24,7 @@
     { "source": "/(.*)", "destination": { "service": "frontend" } }
   ],
   "crons": [
-    { "path": "/api/v1/internal/cron/demo-cleanup", "schedule": "30 3 * * *" }
+    { "path": "/api/v1/internal/cron/demo-cleanup", "schedule": "30 3 * * *" },
+    { "path": "/api/v1/internal/cron/retention", "schedule": "0 4 * * *" }
   ]
 }

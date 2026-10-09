@@ -32,6 +32,10 @@ public class Flow extends BaseEntity {
     @Column(nullable = false)
     private Integer version = 1;
 
+    /** Gallringsfrist in months after a case is closed; null = cases are kept (bevaras). */
+    @Column(name = "retention_months")
+    private Integer retentionMonths;
+
     @Column(name = "short_description", columnDefinition = "TEXT")
     private String shortDescription;
 
@@ -362,5 +366,13 @@ public class Flow extends BaseEntity {
         return statusDefinitions.stream()
                 .sorted(Comparator.comparingInt(StatusDefinition::getSortOrder))
                 .collect(Collectors.toList());
+    }
+
+    public Integer getRetentionMonths() {
+        return retentionMonths;
+    }
+
+    public void setRetentionMonths(Integer retentionMonths) {
+        this.retentionMonths = retentionMonths;
     }
 }

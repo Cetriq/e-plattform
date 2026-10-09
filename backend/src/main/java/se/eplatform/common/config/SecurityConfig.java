@@ -17,6 +17,9 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
+import se.eplatform.audit.domain.AuditAction;
+import se.eplatform.audit.domain.AuditOutcome;
+import se.eplatform.audit.service.AuditService;
 import se.eplatform.common.security.JwtAuthenticationFilter;
 import se.eplatform.common.security.RateLimitFilter;
 
@@ -45,10 +48,13 @@ public class SecurityConfig {
 
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
     private final RateLimitFilter rateLimitFilter;
+    private final AuditService auditService;
 
-    public SecurityConfig(JwtAuthenticationFilter jwtAuthenticationFilter, RateLimitFilter rateLimitFilter) {
+    public SecurityConfig(JwtAuthenticationFilter jwtAuthenticationFilter, RateLimitFilter rateLimitFilter,
+                          AuditService auditService) {
         this.jwtAuthenticationFilter = jwtAuthenticationFilter;
         this.rateLimitFilter = rateLimitFilter;
+        this.auditService = auditService;
     }
 
     @Bean
@@ -61,8 +67,12 @@ public class SecurityConfig {
             .exceptionHandling(ex -> ex
                     .authenticationEntryPoint((request, response, e) ->
                             writeError(response, HttpStatus.UNAUTHORIZED, "Inloggning krävs"))
-                    .accessDeniedHandler((request, response, e) ->
-                            writeError(response, HttpStatus.FORBIDDEN, "Saknar behörighet")))
+                    .accessDeniedHandler((request, response, e) -> {
+                        // A logged-in user tried to reach a part of the system their role doesn't cover
+                        auditService.record(AuditService.Entry.of(AuditAction.ACCESS_DENIED)
+                                .outcome(AuditOutcome.DENIED, 403));
+                        writeError(response, HttpStatus.FORBIDDEN, "Saknar behörighet");
+                    }))
             .addFilterBefore(rateLimitFilter, UsernamePasswordAuthenticationFilter.class)
             .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
             .authorizeHttpRequests(auth -> auth
@@ -86,6 +96,8 @@ public class SecurityConfig {
                 .requestMatchers(HttpMethod.GET, "/api/v1/flows", "/api/v1/flows/**").permitAll()
                 .requestMatchers("/actuator/**").hasRole("ADMIN")
                 .requestMatchers("/api/v1/admin/**").hasAnyRole("ADMIN", "FLOW_EDITOR")
+                .requestMatchers("/api/v1/security/**").hasRole("SECURITY_OFFICER")
+                .requestMatchers("/api/v1/ops/**").hasRole("OPERATIONS")
                 .requestMatchers("/api/v1/**").authenticated()
                 .anyRequest().denyAll()
             );

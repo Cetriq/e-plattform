@@ -40,8 +40,10 @@ eplatform:
     # Vercel's edge sets this header itself, so clients can't spoof it
     client-ip-header: x-vercel-forwarded-for
   demo:
-    # Instances are stopped when idle, so Vercel Cron triggers the cleanup instead
+    # Instances are stopped when idle, so Vercel Cron triggers the jobs instead
     cleanup-cron: "-"
+  retention:
+    cron: "-"
   cron:
     secret: ${CRON_SECRET:}
   cors:

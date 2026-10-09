@@ -28,7 +28,9 @@ public record FlowDTO(
         UUID familyId,
         List<StepDTO> steps,
         Instant createdAt,
-        Instant updatedAt
+        Instant updatedAt,
+        /** Gallringsfrist in months; null = bevaras. */
+        Integer retentionMonths
 ) {
     public static FlowDTO from(Flow flow) {
         return new FlowDTO(
@@ -49,7 +51,8 @@ public record FlowDTO(
                 flow.getFamily() != null ? flow.getFamily().getId() : null,
                 flow.getStepsSorted().stream().map(StepDTO::from).toList(),
                 flow.getCreatedAt(),
-                flow.getUpdatedAt()
+                flow.getUpdatedAt(),
+                flow.getRetentionMonths()
         );
     }
 
@@ -75,7 +78,8 @@ public record FlowDTO(
                 flow.getFamily() != null ? flow.getFamily().getId() : null,
                 null,
                 flow.getCreatedAt(),
-                flow.getUpdatedAt()
+                flow.getUpdatedAt(),
+                flow.getRetentionMonths()
         );
     }
 }

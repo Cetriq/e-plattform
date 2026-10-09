@@ -46,6 +46,8 @@ export interface QueryDefinitionInput {
 }
 
 export interface FlowDetail extends FlowSummary {
+  /** Gallringsfrist in months; null = cases are kept (bevaras). */
+  retentionMonths?: number | null;
   longDescription?: string;
   submittedMessage?: string;
   sequentialSigning: boolean;
@@ -122,6 +124,8 @@ export interface CreateFlowRequest {
 }
 
 export interface UpdateFlowRequest extends CreateFlowRequest {
+  /** Gallringsfrist in months; 0 = cases are kept (bevaras). */
+  retentionMonths?: number;
   submittedMessage?: string;
   sequentialSigning?: boolean;
   allowSaveDraft?: boolean;

@@ -2,8 +2,6 @@ package se.eplatform.statistics.service;
 
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
-import se.eplatform.audit.domain.AuditEvent;
-import se.eplatform.audit.repository.AuditEventRepository;
 import se.eplatform.cases.domain.Case;
 import se.eplatform.cases.repository.CaseRepository;
 import se.eplatform.flow.repository.FlowRepository;
@@ -24,17 +22,14 @@ public class StatisticsService {
     private final CaseRepository caseRepository;
     private final FlowRepository flowRepository;
     private final UserRepository userRepository;
-    private final AuditEventRepository auditRepository;
 
     public StatisticsService(
             CaseRepository caseRepository,
             FlowRepository flowRepository,
-            UserRepository userRepository,
-            AuditEventRepository auditRepository) {
+            UserRepository userRepository) {
         this.caseRepository = caseRepository;
         this.flowRepository = flowRepository;
         this.userRepository = userRepository;
-        this.auditRepository = auditRepository;
     }
 
     public OverviewStats getOverviewStats() {
@@ -131,37 +126,6 @@ public class StatisticsService {
         }
 
         return timeline;
-    }
-
-    public List<AuditSummary> getRecentAuditEvents(int limit) {
-        var page = auditRepository.findAll(PageRequest.of(0, limit,
-                org.springframework.data.domain.Sort.by(
-                        org.springframework.data.domain.Sort.Direction.DESC, "timestamp")));
-
-        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm")
-                .withZone(ZoneId.systemDefault());
-
-        return page.getContent().stream()
-                .map(event -> new AuditSummary(
-                        formatter.format(event.getTimestamp()),
-                        event.getAction().name(),
-                        event.getUserId(),
-                        event.getUserName(),
-                        event.getEntityType(),
-                        truncate(event.getDetails(), 100)
-                ))
-                .collect(Collectors.toList());
-    }
-
-    public List<ActionCount> getAuditActionCounts(int days) {
-        Instant since = Instant.now().minus(days, ChronoUnit.DAYS);
-        List<Object[]> results = auditRepository.countActionsSince(since);
-
-        return results.stream()
-                .map(row -> new ActionCount(row[0].toString(), (Long) row[1]))
-                .sorted((a, b) -> Long.compare(b.count(), a.count()))
-                .limit(10)
-                .collect(Collectors.toList());
     }
 
     private double calculateAverageProcessingDays() {

@@ -50,24 +50,6 @@ public class StatisticsController {
         return statisticsService.getCaseTimeline(days);
     }
 
-    /**
-     * Get recent audit events.
-     */
-    @GetMapping("/audit/recent")
-    public List<AuditSummary> getRecentAuditEvents(
-            @RequestParam(defaultValue = "10") int limit) {
-        return statisticsService.getRecentAuditEvents(limit);
-    }
-
-    /**
-     * Get audit action counts for a time period.
-     */
-    @GetMapping("/audit/actions")
-    public List<ActionCount> getAuditActionCounts(
-            @RequestParam(defaultValue = "7") int days) {
-        return statisticsService.getAuditActionCounts(days);
-    }
-
     // DTOs
 
     public record OverviewStats(
@@ -86,15 +68,4 @@ public class StatisticsController {
     public record FlowCount(String flowId, String flowName, long count) {}
 
     public record TimelineEntry(LocalDate date, long submissions, long completions) {}
-
-    public record AuditSummary(
-            String timestamp,
-            String action,
-            String userId,
-            String userName,
-            String entityType,
-            String details
-    ) {}
-
-    public record ActionCount(String action, long count) {}
 }

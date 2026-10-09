@@ -55,6 +55,10 @@ management:
   metrics:
     tags:
       application: ${spring.application.name}
+    distribution:
+      # Response time percentiles for the IT/drift status page
+      percentiles:
+        http.server.requests: 0.95
 
 # OpenAPI / Swagger
 springdoc:
@@ -133,6 +137,13 @@ eplatform:
       requests-per-minute: 100
       auth-requests-per-minute: 10
       upload-requests-per-minute: 20
+  retention:
+    # Drafts that were never submitted are removed after this many days
+    draft-days: ${RETENTION_DRAFT_DAYS:90}
+    # The traceability log is kept this many months
+    audit-months: ${RETENTION_AUDIT_MONTHS:24}
+    # The technical system log is kept this many days
+    system-event-days: ${RETENTION_SYSTEM_EVENT_DAYS:90}
   demo:
     # Shared code visitors must enter before they can log in. Empty = no code.
     access-code: ${DEMO_ACCESS_CODE:}

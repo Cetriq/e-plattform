@@ -1,5 +1,8 @@
 package se.eplatform.storage.api;
 
+import se.eplatform.audit.domain.AuditAction;
+import se.eplatform.audit.web.AuditContext;
+import se.eplatform.audit.web.Audited;
 import org.springframework.core.io.InputStreamResource;
 import org.springframework.core.io.Resource;
 import org.springframework.http.ContentDisposition;
@@ -11,7 +14,6 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.server.ResponseStatusException;
 import se.eplatform.audit.domain.AuditAction;
-import se.eplatform.audit.service.AuditService;
 import se.eplatform.auth.dto.AuthResponse.UserInfo;
 import se.eplatform.cases.service.CaseAccessService;
 import se.eplatform.common.security.CurrentUser;
@@ -40,23 +42,21 @@ public class FileController {
 
     private final FileStorageService fileStorageService;
     private final FileValidationService fileValidationService;
-    private final AuditService auditService;
     private final CaseAccessService caseAccess;
 
     public FileController(
             FileStorageService fileStorageService,
             FileValidationService fileValidationService,
-            AuditService auditService,
             CaseAccessService caseAccess) {
         this.fileStorageService = fileStorageService;
         this.fileValidationService = fileValidationService;
-        this.auditService = auditService;
         this.caseAccess = caseAccess;
     }
 
     /**
      * Upload a file.
      */
+    @Audited(value = AuditAction.FILE_UPLOAD, entity = "FILE")
     @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<?> uploadFile(
             @RequestParam("file") MultipartFile file,
@@ -75,17 +75,13 @@ public class FileController {
         // Validate file before upload
         ValidationResult validationResult = fileValidationService.validate(file);
         if (!validationResult.isValid()) {
-            auditService.logFile(AuditAction.INVALID_INPUT, null,
-                    "File upload rejected: " + validationResult.message() +
-                    " (filename: " + file.getOriginalFilename() + ")");
             return ResponseEntity.badRequest().body(new ErrorResponse(validationResult.message()));
         }
 
         Attachment attachment = fileStorageService.uploadFile(file, userId, caseId, queryDefinitionId);
+        AuditContext.entityId(attachment.getId());
+        AuditContext.details(attachment.getContentType() + ", " + formatBytes(attachment.getFileSize()));
 
-        auditService.logFile(AuditAction.FILE_UPLOAD, attachment.getId().toString(),
-                "Uploaded file: " + attachment.getOriginalFilename() +
-                " (" + formatBytes(attachment.getFileSize()) + ")");
 
         return ResponseEntity.ok(AttachmentDTO.from(attachment));
     }
@@ -111,6 +107,7 @@ public class FileController {
     /**
      * Record a file that the browser uploaded to Vercel Blob.
      */
+    @Audited(value = AuditAction.FILE_UPLOAD, entity = "FILE")
     @PostMapping("/register")
     public ResponseEntity<?> registerUploadedFile(@RequestBody RegisterFileRequest request) {
         UUID userId = CurrentUser.requireId();
@@ -132,10 +129,9 @@ public class FileController {
         Attachment attachment = fileStorageService.registerExternalFile(
                 request.pathname(), request.originalFilename(), request.contentType(), request.fileSize(),
                 userId, request.caseId(), request.queryDefinitionId());
+        AuditContext.entityId(attachment.getId());
+        AuditContext.details(attachment.getContentType() + ", " + formatBytes(attachment.getFileSize()));
 
-        auditService.logFile(AuditAction.FILE_UPLOAD, attachment.getId().toString(),
-                "Uploaded file: " + attachment.getOriginalFilename() +
-                " (" + formatBytes(attachment.getFileSize()) + ")");
 
         return ResponseEntity.ok(AttachmentDTO.from(attachment));
     }
@@ -159,6 +155,7 @@ public class FileController {
     /**
      * Download a file by attachment ID.
      */
+    @Audited(value = AuditAction.FILE_DOWNLOAD, entity = "FILE")
     @GetMapping("/{id}/download")
     public ResponseEntity<Resource> downloadFile(@PathVariable UUID id) {
         Attachment attachment = requireReadable(id);
@@ -168,8 +165,6 @@ public class FileController {
 
         InputStream inputStream = fileStorageService.downloadFile(id);
 
-        auditService.logFile(AuditAction.FILE_DOWNLOAD, id.toString(),
-                "Downloaded file: " + attachment.getOriginalFilename());
 
         return ResponseEntity.ok()
                 .contentType(MediaType.parseMediaType(attachment.getContentType()))
@@ -184,6 +179,7 @@ public class FileController {
     /**
      * Get attachment metadata.
      */
+    @Audited(value = AuditAction.FILE_VIEW, entity = "FILE")
     @GetMapping("/{id}")
     public ResponseEntity<AttachmentDTO> getAttachment(@PathVariable UUID id) {
         return ResponseEntity.ok(AttachmentDTO.from(requireReadable(id)));
@@ -192,6 +188,7 @@ public class FileController {
     /**
      * Get a pre-signed download URL for direct access.
      */
+    @Audited(value = AuditAction.FILE_DOWNLOAD, entity = "FILE")
     @GetMapping("/{id}/url")
     public ResponseEntity<DownloadUrlResponse> getDownloadUrl(
             @PathVariable UUID id,
@@ -206,6 +203,7 @@ public class FileController {
     /**
      * Get all attachments for a case.
      */
+    @Audited(value = AuditAction.FILE_VIEW, entity = "CASE", idParam = "caseId")
     @GetMapping("/case/{caseId}")
     public List<AttachmentDTO> getAttachmentsForCase(@PathVariable UUID caseId) {
         caseAccess.requireRead(caseId);
@@ -217,6 +215,7 @@ public class FileController {
     /**
      * Get attachments for a specific field in a case.
      */
+    @Audited(value = AuditAction.FILE_VIEW, entity = "CASE", idParam = "caseId")
     @GetMapping("/case/{caseId}/field/{queryDefinitionId}")
     public List<AttachmentDTO> getAttachmentsForField(
             @PathVariable UUID caseId,
@@ -231,14 +230,13 @@ public class FileController {
     /**
      * Delete an attachment (soft delete).
      */
+    @Audited(value = AuditAction.FILE_DELETE, entity = "FILE")
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> deleteAttachment(@PathVariable UUID id) {
         UUID userId = CurrentUser.requireId();
         requireUploadedBy(id, userId);
         fileStorageService.deleteAttachment(id, userId);
 
-        auditService.logFile(AuditAction.FILE_DELETE, id.toString(),
-                "Deleted attachment by user: " + userId);
 
         return ResponseEntity.noContent().build();
     }

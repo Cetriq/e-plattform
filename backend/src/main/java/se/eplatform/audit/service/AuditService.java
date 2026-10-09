@@ -1,211 +1,195 @@
 package se.eplatform.audit.service;
 
+import jakarta.persistence.EntityManager;
 import jakarta.servlet.http.HttpServletRequest;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.scheduling.annotation.Async;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.context.request.RequestContextHolder;
 import org.springframework.web.context.request.ServletRequestAttributes;
 import se.eplatform.audit.domain.AuditAction;
 import se.eplatform.audit.domain.AuditEvent;
+import se.eplatform.audit.domain.AuditOutcome;
 import se.eplatform.audit.repository.AuditEventRepository;
-import se.eplatform.auth.dto.AuthResponse;
+import se.eplatform.auth.dto.AuthResponse.UserInfo;
+import se.eplatform.common.security.ClientIp;
+import se.eplatform.common.security.CurrentUser;
 
-import java.time.Instant;
-import java.time.temporal.ChronoUnit;
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
+import java.util.HexFormat;
+import java.util.UUID;
 
 /**
- * Service for recording audit events.
- * All audit logging is done asynchronously to not impact request performance.
+ * Writes the traceability log (spårbarhetslogg).
+ *
+ * Entries are written synchronously in their own transaction, so the acting
+ * user and request are always known and the entry is kept even when the
+ * request itself fails or is denied. Each entry stores the SHA-256 of the
+ * previous entry and of its own content, forming a chain that reveals any
+ * later change (see {@link AuditChainVerifier}).
  */
 @Service
 public class AuditService {
 
     private static final Logger log = LoggerFactory.getLogger(AuditService.class);
 
-    private final AuditEventRepository auditRepository;
+    /** Advisory lock id that serializes writers so the chain stays linear. */
+    private static final long CHAIN_LOCK = 0x4155444954L; // "AUDIT"
+    private static final String GENESIS = "0".repeat(64);
 
-    public AuditService(AuditEventRepository auditRepository) {
-        this.auditRepository = auditRepository;
+    private final AuditEventRepository repository;
+    private final EntityManager entityManager;
+    private final ClientIp clientIp;
+
+    public AuditService(AuditEventRepository repository, EntityManager entityManager, ClientIp clientIp) {
+        this.repository = repository;
+        this.entityManager = entityManager;
+        this.clientIp = clientIp;
     }
 
     /**
-     * Log an audit event with automatic user and request context extraction.
+     * What happened, to what, and whose personal data it concerned.
      */
-    @Async
-    public void log(AuditAction action, String entityType, String entityId, String details) {
+    public record Entry(
+            AuditAction action,
+            AuditOutcome outcome,
+            String entityType,
+            String entityId,
+            UUID subjectUserId,
+            String details,
+            Integer responseStatus) {
+
+        public static Entry of(AuditAction action) {
+            return new Entry(action, AuditOutcome.SUCCESS, null, null, null, null, null);
+        }
+
+        public Entry entity(String type, Object id) {
+            return new Entry(action, outcome, type, id == null ? null : id.toString(), subjectUserId, details, responseStatus);
+        }
+
+        public Entry subject(UUID subject) {
+            return new Entry(action, outcome, entityType, entityId, subject, details, responseStatus);
+        }
+
+        public Entry details(String text) {
+            return new Entry(action, outcome, entityType, entityId, subjectUserId, text, responseStatus);
+        }
+
+        public Entry outcome(AuditOutcome result, Integer status) {
+            return new Entry(action, result, entityType, entityId, subjectUserId, details, status);
+        }
+    }
+
+    /**
+     * Record an event for the current user and request. Never throws: a
+     * failure is logged, but must not break the request it describes.
+     */
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public void record(Entry entry) {
         try {
-            AuditEvent.Builder builder = AuditEvent.builder()
-                    .action(action)
-                    .entityType(entityType)
-                    .entityId(entityId)
-                    .details(sanitizeDetails(details));
-
-            // Extract user info from security context
-            extractUserInfo(builder);
-
-            // Extract request info
-            extractRequestInfo(builder);
-
-            AuditEvent event = builder.build();
-            auditRepository.save(event);
-
-            log.debug("Audit: {} {} {} by {}",
-                    action, entityType, entityId, event.getUserId());
+            AuditEvent event = new AuditEvent(entry.action(), entry.outcome());
+            event.setEntityType(entry.entityType());
+            event.setEntityId(entry.entityId());
+            event.setSubjectUserId(entry.subjectUserId());
+            event.setDetails(truncate(entry.details(), 2000));
+            event.setResponseStatus(entry.responseStatus());
+            applyActor(event);
+            applyRequest(event);
+            append(event);
         } catch (Exception e) {
-            // Never let audit logging fail the main request
-            log.error("Failed to log audit event: {} {} {}", action, entityType, entityId, e);
+            log.error("Could not write audit entry {} {}", entry.action(), entry.entityId(), e);
         }
     }
 
     /**
-     * Log an audit event with just an action.
+     * Record an event where the actor is known but not (yet) logged in, e.g.
+     * a successful login or a new demo account.
      */
-    @Async
-    public void log(AuditAction action) {
-        log(action, null, null, null);
-    }
-
-    /**
-     * Log an audit event with action and details.
-     */
-    @Async
-    public void log(AuditAction action, String details) {
-        log(action, null, null, details);
-    }
-
-    /**
-     * Log a case-related audit event.
-     */
-    @Async
-    public void logCase(AuditAction action, String caseId, String details) {
-        log(action, "Case", caseId, details);
-    }
-
-    /**
-     * Log a flow-related audit event.
-     */
-    @Async
-    public void logFlow(AuditAction action, String flowId, String details) {
-        log(action, "Flow", flowId, details);
-    }
-
-    /**
-     * Log a file-related audit event.
-     */
-    @Async
-    public void logFile(AuditAction action, String fileId, String details) {
-        log(action, "File", fileId, details);
-    }
-
-    /**
-     * Log a security-related audit event (login, unauthorized access, etc.)
-     */
-    @Async
-    public void logSecurity(AuditAction action, String userId, String ipAddress, String details) {
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public void recordFor(UserInfo actor, Entry entry) {
         try {
-            AuditEvent.Builder builder = AuditEvent.builder()
-                    .action(action)
-                    .userId(userId != null ? userId : "anonymous")
-                    .ipAddress(ipAddress)
-                    .details(sanitizeDetails(details));
-
-            extractRequestInfo(builder);
-
-            AuditEvent event = builder.build();
-            auditRepository.save(event);
-
-            log.info("Security audit: {} for user {} from IP {}",
-                    action, userId, ipAddress);
+            AuditEvent event = new AuditEvent(entry.action(), entry.outcome());
+            event.setEntityType(entry.entityType());
+            event.setEntityId(entry.entityId());
+            event.setSubjectUserId(entry.subjectUserId());
+            event.setDetails(truncate(entry.details(), 2000));
+            event.setResponseStatus(entry.responseStatus());
+            event.setUserId(actor.id());
+            event.setUserEmail(actor.email());
+            event.setUserName(actor.displayName());
+            applyRequest(event);
+            append(event);
         } catch (Exception e) {
-            log.error("Failed to log security audit event: {} {}", action, userId, e);
+            log.error("Could not write audit entry {} {}", entry.action(), entry.entityId(), e);
         }
     }
 
     /**
-     * Check if an IP has too many failed login attempts (for blocking).
+     * Record an event done by the system itself (scheduled jobs).
      */
-    public boolean hasExcessiveFailedLogins(String ipAddress, int maxAttempts, int withinMinutes) {
-        Instant since = Instant.now().minus(withinMinutes, ChronoUnit.MINUTES);
-        long count = auditRepository.countFailedLoginsByIpSince(ipAddress, since);
-        return count >= maxAttempts;
-    }
-
-    /**
-     * Check if an IP has hit rate limits too many times.
-     */
-    public boolean hasExcessiveRateLimitHits(String ipAddress, int maxHits, int withinMinutes) {
-        Instant since = Instant.now().minus(withinMinutes, ChronoUnit.MINUTES);
-        long count = auditRepository.countRateLimitExceededByIpSince(ipAddress, since);
-        return count >= maxHits;
-    }
-
-    private void extractUserInfo(AuditEvent.Builder builder) {
-        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-        if (auth != null && auth.isAuthenticated() && auth.getPrincipal() instanceof AuthResponse.UserInfo user) {
-            builder.userId(user.id())
-                    .userEmail(user.email())
-                    .userName(user.displayName());
-        } else {
-            builder.userId("anonymous");
-        }
-    }
-
-    private void extractRequestInfo(AuditEvent.Builder builder) {
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public void recordSystem(Entry entry) {
         try {
-            ServletRequestAttributes attrs =
-                    (ServletRequestAttributes) RequestContextHolder.getRequestAttributes();
-            if (attrs != null) {
-                HttpServletRequest request = attrs.getRequest();
-                builder.ipAddress(getClientIp(request))
-                        .userAgent(truncate(request.getHeader("User-Agent"), 500))
-                        .requestPath(request.getRequestURI())
-                        .requestMethod(request.getMethod());
-            }
+            AuditEvent event = new AuditEvent(entry.action(), entry.outcome());
+            event.setEntityType(entry.entityType());
+            event.setEntityId(entry.entityId());
+            event.setSubjectUserId(entry.subjectUserId());
+            event.setDetails(truncate(entry.details(), 2000));
+            event.setUserId("system");
+            event.setUserName("System");
+            append(event);
         } catch (Exception e) {
-            // Request context might not be available in async context
-            log.trace("Could not extract request info: {}", e.getMessage());
+            log.error("Could not write audit entry {} {}", entry.action(), entry.entityId(), e);
         }
     }
 
-    private String getClientIp(HttpServletRequest request) {
-        String xForwardedFor = request.getHeader("X-Forwarded-For");
-        if (xForwardedFor != null && !xForwardedFor.isEmpty()) {
-            return xForwardedFor.split(",")[0].trim();
-        }
-        String xRealIp = request.getHeader("X-Real-IP");
-        if (xRealIp != null && !xRealIp.isEmpty()) {
-            return xRealIp;
-        }
-        return request.getRemoteAddr();
+    private void append(AuditEvent event) {
+        // Serialize writers (across instances) so each entry links to the latest one
+        entityManager.createNativeQuery("SELECT pg_advisory_xact_lock(:id)")
+                .setParameter("id", CHAIN_LOCK)
+                .getSingleResult();
+        String prev = repository.findLatestHash().orElse(GENESIS);
+        event.setPrevHash(prev);
+        event.setHash(hash(prev, event));
+        repository.save(event);
     }
 
-    /**
-     * Sanitize details to prevent PII leaks in logs.
-     * Removes or masks sensitive data.
-     */
-    private String sanitizeDetails(String details) {
-        if (details == null) return null;
-
-        // Mask personnummer (Swedish personal ID)
-        details = details.replaceAll("\\d{6,8}[-+]?\\d{4}", "******-****");
-
-        // Mask email addresses partially
-        details = details.replaceAll(
-                "([a-zA-Z0-9._%+-]+)@([a-zA-Z0-9.-]+\\.[a-zA-Z]{2,})",
-                "***@$2");
-
-        // Mask potential credit card numbers
-        details = details.replaceAll("\\d{4}[- ]?\\d{4}[- ]?\\d{4}[- ]?\\d{4}", "****-****-****-****");
-
-        return truncate(details, 2000);
+    static String hash(String prevHash, AuditEvent event) {
+        try {
+            MessageDigest digest = MessageDigest.getInstance("SHA-256");
+            digest.update(prevHash.getBytes(StandardCharsets.UTF_8));
+            digest.update((byte) '\n');
+            digest.update(event.canonicalContent().getBytes(StandardCharsets.UTF_8));
+            return HexFormat.of().formatHex(digest.digest());
+        } catch (NoSuchAlgorithmException e) {
+            throw new IllegalStateException(e);
+        }
     }
 
-    private String truncate(String value, int maxLength) {
+    private void applyActor(AuditEvent event) {
+        CurrentUser.get().ifPresentOrElse(user -> {
+            event.setUserId(user.id());
+            event.setUserEmail(user.email());
+            event.setUserName(user.displayName());
+        }, () -> event.setUserId("anonymous"));
+    }
+
+    private void applyRequest(AuditEvent event) {
+        if (RequestContextHolder.getRequestAttributes() instanceof ServletRequestAttributes attrs) {
+            HttpServletRequest request = attrs.getRequest();
+            event.setIpAddress(clientIp.of(request));
+            event.setUserAgent(truncate(request.getHeader("User-Agent"), 500));
+            event.setRequestMethod(request.getMethod());
+            event.setRequestPath(truncate(request.getRequestURI(), 500));
+        }
+    }
+
+    private static String truncate(String value, int max) {
         if (value == null) return null;
-        return value.length() > maxLength ? value.substring(0, maxLength) + "..." : value;
+        return value.length() > max ? value.substring(0, max) : value;
     }
 }

@@ -42,6 +42,8 @@ public class MockAuthService {
     private static final List<String> PERSONA_EMAILS = List.of(
             "admin@example.com",
             "handlaggare@example.com",
+            "informationssakerhet@example.com",
+            "it-drift@example.com",
             "medborgare@example.com");
 
     private final UserRepository userRepository;

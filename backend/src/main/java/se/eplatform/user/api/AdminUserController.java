@@ -1,5 +1,7 @@
 package se.eplatform.user.api;
 
+import se.eplatform.audit.domain.AuditAction;
+import se.eplatform.audit.web.Audited;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.data.domain.Page;
@@ -38,6 +40,7 @@ public class AdminUserController {
             Endast läsbar i denna version.
             """
     )
+    @Audited(AuditAction.USER_LIST)
     @GetMapping
     @Transactional(readOnly = true)
     public Page<UserListDTO> listUsers(

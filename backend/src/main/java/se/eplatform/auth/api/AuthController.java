@@ -17,9 +17,13 @@ import se.eplatform.auth.dto.DemoCitizenRequest;
 import se.eplatform.auth.dto.LoginRequest;
 import se.eplatform.auth.dto.UpdateProfileRequest;
 import se.eplatform.auth.service.MockAuthService;
+import se.eplatform.audit.domain.AuditAction;
+import se.eplatform.audit.domain.AuditOutcome;
+import se.eplatform.audit.service.AuditService;
 
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 
 /**
  * Authentication controller for the demo login.
@@ -31,9 +35,11 @@ import java.util.Map;
 public class AuthController {
 
     private final MockAuthService authService;
+    private final AuditService auditService;
 
-    public AuthController(MockAuthService authService) {
+    public AuthController(MockAuthService authService, AuditService auditService) {
         this.authService = authService;
+        this.auditService = auditService;
     }
 
     @Operation(
@@ -97,12 +103,25 @@ public class AuthController {
             )
             @Valid @RequestBody LoginRequest request) {
         if (!authService.isValidAccessCode(request.accessCode())) {
+            auditService.record(AuditService.Entry.of(AuditAction.LOGIN_FAILURE)
+                    .details("Fel åtkomstkod för " + request.email())
+                    .outcome(AuditOutcome.DENIED, 401));
             return invalidAccessCode();
         }
         return authService.login(request.email())
-            .<ResponseEntity<?>>map(ResponseEntity::ok)
-            .orElseGet(() -> ResponseEntity.status(HttpStatus.UNAUTHORIZED)
-                .body(Map.of("error", "Invalid credentials or user not found")));
+            .<ResponseEntity<?>>map(auth -> {
+                auditService.recordFor(auth.user(), AuditService.Entry.of(AuditAction.LOGIN_SUCCESS)
+                        .entity("USER", auth.user().id())
+                        .subject(UUID.fromString(auth.user().id())));
+                return ResponseEntity.ok(auth);
+            })
+            .orElseGet(() -> {
+                auditService.record(AuditService.Entry.of(AuditAction.LOGIN_FAILURE)
+                        .details("Okänd eller spärrad användare: " + request.email())
+                        .outcome(AuditOutcome.DENIED, 401));
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(Map.of("error", "Invalid credentials or user not found"));
+            });
     }
 
     @Operation(
@@ -122,9 +141,16 @@ public class AuthController {
     @PostMapping("/demo-citizen")
     public ResponseEntity<?> createDemoCitizen(@RequestBody(required = false) DemoCitizenRequest request) {
         if (!authService.isValidAccessCode(request == null ? null : request.accessCode())) {
+            auditService.record(AuditService.Entry.of(AuditAction.LOGIN_FAILURE)
+                    .details("Fel åtkomstkod för nytt demokonto")
+                    .outcome(AuditOutcome.DENIED, 401));
             return invalidAccessCode();
         }
-        return ResponseEntity.ok(authService.createDemoCitizen());
+        AuthResponse created = authService.createDemoCitizen();
+        auditService.recordFor(created.user(), AuditService.Entry.of(AuditAction.DEMO_ACCOUNT_CREATED)
+                .entity("USER", created.user().id())
+                .subject(UUID.fromString(created.user().id())));
+        return ResponseEntity.ok(created);
     }
 
     @Operation(
@@ -214,7 +240,12 @@ public class AuthController {
 
         String token = authHeader.substring(7);
         return authService.updateProfile(token, request)
-            .<ResponseEntity<?>>map(ResponseEntity::ok)
+            .<ResponseEntity<?>>map(user -> {
+                auditService.recordFor(user, AuditService.Entry.of(AuditAction.PROFILE_UPDATE)
+                        .entity("USER", user.id())
+                        .subject(UUID.fromString(user.id())));
+                return ResponseEntity.ok(user);
+            })
             .orElseGet(() -> ResponseEntity.status(HttpStatus.UNAUTHORIZED)
                 .body(Map.of("error", "Invalid or expired token")));
     }

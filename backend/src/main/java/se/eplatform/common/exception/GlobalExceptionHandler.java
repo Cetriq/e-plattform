@@ -13,6 +13,9 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 import org.springframework.web.multipart.MaxUploadSizeExceededException;
 import org.springframework.web.server.ResponseStatusException;
+import org.springframework.web.servlet.HandlerMapping;
+import jakarta.servlet.http.HttpServletRequest;
+import se.eplatform.ops.service.SystemEventService;
 
 import java.util.Map;
 
@@ -28,6 +31,12 @@ import java.util.Map;
 public class GlobalExceptionHandler {
 
     private static final Logger log = LoggerFactory.getLogger(GlobalExceptionHandler.class);
+
+    private final SystemEventService systemEvents;
+
+    public GlobalExceptionHandler(SystemEventService systemEvents) {
+        this.systemEvents = systemEvents;
+    }
 
     @ExceptionHandler(ResponseStatusException.class)
     public ResponseEntity<Map<String, String>> handleResponseStatus(ResponseStatusException e) {
@@ -62,14 +71,24 @@ public class GlobalExceptionHandler {
         return error(HttpStatus.BAD_REQUEST, "Ogiltig begäran");
     }
 
+    @ExceptionHandler(org.springframework.web.servlet.resource.NoResourceFoundException.class)
+    public ResponseEntity<Map<String, String>> handleNotFound(Exception e) {
+        return error(HttpStatus.NOT_FOUND, "Finns inte");
+    }
+
     @ExceptionHandler(MaxUploadSizeExceededException.class)
     public ResponseEntity<Map<String, String>> handleTooLarge(MaxUploadSizeExceededException e) {
         return error(HttpStatus.PAYLOAD_TOO_LARGE, "Filen är för stor");
     }
 
     @ExceptionHandler(Exception.class)
-    public ResponseEntity<Map<String, String>> handleUnexpected(Exception e) {
+    public ResponseEntity<Map<String, String>> handleUnexpected(Exception e, HttpServletRequest request) {
         log.error("Unhandled exception", e);
+        // For IT: the endpoint pattern (no ids) and the error type, never the
+        // message, which can contain personal data
+        Object pattern = request.getAttribute(HandlerMapping.BEST_MATCHING_PATTERN_ATTRIBUTE);
+        systemEvents.error("api", "Oväntat fel i " + request.getMethod() + " " + (pattern != null ? pattern : "okänd endpoint"),
+                Map.of("exception", e.getClass().getName()));
         return error(HttpStatus.INTERNAL_SERVER_ERROR, "Ett internt fel uppstod");
     }
 

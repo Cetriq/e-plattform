@@ -1,4 +1,4 @@
-import { getStoredToken } from '@/lib/auth';
+import { clearAuthStorage, getStoredToken } from '@/lib/auth';
 import { API_BASE_URL } from '@/lib/config';
 
 export interface ApiError {
@@ -17,8 +17,21 @@ function getHeaders(): HeadersInit {
   return headers;
 }
 
+/**
+ * A 401 on a request that carried a token means the session has expired or
+ * the user no longer exists. Clear it and send the user to the login page,
+ * bringing them back here afterwards.
+ */
+export function handleUnauthorized(status: number): void {
+  if (status !== 401 || typeof window === 'undefined' || !getStoredToken()) return;
+  clearAuthStorage();
+  const here = window.location.pathname + window.location.search;
+  window.location.href = `/auth/login?redirect=${encodeURIComponent(here)}`;
+}
+
 async function handleResponse<T>(response: Response): Promise<T> {
   if (!response.ok) {
+    handleUnauthorized(response.status);
     const error: ApiError = {
       message: response.statusText,
       status: response.status,
@@ -82,7 +95,11 @@ export const api = {
     return handleResponse<T>(response);
   },
 
-  downloadBlob: async (path: string, filename: string): Promise<void> => {
+  /**
+   * Fetch a file with the user's token. Plain links and <img> tags can't send
+   * the Authorization header, so protected files have to be fetched this way.
+   */
+  getBlob: async (path: string): Promise<Blob> => {
     const token = getStoredToken();
     const headers: Record<string, string> = {};
     if (token) {
@@ -90,13 +107,18 @@ export const api = {
     }
     const response = await fetch(`${API_BASE_URL}${path}`, { headers });
     if (!response.ok) {
+      handleUnauthorized(response.status);
       const error: ApiError = {
         message: response.statusText,
         status: response.status,
       };
       throw error;
     }
-    const blob = await response.blob();
+    return response.blob();
+  },
+
+  downloadBlob: async (path: string, filename: string): Promise<void> => {
+    const blob = await api.getBlob(path);
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;

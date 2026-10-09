@@ -2,9 +2,11 @@
 
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useAuth } from '@/context/AuthContext';
-import { getTestUsers, TestUser } from '@/lib/auth';
+import { getLoginConfig, getTestUsers, type LoginConfig, type TestUser } from '@/lib/auth';
+
+const ACCESS_CODE_KEY = 'eplatform_access_code';
 
 /** Only allow same-site paths so ?redirect= cannot send users to another site. */
 function getRedirectTarget(): string {
@@ -15,46 +17,102 @@ function getRedirectTarget(): string {
   return '/';
 }
 
+function readStoredAccessCode(): string {
+  try {
+    return sessionStorage.getItem(ACCESS_CODE_KEY) ?? '';
+  } catch {
+    return '';
+  }
+}
+
+function storeAccessCode(code: string) {
+  try {
+    sessionStorage.setItem(ACCESS_CODE_KEY, code);
+  } catch {
+    // Storage can be unavailable (private mode); the code is then asked for again
+  }
+}
+
+const ROLE_LABELS: Record<string, string> = {
+  ADMIN: 'Administratör',
+  FLOW_EDITOR: 'E-tjänstredaktör',
+  MANAGER: 'Handläggare',
+  USER: 'Medborgare',
+};
+
 export default function LoginPage() {
   const router = useRouter();
-  const { login, isAuthenticated, isLoading: authLoading } = useAuth();
+  const { login, loginAsDemoCitizen, logout, isAuthenticated, isLoading: authLoading } = useAuth();
+  const [config, setConfig] = useState<LoginConfig | null>(null);
   const [testUsers, setTestUsers] = useState<TestUser[]>([]);
-  const [selectedEmail, setSelectedEmail] = useState<string | null>(null);
+  const [accessCode, setAccessCode] = useState('');
+  const [selected, setSelected] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [showDevLogin, setShowDevLogin] = useState(true);
+  // "Byt användare" links here with ?switch=1 while still logged in
+  const switchingUserRef = useRef(false);
 
-  // Redirect if already authenticated
   useEffect(() => {
-    if (isAuthenticated) {
-      router.push(getRedirectTarget());
-    }
-  }, [isAuthenticated, router]);
-
-  // Load test users
-  useEffect(() => {
+    switchingUserRef.current = new URLSearchParams(window.location.search).has('switch');
+    setAccessCode(readStoredAccessCode());
+    getLoginConfig()
+      .then(setConfig)
+      .catch(() => setConfig({ accessCodeRequired: false, isolatedCitizens: false }));
     getTestUsers()
       .then(setTestUsers)
       .catch(() => setTestUsers([]));
   }, []);
 
-  const handleDevLogin = async (email: string) => {
-    setSelectedEmail(email);
+  useEffect(() => {
+    if (authLoading || !isAuthenticated) return;
+    if (switchingUserRef.current) {
+      switchingUserRef.current = false;
+      logout();
+      return;
+    }
+    router.push(getRedirectTarget());
+  }, [authLoading, isAuthenticated, logout, router]);
+
+  const runLogin = async (key: string, action: () => Promise<void>) => {
+    if (config?.accessCodeRequired && !accessCode.trim()) {
+      setError('Ange åtkomstkoden för demon.');
+      return;
+    }
+    setSelected(key);
     setIsLoading(true);
     setError(null);
 
     try {
-      await login({ email, password: 'dev' });
+      await action();
+      storeAccessCode(accessCode.trim());
       router.push(getRedirectTarget());
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Inloggning misslyckades');
     } finally {
       setIsLoading(false);
-      setSelectedEmail(null);
+      setSelected(null);
     }
   };
 
-  if (authLoading) {
+  const code = accessCode.trim() || undefined;
+  const personas: { key: string; name: string; description: string; onClick: () => void }[] = [
+    ...(config?.isolatedCitizens
+      ? [{
+          key: 'demo-citizen',
+          name: 'Medborgare',
+          description: 'Nytt eget demokonto – du ser bara dina egna ärenden',
+          onClick: () => runLogin('demo-citizen', () => loginAsDemoCitizen(code)),
+        }]
+      : []),
+    ...testUsers.map((user) => ({
+      key: user.email,
+      name: user.name,
+      description: user.roles.map((r) => ROLE_LABELS[r] ?? r).join(', '),
+      onClick: () => runLogin(user.email, () => login({ email: user.email, accessCode: code })),
+    })),
+  ];
+
+  if (authLoading || !config) {
     return (
       <main className="min-h-screen bg-gradient-to-b from-blue-50 to-white flex items-center justify-center">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
@@ -86,42 +144,63 @@ export default function LoginPage() {
             </div>
 
             {error && (
-              <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg text-red-800">
+              <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg text-red-800" role="alert">
                 {error}
               </div>
             )}
 
-            {/* Development login section */}
-            {showDevLogin && testUsers.length > 0 && (
+            {/* Demo login: pick a persona instead of using e-legitimation */}
+            {personas.length > 0 && (
               <div className="mb-6">
                 <div className="flex items-center gap-2 mb-4">
                   <div className="flex-1 h-px bg-gray-200"></div>
-                  <span className="text-xs text-orange-600 bg-orange-50 px-2 py-1 rounded">
-                    Utvecklingsläge
+                  <span className="text-xs text-orange-700 bg-orange-50 px-2 py-1 rounded">
+                    Demoinloggning
                   </span>
                   <div className="flex-1 h-px bg-gray-200"></div>
                 </div>
 
+                {config.accessCodeRequired && (
+                  <div className="mb-4">
+                    <label htmlFor="access-code" className="block text-sm font-medium text-gray-700 mb-1">
+                      Åtkomstkod
+                    </label>
+                    <input
+                      id="access-code"
+                      type="password"
+                      autoComplete="off"
+                      value={accessCode}
+                      onChange={(e) => setAccessCode(e.target.value)}
+                      aria-describedby="access-code-help"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
+                    <p id="access-code-help" className="mt-1 text-xs text-gray-500">
+                      Koden har du fått av den som bjöd in dig till demon.
+                    </p>
+                  </div>
+                )}
+
                 <div className="space-y-2">
-                  {testUsers.map((user) => (
+                  {personas.map((persona) => (
                     <button
-                      key={user.email}
-                      onClick={() => handleDevLogin(user.email)}
+                      key={persona.key}
+                      type="button"
+                      onClick={persona.onClick}
                       disabled={isLoading}
                       className="w-full flex items-center justify-between p-3 border rounded-lg hover:border-orange-300 hover:bg-orange-50 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                       <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 bg-orange-100 rounded-full flex items-center justify-center">
-                          <span className="text-orange-600 font-medium">
-                            {user.name.charAt(0)}
+                        <div className="w-10 h-10 bg-orange-100 rounded-full flex items-center justify-center" aria-hidden="true">
+                          <span className="text-orange-700 font-medium">
+                            {persona.name.charAt(0)}
                           </span>
                         </div>
                         <div className="text-left">
-                          <p className="font-medium text-gray-900 text-sm">{user.name}</p>
-                          <p className="text-xs text-gray-500">{user.roles.join(', ')}</p>
+                          <p className="font-medium text-gray-900 text-sm">{persona.name}</p>
+                          <p className="text-xs text-gray-500">{persona.description}</p>
                         </div>
                       </div>
-                      {selectedEmail === user.email && isLoading ? (
+                      {selected === persona.key && isLoading ? (
                         <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-orange-600"></div>
                       ) : (
                         <svg
@@ -129,6 +208,7 @@ export default function LoginPage() {
                           fill="none"
                           stroke="currentColor"
                           viewBox="0 0 24 24"
+                          aria-hidden="true"
                         >
                           <path
                             strokeLinecap="round"
@@ -153,8 +233,9 @@ export default function LoginPage() {
             {/* Production login methods */}
             <div className="space-y-4">
               <button
-                disabled={isLoading}
-                className="w-full flex items-center justify-between p-4 border-2 rounded-xl hover:border-blue-300 hover:bg-blue-50 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                type="button"
+                disabled
+                className="w-full flex items-center justify-between p-4 border-2 rounded-xl transition-all disabled:opacity-60 disabled:cursor-not-allowed"
               >
                 <div className="flex items-center gap-4">
                   <div className="w-12 h-12 bg-[#235971] rounded-lg flex items-center justify-center">
@@ -173,8 +254,9 @@ export default function LoginPage() {
               </button>
 
               <button
-                disabled={isLoading}
-                className="w-full flex items-center justify-between p-4 border-2 rounded-xl hover:border-green-300 hover:bg-green-50 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                type="button"
+                disabled
+                className="w-full flex items-center justify-between p-4 border-2 rounded-xl transition-all disabled:opacity-60 disabled:cursor-not-allowed"
               >
                 <div className="flex items-center gap-4">
                   <div className="w-12 h-12 bg-[#00A76F] rounded-lg flex items-center justify-center">
@@ -209,15 +291,7 @@ export default function LoginPage() {
           </div>
 
           <p className="text-center text-sm text-gray-500 mt-6">
-            Genom att logga in godkänner du våra{' '}
-            <Link href="/terms" className="text-blue-600 hover:underline">
-              användarvillkor
-            </Link>{' '}
-            och{' '}
-            <Link href="/privacy" className="text-blue-600 hover:underline">
-              integritetspolicy
-            </Link>
-            .
+            Det här är en demo. Använd inga riktiga personuppgifter.
           </p>
         </div>
       </div>

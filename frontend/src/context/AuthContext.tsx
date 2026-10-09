@@ -3,9 +3,11 @@
 import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
 import {
   User,
+  AuthResponse,
   AuthState,
   LoginCredentials,
   login as apiLogin,
+  createDemoCitizen,
   logout as apiLogout,
   getCurrentUser,
   getStoredToken,
@@ -16,6 +18,7 @@ import {
 
 interface AuthContextType extends AuthState {
   login: (credentials: LoginCredentials) => Promise<void>;
+  loginAsDemoCitizen: (accessCode?: string) => Promise<void>;
   logout: () => Promise<void>;
   updateUser: (user: User) => void;
   hasRole: (role: string) => boolean;
@@ -64,11 +67,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     initAuth();
   }, []);
 
-  const login = useCallback(async (credentials: LoginCredentials) => {
+  const startSession = useCallback(async (authenticate: () => Promise<AuthResponse>) => {
     setState(prev => ({ ...prev, isLoading: true }));
 
     try {
-      const response = await apiLogin(credentials);
+      const response = await authenticate();
 
       // Store token and user
       setStoredToken(response.token);
@@ -85,6 +88,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       throw error;
     }
   }, []);
+
+  const login = useCallback(
+    (credentials: LoginCredentials) => startSession(() => apiLogin(credentials)),
+    [startSession]
+  );
+
+  const loginAsDemoCitizen = useCallback(
+    (accessCode?: string) => startSession(() => createDemoCitizen(accessCode)),
+    [startSession]
+  );
 
   const logout = useCallback(async () => {
     if (state.token) {
@@ -128,6 +141,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       value={{
         ...state,
         login,
+        loginAsDemoCitizen,
         logout,
         updateUser,
         hasRole,

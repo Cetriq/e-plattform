@@ -1,12 +1,14 @@
 'use client';
 
-import React, { useRef, useState, useCallback } from 'react';
+import React, { useRef, useState, useCallback, useEffect } from 'react';
 import type { QueryDefinition } from '../types';
 import { useField } from '../FormContext';
 import { FieldWrapper } from './FieldWrapper';
 import {
   uploadFile,
   deleteAttachment,
+  downloadAttachment,
+  getAttachmentBlob,
   validateFile,
   formatFileSize,
   getFileIcon,
@@ -87,7 +89,6 @@ export function FileField({ query, userId, caseId }: FileFieldProps) {
       try {
         const attachment = await uploadFile(
           file,
-          userId,
           {
             caseId,
             queryDefinitionId: query.id,
@@ -147,7 +148,7 @@ export function FileField({ query, userId, caseId }: FileFieldProps) {
       return;
     }
     try {
-      await deleteAttachment(attachment.id, userId);
+      await deleteAttachment(attachment.id);
       onChange(attachments.filter(a => a.id !== attachment.id));
     } catch (error) {
       console.error('Failed to delete attachment:', error);
@@ -283,11 +284,7 @@ export function FileField({ query, userId, caseId }: FileFieldProps) {
                 <div className="flex items-center gap-3 min-w-0">
                   {attachment.isImage ? (
                     <div className="w-10 h-10 rounded bg-gray-100 flex items-center justify-center overflow-hidden">
-                      <img
-                        src={attachment.downloadUrl}
-                        alt={attachment.originalFilename}
-                        className="w-full h-full object-cover"
-                      />
+                      <AttachmentThumbnail attachment={attachment} />
                     </div>
                   ) : (
                     <div className="w-10 h-10 rounded bg-gray-100 flex items-center justify-center text-lg">
@@ -304,17 +301,17 @@ export function FileField({ query, userId, caseId }: FileFieldProps) {
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
-                  <a
-                    href={attachment.downloadUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
+                  <button
+                    type="button"
+                    onClick={() => downloadAttachment(attachment).catch(() => undefined)}
                     className="text-blue-500 hover:text-blue-700 p-1"
                     title="Ladda ner"
+                    aria-label={`Ladda ner ${attachment.originalFilename}`}
                   >
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
                     </svg>
-                  </a>
+                  </button>
                   {!isDisabled && (
                     <button
                       type="button"
@@ -335,4 +332,32 @@ export function FileField({ query, userId, caseId }: FileFieldProps) {
       </div>
     </FieldWrapper>
   );
+}
+
+/**
+ * Image preview that loads the file with the user's token, since an <img>
+ * tag can't send the Authorization header.
+ */
+function AttachmentThumbnail({ attachment }: { attachment: Attachment }) {
+  const [src, setSrc] = useState<string | null>(null);
+
+  useEffect(() => {
+    let objectUrl: string | null = null;
+    let cancelled = false;
+    getAttachmentBlob(attachment.id)
+      .then((blob) => {
+        if (cancelled) return;
+        objectUrl = URL.createObjectURL(blob);
+        setSrc(objectUrl);
+      })
+      .catch(() => undefined);
+    return () => {
+      cancelled = true;
+      if (objectUrl) URL.revokeObjectURL(objectUrl);
+    };
+  }, [attachment.id]);
+
+  if (!src) return null;
+  // eslint-disable-next-line @next/next/no-img-element -- blob URL, not optimizable by next/image
+  return <img src={src} alt={attachment.originalFilename} className="w-full h-full object-cover" />;
 }

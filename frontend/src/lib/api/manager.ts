@@ -1,5 +1,4 @@
 import { api } from './client';
-import { API_BASE_URL } from '@/lib/config';
 import type { CaseSummary, CaseDetail, QueryInstance } from './cases';
 
 /**
@@ -23,7 +22,6 @@ export interface StatusDefinition {
 
 export interface ChangeStatusRequest {
   statusId: string;
-  userId: string;
   comment?: string;
 }
 
@@ -123,13 +121,9 @@ export async function changeCaseStatus(
  */
 export async function addInternalMessage(
   caseId: string,
-  userId: string,
   message: string
 ): Promise<InternalMessage> {
-  return api.post<InternalMessage>(`/api/v1/cases/${caseId}/messages/internal`, {
-    userId,
-    message,
-  });
+  return api.post<InternalMessage>(`/api/v1/cases/${caseId}/messages/internal`, { message });
 }
 
 /**
@@ -137,47 +131,17 @@ export async function addInternalMessage(
  */
 export async function addExternalMessage(
   caseId: string,
-  userId: string,
   message: string
 ): Promise<ExternalMessage> {
-  return api.post<ExternalMessage>(`/api/v1/cases/${caseId}/messages/external`, {
-    userId,
-    message,
-  });
+  return api.post<ExternalMessage>(`/api/v1/cases/${caseId}/messages/external`, { message });
 }
 
 /**
  * Download case as PDF.
  */
-export async function downloadCasePdf(caseId: string): Promise<void> {
-  const response = await fetch(`${API_BASE_URL}/api/v1/cases/${caseId}/pdf`, {
-    headers: {
-      // Don't set Content-Type for downloads
-    },
-  });
-
-  if (!response.ok) {
-    throw new Error('Failed to download PDF');
-  }
-
-  // Get filename from Content-Disposition header or use default
-  const contentDisposition = response.headers.get('Content-Disposition');
-  let filename = `case-${caseId}.pdf`;
-  if (contentDisposition) {
-    const match = contentDisposition.match(/filename="?([^"]+)"?/);
-    if (match) {
-      filename = match[1];
-    }
-  }
-
-  // Create blob and trigger download
-  const blob = await response.blob();
-  const url = window.URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = filename;
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
-  window.URL.revokeObjectURL(url);
+export async function downloadCasePdf(caseId: string, referenceNumber?: string): Promise<void> {
+  return api.downloadBlob(
+    `/api/v1/cases/${caseId}/pdf`,
+    `arende-${referenceNumber ?? caseId}.pdf`
+  );
 }

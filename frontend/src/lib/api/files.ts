@@ -1,4 +1,4 @@
-import { api } from './client';
+import { api, handleUnauthorized } from './client';
 import { API_BASE_URL } from '@/lib/config';
 import { getStoredToken } from '@/lib/auth';
 
@@ -32,7 +32,6 @@ export interface UploadProgress {
  */
 export async function uploadFile(
   file: File,
-  userId: string,
   options?: {
     caseId?: string;
     queryDefinitionId?: string;
@@ -41,7 +40,6 @@ export async function uploadFile(
 ): Promise<Attachment> {
   const formData = new FormData();
   formData.append('file', file);
-  formData.append('userId', userId);
 
   if (options?.caseId) {
     formData.append('caseId', options.caseId);
@@ -65,6 +63,7 @@ export async function uploadFile(
     });
 
     xhr.addEventListener('load', () => {
+      handleUnauthorized(xhr.status);
       if (xhr.status >= 200 && xhr.status < 300) {
         resolve(JSON.parse(xhr.responseText));
       } else {
@@ -107,6 +106,20 @@ export function getDownloadUrl(attachmentId: string): string {
 }
 
 /**
+ * Download an attachment with the user's token and save it.
+ */
+export async function downloadAttachment(attachment: Attachment): Promise<void> {
+  return api.downloadBlob(`/api/v1/files/${attachment.id}/download`, attachment.originalFilename);
+}
+
+/**
+ * Fetch an attachment with the user's token, e.g. to show an image preview.
+ */
+export async function getAttachmentBlob(attachmentId: string): Promise<Blob> {
+  return api.getBlob(`/api/v1/files/${attachmentId}/download`);
+}
+
+/**
  * Get pre-signed download URL.
  */
 export async function getPresignedUrl(
@@ -136,8 +149,8 @@ export async function getAttachmentsForField(
 /**
  * Delete an attachment.
  */
-export async function deleteAttachment(attachmentId: string, userId: string): Promise<void> {
-  return api.delete(`/api/v1/files/${attachmentId}?userId=${userId}`);
+export async function deleteAttachment(attachmentId: string): Promise<void> {
+  return api.delete(`/api/v1/files/${attachmentId}`);
 }
 
 /**

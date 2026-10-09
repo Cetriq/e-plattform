@@ -66,10 +66,9 @@ export default function ManagerCaseDetailPage() {
   });
 
   const handleStatusChange = () => {
-    if (!selectedStatus || !user?.id) return;
+    if (!selectedStatus) return;
     statusMutation.mutate({
       statusId: selectedStatus,
-      userId: user.id,
       comment: statusComment || undefined,
     });
   };
@@ -77,7 +76,7 @@ export default function ManagerCaseDetailPage() {
   const handleDownloadPdf = async () => {
     setIsDownloadingPdf(true);
     try {
-      await downloadCasePdf(caseId);
+      await downloadCasePdf(caseId, caseData?.referenceNumber);
     } catch (error) {
       console.error('Failed to download PDF:', error);
     } finally {

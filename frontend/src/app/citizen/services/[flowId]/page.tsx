@@ -83,7 +83,7 @@ function FlowForm() {
     if (caseIdRef.current) return caseIdRef.current;
     if (!user?.id) throw new Error('User not authenticated');
     if (!createCasePromiseRef.current) {
-      createCasePromiseRef.current = createCase(flowId, user.id).then((created: CaseDetail) => {
+      createCasePromiseRef.current = createCase(flowId).then((created: CaseDetail) => {
         caseIdRef.current = created.id;
         setCaseId(created.id);
         return created.id;

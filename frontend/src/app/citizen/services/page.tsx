@@ -48,7 +48,7 @@ export default function ServicesPage() {
 
         {isLoading && (
           <div className="flex items-center justify-center py-12">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-brand-600"></div>
             <span className="ml-3 text-gray-600">Laddar tjänster...</span>
           </div>
         )}
@@ -76,7 +76,7 @@ export default function ServicesPage() {
           {Object.entries(categorizedFlows).map(([category, categoryFlows]) => (
             <section key={category}>
               <h2 className="text-xl font-semibold text-gray-800 mb-4 flex items-center gap-2">
-                <span className="w-1 h-6 bg-blue-600 rounded"></span>
+                <span className="w-1 h-6 bg-brand-600 rounded"></span>
                 {category}
               </h2>
               <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -84,20 +84,20 @@ export default function ServicesPage() {
                   <Link
                     key={flow.id}
                     href={`/citizen/services/${flow.id}`}
-                    className="bg-white p-6 rounded-xl border hover:border-blue-300 hover:shadow-md transition-all group"
+                    className="bg-white p-6 rounded-xl border hover:border-brand-300 hover:shadow-md transition-all group"
                   >
                     <div className="flex items-start justify-between mb-3">
-                      <span className="text-xs font-medium text-blue-600 bg-blue-50 px-2 py-1 rounded">
+                      <span className="text-xs font-medium text-brand-600 bg-brand-50 px-2 py-1 rounded">
                         {flow.typeName || 'E-tjänst'}
                       </span>
                     </div>
-                    <h3 className="text-lg font-semibold text-gray-900 mb-2 group-hover:text-blue-600 transition-colors">
+                    <h3 className="text-lg font-semibold text-gray-900 mb-2 group-hover:text-brand-600 transition-colors">
                       {flow.name}
                     </h3>
                     <p className="text-gray-600 text-sm line-clamp-2">
                       {flow.shortDescription || 'Starta en digital ansökan.'}
                     </p>
-                    <div className="mt-4 flex items-center text-blue-600 text-sm font-medium">
+                    <div className="mt-4 flex items-center text-brand-600 text-sm font-medium">
                       <span>Starta ansökan</span>
                       <svg
                         className="w-4 h-4 ml-1 group-hover:translate-x-1 transition-transform"

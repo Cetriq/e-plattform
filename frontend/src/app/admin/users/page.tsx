@@ -88,7 +88,7 @@ export default function AdminUsersPage() {
   return (
     <div className="max-w-6xl">
       <div className="mb-6">
-        <h1 className="text-2xl font-bold text-gray-900">Användare</h1>
+        <h1 className="page-title">Användare</h1>
         <p className="mt-1 text-sm text-gray-600">
           Översikt över alla konton i systemet. CRUD-funktioner tillkommer.
         </p>
@@ -106,7 +106,7 @@ export default function AdminUsersPage() {
               placeholder="Sök på namn eller e-post…"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="w-full rounded-md border-gray-300 shadow-sm focus:border-purple-500 focus:ring-purple-500 px-3 py-2 border"
+              className="w-full rounded-md border-gray-300 shadow-sm focus:border-brand-500 focus:ring-brand-500 px-3 py-2 border"
             />
           </div>
           <div>
@@ -117,7 +117,7 @@ export default function AdminUsersPage() {
               id="role-filter"
               value={role}
               onChange={(e) => setRole(e.target.value)}
-              className="rounded-md border-gray-300 shadow-sm focus:border-purple-500 focus:ring-purple-500 px-3 py-2 border"
+              className="rounded-md border-gray-300 shadow-sm focus:border-brand-500 focus:ring-brand-500 px-3 py-2 border"
             >
               <option value="">Alla roller</option>
               {ROLE_FILTERS.map((r) => (

@@ -128,7 +128,7 @@ export default function CategoriesPage() {
   if (flowTypesLoading || categoriesLoading) {
     return (
       <div className="flex items-center justify-center py-12">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-600"></div>
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-brand-600"></div>
       </div>
     );
   }
@@ -136,7 +136,7 @@ export default function CategoriesPage() {
   return (
     <div className="space-y-8">
       <div>
-        <h1 className="text-2xl font-bold text-gray-900">Kategorier</h1>
+        <h1 className="page-title">Kategorier</h1>
         <p className="mt-1 text-gray-500">
           Hantera tjänstetyper och kategorier för e-tjänster
         </p>
@@ -160,8 +160,8 @@ export default function CategoriesPage() {
                   categories: [],
                 });
               }}
-              className="px-4 py-2 bg-purple-600 text-white rounded-lg text-sm font-medium
-                       hover:bg-purple-700 transition-colors flex items-center gap-2"
+              className="px-4 py-2 bg-brand-600 text-white rounded-lg text-sm font-medium
+                       hover:bg-brand-700 transition-colors flex items-center gap-2"
             >
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
@@ -183,7 +183,7 @@ export default function CategoriesPage() {
                 <div
                   key={flowType.id}
                   className={`p-4 hover:bg-gray-50 cursor-pointer transition-colors ${
-                    selectedFlowTypeId === flowType.id ? 'bg-purple-50' : ''
+                    selectedFlowTypeId === flowType.id ? 'bg-brand-50' : ''
                   }`}
                   onClick={() => setSelectedFlowTypeId(flowType.id)}
                 >
@@ -209,7 +209,7 @@ export default function CategoriesPage() {
                           setIsNewFlowType(false);
                           setEditingFlowType(flowType);
                         }}
-                        className="p-2 text-gray-400 hover:text-purple-600 transition-colors"
+                        className="p-2 text-gray-400 hover:text-brand-600 transition-colors"
                       >
                         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
@@ -257,8 +257,8 @@ export default function CategoriesPage() {
                   flowTypeId: selectedFlowTypeId || undefined,
                 });
               }}
-              className="px-4 py-2 bg-purple-600 text-white rounded-lg text-sm font-medium
-                       hover:bg-purple-700 transition-colors flex items-center gap-2"
+              className="px-4 py-2 bg-brand-600 text-white rounded-lg text-sm font-medium
+                       hover:bg-brand-700 transition-colors flex items-center gap-2"
             >
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
@@ -293,7 +293,7 @@ export default function CategoriesPage() {
                         <p className="text-sm text-gray-500">{category.description}</p>
                       )}
                       {category.flowTypeName && !selectedFlowTypeId && (
-                        <span className="text-xs text-purple-600 bg-purple-50 px-2 py-0.5 rounded mt-1 inline-block">
+                        <span className="text-xs text-brand-600 bg-brand-50 px-2 py-0.5 rounded mt-1 inline-block">
                           {category.flowTypeName}
                         </span>
                       )}
@@ -304,7 +304,7 @@ export default function CategoriesPage() {
                           setIsNewCategory(false);
                           setEditingCategory(category);
                         }}
-                        className="p-2 text-gray-400 hover:text-purple-600 transition-colors"
+                        className="p-2 text-gray-400 hover:text-brand-600 transition-colors"
                       >
                         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
@@ -351,7 +351,7 @@ export default function CategoriesPage() {
                     type="text"
                     defaultValue={editingFlowType.name}
                     required
-                    className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
+                    className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-brand-500 focus:border-brand-500"
                   />
                 </div>
                 <div>
@@ -362,7 +362,7 @@ export default function CategoriesPage() {
                     name="description"
                     defaultValue={editingFlowType.description || ''}
                     rows={2}
-                    className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
+                    className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-brand-500 focus:border-brand-500"
                   />
                 </div>
                 <div className="grid grid-cols-2 gap-4">
@@ -385,7 +385,7 @@ export default function CategoriesPage() {
                       name="sortOrder"
                       type="number"
                       defaultValue={editingFlowType.sortOrder}
-                      className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
+                      className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-brand-500 focus:border-brand-500"
                     />
                   </div>
                 </div>
@@ -398,7 +398,7 @@ export default function CategoriesPage() {
                     type="text"
                     defaultValue={editingFlowType.icon || ''}
                     placeholder="t.ex. building, tree, car"
-                    className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
+                    className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-brand-500 focus:border-brand-500"
                   />
                 </div>
               </div>
@@ -416,7 +416,7 @@ export default function CategoriesPage() {
                 <button
                   type="submit"
                   disabled={createFlowTypeMutation.isPending || updateFlowTypeMutation.isPending}
-                  className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors
+                  className="px-4 py-2 bg-brand-600 text-white rounded-lg hover:bg-brand-700 transition-colors
                            disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {createFlowTypeMutation.isPending || updateFlowTypeMutation.isPending
@@ -449,7 +449,7 @@ export default function CategoriesPage() {
                     type="text"
                     defaultValue={editingCategory.name}
                     required
-                    className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
+                    className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-brand-500 focus:border-brand-500"
                   />
                 </div>
                 <div>
@@ -460,7 +460,7 @@ export default function CategoriesPage() {
                     name="description"
                     defaultValue={editingCategory.description || ''}
                     rows={2}
-                    className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
+                    className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-brand-500 focus:border-brand-500"
                   />
                 </div>
                 <div>
@@ -470,7 +470,7 @@ export default function CategoriesPage() {
                   <select
                     name="flowTypeId"
                     defaultValue={editingCategory.flowTypeId || ''}
-                    className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
+                    className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-brand-500 focus:border-brand-500"
                   >
                     <option value="">Ingen (fristående)</option>
                     {flowTypes.map((ft) => (
@@ -488,7 +488,7 @@ export default function CategoriesPage() {
                     name="sortOrder"
                     type="number"
                     defaultValue={editingCategory.sortOrder}
-                    className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
+                    className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-brand-500 focus:border-brand-500"
                   />
                 </div>
               </div>
@@ -506,7 +506,7 @@ export default function CategoriesPage() {
                 <button
                   type="submit"
                   disabled={createCategoryMutation.isPending || updateCategoryMutation.isPending}
-                  className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors
+                  className="px-4 py-2 bg-brand-600 text-white rounded-lg hover:bg-brand-700 transition-colors
                            disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {createCategoryMutation.isPending || updateCategoryMutation.isPending

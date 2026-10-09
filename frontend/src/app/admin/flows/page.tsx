@@ -80,14 +80,14 @@ export default function FlowsListPage() {
       {/* Page header */}
       <div className="flex justify-between items-center mb-8">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">E-tjänster</h1>
+          <h1 className="page-title">E-tjänster</h1>
           <p className="text-gray-600 mt-1">
             Skapa och hantera e-tjänster och formulär.
           </p>
         </div>
         <Link
           href="/admin/flows/new"
-          className="flex items-center gap-2 bg-purple-600 text-white px-4 py-2 rounded-lg font-medium hover:bg-purple-700 transition-colors"
+          className="flex items-center gap-2 bg-brand-600 text-white px-4 py-2 rounded-lg font-medium hover:bg-brand-700 transition-colors"
         >
           <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
@@ -97,22 +97,22 @@ export default function FlowsListPage() {
       </div>
 
       {/* Filters */}
-      <div className="bg-white rounded-lg shadow-sm border p-4 mb-6">
+      <div className="card p-4 mb-6">
         <div className="flex gap-4 items-center">
           <div className="flex-1">
             <input
               type="text"
               placeholder="Sök e-tjänster..."
-              className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
+              className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-500"
             />
           </div>
-          <select className="px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500">
+          <select className="px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-500">
             <option value="">Alla statusar</option>
             <option value="DRAFT">Utkast</option>
             <option value="PUBLISHED">Publicerad</option>
             <option value="ARCHIVED">Arkiverad</option>
           </select>
-          <select className="px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500">
+          <select className="px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-500">
             <option value="">Alla kategorier</option>
           </select>
         </div>
@@ -121,7 +121,7 @@ export default function FlowsListPage() {
       {/* Flows table */}
       {isLoading ? (
         <div className="flex items-center justify-center py-12">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-600"></div>
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-brand-600"></div>
           <span className="ml-3 text-gray-600">Laddar e-tjänster...</span>
         </div>
       ) : error ? (
@@ -131,7 +131,7 @@ export default function FlowsListPage() {
           </p>
         </div>
       ) : flowsResponse?.content?.length === 0 ? (
-        <div className="bg-white rounded-lg shadow-sm border p-8 text-center">
+        <div className="card p-8 text-center">
           <svg
             className="w-12 h-12 text-gray-400 mx-auto mb-4"
             fill="none"
@@ -153,7 +153,7 @@ export default function FlowsListPage() {
           </p>
           <Link
             href="/admin/flows/new"
-            className="inline-flex items-center gap-2 bg-purple-600 text-white px-4 py-2 rounded-lg font-medium hover:bg-purple-700"
+            className="inline-flex items-center gap-2 bg-brand-600 text-white px-4 py-2 rounded-lg font-medium hover:bg-brand-700"
           >
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
@@ -163,7 +163,7 @@ export default function FlowsListPage() {
         </div>
       ) : (
         <>
-          <div className="bg-white rounded-lg shadow-sm border overflow-hidden">
+          <div className="card overflow-hidden">
             <table className="w-full">
               <thead className="bg-gray-50 border-b">
                 <tr>
@@ -192,7 +192,7 @@ export default function FlowsListPage() {
                         <div>
                           <Link
                             href={`/admin/flows/${flow.id}`}
-                            className="font-medium text-gray-900 hover:text-purple-600"
+                            className="font-medium text-gray-900 hover:text-brand-600"
                           >
                             {flow.name}
                           </Link>
@@ -226,7 +226,7 @@ export default function FlowsListPage() {
                         <div className="flex items-center justify-end gap-2">
                           <Link
                             href={`/admin/flows/${flow.id}`}
-                            className="text-purple-600 hover:text-purple-800 text-sm font-medium"
+                            className="text-brand-600 hover:text-brand-800 text-sm font-medium"
                           >
                             Redigera
                           </Link>

@@ -1,19 +1,19 @@
 'use client';
 
 import { RequireRole } from '@/components/auth/RequireRole';
-import { WorkspaceShell } from '@/components/layout/WorkspaceShell';
+import { StaffShell } from '@/components/layout/StaffShell';
 
 const nav = [
-  { name: 'Driftstatus', href: '/ops/status' },
-  { name: 'Systemlogg', href: '/ops/events' },
+  { name: 'Driftstatus', href: '/ops/status', icon: 'pulse' as const },
+  { name: 'Systemlogg', href: '/ops/events', icon: 'terminal' as const },
 ];
 
 export default function OpsLayout({ children }: { children: React.ReactNode }) {
   return (
     <RequireRole roles={['OPERATIONS']}>
-      <WorkspaceShell title="IT & drift" headerClass="bg-teal-800" nav={nav}>
+      <StaffShell title="IT & drift" theme="ops" nav={nav}>
         {children}
-      </WorkspaceShell>
+      </StaffShell>
     </RequireRole>
   );
 }

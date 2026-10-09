@@ -52,10 +52,10 @@ export function StepIndicator({
                       isCompleted
                         ? 'bg-green-600 text-white'
                         : isCurrent
-                        ? 'bg-blue-600 text-white ring-4 ring-blue-100'
+                        ? 'bg-brand-600 text-white ring-4 ring-brand-100'
                         : 'bg-gray-200 text-gray-500'
                     }
-                    ${isClickable && !isCurrent ? 'group-hover:ring-2 group-hover:ring-blue-200' : ''}
+                    ${isClickable && !isCurrent ? 'group-hover:ring-2 group-hover:ring-brand-200' : ''}
                   `}
                 >
                   {isCompleted ? (
@@ -75,12 +75,12 @@ export function StepIndicator({
                     hidden sm:block text-sm font-medium
                     ${
                       isCurrent
-                        ? 'text-blue-600'
+                        ? 'text-brand-600'
                         : isCompleted
                         ? 'text-green-600'
                         : 'text-gray-500'
                     }
-                    ${isClickable && !isCurrent ? 'group-hover:text-blue-500' : ''}
+                    ${isClickable && !isCurrent ? 'group-hover:text-brand-500' : ''}
                   `}
                 >
                   {step.name}

@@ -86,14 +86,12 @@ function AuditLog() {
     }
   };
 
-  const field = 'w-full px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-slate-500';
-
   return (
     <div className="space-y-6">
       <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Spårbarhetslogg</h1>
-          <p className="text-gray-600 mt-1">
+          <h1 className="page-title">Spårbarhetslogg</h1>
+          <p className="page-lead">
             Vem som har läst eller ändrat vilka uppgifter, och när. Loggen kan inte ändras i efterhand.
           </p>
         </div>
@@ -102,14 +100,14 @@ function AuditLog() {
             type="button"
             onClick={check}
             disabled={checking}
-            className="px-4 py-2 text-sm bg-white border rounded-lg hover:bg-gray-50 disabled:opacity-50"
+            className="btn-secondary"
           >
             {checking ? 'Kontrollerar…' : 'Kontrollera loggens integritet'}
           </button>
-          <button type="button" onClick={() => doExport('csv')} className="px-4 py-2 text-sm bg-slate-800 text-white rounded-lg hover:bg-slate-700">
+          <button type="button" onClick={() => doExport('csv')} className="btn-primary">
             Exportera CSV
           </button>
-          <button type="button" onClick={() => doExport('json')} className="px-4 py-2 text-sm bg-white border rounded-lg hover:bg-gray-50">
+          <button type="button" onClick={() => doExport('json')} className="btn-secondary">
             JSON
           </button>
         </div>
@@ -128,53 +126,53 @@ function AuditLog() {
         </div>
       )}
 
-      <form onSubmit={apply} className="bg-white rounded-lg border p-4 grid grid-cols-1 md:grid-cols-4 gap-3">
+      <form onSubmit={apply} className="card p-4 grid grid-cols-1 md:grid-cols-4 gap-3">
         <div>
-          <label htmlFor="f-category" className="block text-xs font-medium text-gray-600 mb-1">Kategori</label>
-          <select id="f-category" className={field} value={draft.category ?? ''}
+          <label htmlFor="f-category" className="label">Kategori</label>
+          <select id="f-category" className="input" value={draft.category ?? ''}
                   onChange={(e) => setDraft({ ...draft, category: e.target.value as AuditCategory | '' })}>
             <option value="">Alla</option>
             {Object.entries(CATEGORY_LABELS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
           </select>
         </div>
         <div>
-          <label htmlFor="f-action" className="block text-xs font-medium text-gray-600 mb-1">Händelse</label>
-          <select id="f-action" className={field} value={draft.action ?? ''}
+          <label htmlFor="f-action" className="label">Händelse</label>
+          <select id="f-action" className="input" value={draft.action ?? ''}
                   onChange={(e) => setDraft({ ...draft, action: e.target.value })}>
             <option value="">Alla</option>
             {Object.entries(ACTION_LABELS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
           </select>
         </div>
         <div>
-          <label htmlFor="f-outcome" className="block text-xs font-medium text-gray-600 mb-1">Utfall</label>
-          <select id="f-outcome" className={field} value={draft.outcome ?? ''}
+          <label htmlFor="f-outcome" className="label">Utfall</label>
+          <select id="f-outcome" className="input" value={draft.outcome ?? ''}
                   onChange={(e) => setDraft({ ...draft, outcome: e.target.value as AuditOutcome | '' })}>
             <option value="">Alla</option>
             {Object.entries(OUTCOME_LABELS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
           </select>
         </div>
         <div>
-          <label htmlFor="f-subject" className="block text-xs font-medium text-gray-600 mb-1">Registrerad (id)</label>
-          <input id="f-subject" className={field} value={draft.subjectId ?? ''}
+          <label htmlFor="f-subject" className="label">Registrerad (id)</label>
+          <input id="f-subject" className="input" value={draft.subjectId ?? ''}
                  onChange={(e) => setDraft({ ...draft, subjectId: e.target.value })} />
         </div>
         <div>
-          <label htmlFor="f-user" className="block text-xs font-medium text-gray-600 mb-1">Utförd av (id)</label>
-          <input id="f-user" className={field} value={draft.userId ?? ''}
+          <label htmlFor="f-user" className="label">Utförd av (id)</label>
+          <input id="f-user" className="input" value={draft.userId ?? ''}
                  onChange={(e) => setDraft({ ...draft, userId: e.target.value })} />
         </div>
         <div>
-          <label htmlFor="f-from" className="block text-xs font-medium text-gray-600 mb-1">Från</label>
-          <input id="f-from" type="date" className={field} value={draft.from ?? ''}
+          <label htmlFor="f-from" className="label">Från</label>
+          <input id="f-from" type="date" className="input" value={draft.from ?? ''}
                  onChange={(e) => setDraft({ ...draft, from: e.target.value })} />
         </div>
         <div>
-          <label htmlFor="f-to" className="block text-xs font-medium text-gray-600 mb-1">Till</label>
-          <input id="f-to" type="date" className={field} value={draft.to ?? ''}
+          <label htmlFor="f-to" className="label">Till</label>
+          <input id="f-to" type="date" className="input" value={draft.to ?? ''}
                  onChange={(e) => setDraft({ ...draft, to: e.target.value })} />
         </div>
         <div className="flex items-end gap-2">
-          <button type="submit" className="flex-1 px-4 py-2 text-sm bg-slate-800 text-white rounded-lg hover:bg-slate-700">
+          <button type="submit" className="flex-1 btn-primary">
             Sök
           </button>
           <button type="button" onClick={reset} className="px-3 py-2 text-sm text-gray-600 hover:text-gray-900">
@@ -183,7 +181,7 @@ function AuditLog() {
         </div>
       </form>
 
-      <div className="bg-white rounded-lg border overflow-hidden">
+      <div className="card overflow-hidden">
         {isLoading ? (
           <p className="p-6 text-gray-500">Laddar…</p>
         ) : error ? (
@@ -193,10 +191,10 @@ function AuditLog() {
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
-              <thead className="bg-gray-50 border-b">
+              <thead className="table-head">
                 <tr>
                   {['Nr', 'Tid', 'Utförd av', 'Händelse', 'Utfall', 'Objekt', 'Registrerad', 'Detaljer'].map((h) => (
-                    <th key={h} scope="col" className="text-left px-4 py-2 text-xs font-medium text-gray-500 uppercase tracking-wider">{h}</th>
+                    <th key={h} scope="col" className="th">{h}</th>
                   ))}
                 </tr>
               </thead>
@@ -224,7 +222,7 @@ function AuditLog() {
                     </td>
                     <td className="px-4 py-2 text-xs">
                       {e.subjectUserId && (
-                        <Link href={`/security/people?id=${e.subjectUserId}`} className="font-mono text-slate-700 hover:underline break-all">
+                        <Link href={`/security/people?id=${e.subjectUserId}`} className="font-mono text-brand-700 hover:underline break-all">
                           {e.subjectUserId.slice(0, 8)}…
                         </Link>
                       )}
@@ -243,10 +241,10 @@ function AuditLog() {
           <span className="text-gray-600">{data.totalElements} poster</span>
           <div className="flex gap-2">
             <button type="button" disabled={data.first} onClick={() => setPage((p) => p - 1)}
-                    className="px-3 py-1 border rounded disabled:opacity-40">Föregående</button>
+                    className="btn-secondary btn-sm">Föregående</button>
             <span className="px-2 py-1">Sida {data.number + 1} av {data.totalPages}</span>
             <button type="button" disabled={data.last} onClick={() => setPage((p) => p + 1)}
-                    className="px-3 py-1 border rounded disabled:opacity-40">Nästa</button>
+                    className="btn-secondary btn-sm">Nästa</button>
           </div>
         </div>
       )}

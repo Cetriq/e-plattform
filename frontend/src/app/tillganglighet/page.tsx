@@ -12,7 +12,7 @@ export default function AccessibilityPage() {
   return (
     <>
       <Header />
-      <main className="container mx-auto px-4 py-10 max-w-3xl text-gray-800 [&_h1]:text-3xl [&_h1]:font-bold [&_h1]:text-gray-900 [&_h1]:mb-6 [&_h2]:text-xl [&_h2]:font-semibold [&_h2]:text-gray-900 [&_h2]:mt-8 [&_h2]:mb-3 [&_p]:mb-4 [&_p]:leading-relaxed [&_ul]:list-disc [&_ul]:pl-6 [&_ul]:mb-4 [&_ul]:space-y-2 [&_a]:text-blue-600 [&_a:hover]:text-blue-800 [&_a]:underline">
+      <main className="container mx-auto px-4 py-10 max-w-3xl text-gray-800 [&_h1]:text-3xl [&_h1]:font-bold [&_h1]:text-gray-900 [&_h1]:mb-6 [&_h2]:text-xl [&_h2]:font-semibold [&_h2]:text-gray-900 [&_h2]:mt-8 [&_h2]:mb-3 [&_p]:mb-4 [&_p]:leading-relaxed [&_ul]:list-disc [&_ul]:pl-6 [&_ul]:mb-4 [&_ul]:space-y-2 [&_a]:text-brand-600 [&_a:hover]:text-brand-800 [&_a]:underline">
         <h1>Tillgänglighetsredogörelse</h1>
 
         <p>

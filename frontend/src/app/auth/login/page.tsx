@@ -116,18 +116,18 @@ export default function LoginPage() {
 
   if (authLoading || !config) {
     return (
-      <main className="min-h-screen bg-gradient-to-b from-blue-50 to-white flex items-center justify-center">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+      <main className="min-h-screen bg-gradient-to-b from-brand-50 to-white flex items-center justify-center">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-brand-600"></div>
       </main>
     );
   }
 
   return (
-    <main className="min-h-screen bg-gradient-to-b from-blue-50 to-white flex flex-col">
+    <main className="min-h-screen bg-gradient-to-b from-brand-50 to-white flex flex-col">
       <header className="border-b bg-white/80 backdrop-blur-sm">
         <div className="container mx-auto px-4 py-4 flex items-center justify-between">
           <Link href="/" className="flex items-center gap-2">
-            <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
+            <div className="w-8 h-8 bg-brand-600 rounded-lg flex items-center justify-center">
               <span className="text-white font-bold">E</span>
             </div>
             <span className="font-semibold text-xl">e-Plattform</span>
@@ -139,7 +139,7 @@ export default function LoginPage() {
         <div className="w-full max-w-md">
           <div className="bg-white rounded-2xl shadow-xl border p-8">
             <div className="text-center mb-8">
-              <h1 className="text-2xl font-bold text-gray-900 mb-2">Logga in</h1>
+              <h1 className="page-title mb-2">Logga in</h1>
               <p className="text-gray-600">
                 Välj hur du vill identifiera dig för att komma åt dina ärenden.
               </p>
@@ -174,7 +174,7 @@ export default function LoginPage() {
                       value={accessCode}
                       onChange={(e) => setAccessCode(e.target.value)}
                       aria-describedby="access-code-help"
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-500"
                     />
                     <p id="access-code-help" className="mt-1 text-xs text-gray-500">
                       Koden har du fått av den som bjöd in dig till demon.
@@ -284,7 +284,7 @@ export default function LoginPage() {
                   href="https://www.bankid.com"
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="text-blue-600 hover:underline"
+                  className="text-brand-600 hover:underline"
                 >
                   Läs mer om BankID
                 </a>

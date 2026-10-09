@@ -33,8 +33,8 @@ export function RadioField({ query }: RadioFieldProps) {
               onChange={() => handleChange(opt.value)}
               onBlur={onBlur}
               disabled={state === 'DISABLED'}
-              className="w-4 h-4 text-blue-600 border-gray-300
-                         focus:ring-blue-500 disabled:opacity-50"
+              className="w-4 h-4 text-brand-600 border-gray-300
+                         focus:ring-brand-500 disabled:opacity-50"
             />
             <span className="text-sm text-gray-700">{opt.label}</span>
           </label>

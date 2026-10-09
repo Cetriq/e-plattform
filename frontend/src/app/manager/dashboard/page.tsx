@@ -97,7 +97,7 @@ export default function ManagerDashboardPage() {
       <div className="min-h-screen bg-gray-100 flex items-center justify-center">
         <div className="bg-white p-8 rounded-lg shadow-md text-center max-w-md">
           <svg
-            className="w-12 h-12 text-blue-500 mx-auto mb-4"
+            className="w-12 h-12 text-brand-500 mx-auto mb-4"
             fill="none"
             stroke="currentColor"
             viewBox="0 0 24 24"
@@ -115,7 +115,7 @@ export default function ManagerDashboardPage() {
           </p>
           <Link
             href="/auth/login?redirect=/manager/dashboard"
-            className="inline-flex items-center justify-center bg-blue-600 text-white px-6 py-3 rounded-lg font-medium hover:bg-blue-700"
+            className="inline-flex items-center justify-center bg-brand-600 text-white px-6 py-3 rounded-lg font-medium hover:bg-brand-700"
           >
             Logga in
           </Link>
@@ -132,7 +132,7 @@ export default function ManagerDashboardPage() {
           <div className="flex justify-between items-center h-16">
             <div className="flex items-center gap-4">
               <Link href="/manager/dashboard" className="flex items-center gap-2">
-                <div className="w-8 h-8 bg-blue-600 rounded flex items-center justify-center">
+                <div className="w-8 h-8 bg-brand-600 rounded flex items-center justify-center">
                   <span className="text-white font-bold text-sm">E</span>
                 </div>
                 <span className="font-semibold text-gray-900">Handläggare</span>
@@ -140,7 +140,7 @@ export default function ManagerDashboardPage() {
               <nav className="hidden md:flex gap-6 ml-8">
                 <Link
                   href="/manager/dashboard"
-                  className="text-blue-600 font-medium border-b-2 border-blue-600 pb-4 -mb-4"
+                  className="text-brand-600 font-medium border-b-2 border-brand-600 pb-4 -mb-4"
                 >
                   Ärenden
                 </Link>
@@ -168,7 +168,7 @@ export default function ManagerDashboardPage() {
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Page header */}
         <div className="mb-8">
-          <h1 className="text-2xl font-bold text-gray-900">Inkomna ärenden</h1>
+          <h1 className="page-title">Inkomna ärenden</h1>
           <p className="text-gray-600 mt-1">
             Hantera och granska inskickade ärenden.
           </p>
@@ -178,7 +178,7 @@ export default function ManagerDashboardPage() {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8" role="group" aria-label="Filtrera ärenden">
           {([
             ['all', 'Alla ärenden', counts?.all, 'text-gray-900'],
-            ['mine', 'Tilldelade mig', counts?.mine, 'text-blue-600'],
+            ['mine', 'Tilldelade mig', counts?.mine, 'text-brand-600'],
             ['unassigned', 'Ej tilldelade', counts?.unassigned, 'text-amber-600'],
           ] as const).map(([filter, label, count, color]) => (
             <button
@@ -187,7 +187,7 @@ export default function ManagerDashboardPage() {
               onClick={() => selectFilter(filter)}
               aria-pressed={!isSearching && assigneeFilter === filter}
               className={`text-left bg-white rounded-lg shadow-sm p-4 border transition-colors ${
-                !isSearching && assigneeFilter === filter ? 'border-blue-500 ring-1 ring-blue-500' : 'hover:border-gray-300'
+                !isSearching && assigneeFilter === filter ? 'border-brand-500 ring-1 ring-brand-500' : 'hover:border-gray-300'
               }`}
             >
               <div className="text-sm text-gray-500">{label}</div>
@@ -197,7 +197,7 @@ export default function ManagerDashboardPage() {
         </div>
 
         {/* Search and filters */}
-        <div className="bg-white rounded-lg shadow-sm border p-4 mb-6">
+        <div className="card p-4 mb-6">
           <form onSubmit={handleSearch} className="flex gap-4">
             <div className="flex-1 relative">
               <input
@@ -205,7 +205,7 @@ export default function ManagerDashboardPage() {
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder="Sök på ärendenummer, namn eller e-tjänst..."
-                className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-500"
               />
               {isSearching && (
                 <button
@@ -221,7 +221,7 @@ export default function ManagerDashboardPage() {
             </div>
             <button
               type="submit"
-              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex items-center gap-2"
+              className="px-4 py-2 bg-brand-600 text-white rounded-lg hover:bg-brand-700 flex items-center gap-2"
             >
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
@@ -234,7 +234,7 @@ export default function ManagerDashboardPage() {
         {/* Cases table */}
         {isLoading ? (
           <div className="flex items-center justify-center py-12">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-brand-600"></div>
             <span className="ml-3 text-gray-600">Laddar ärenden...</span>
           </div>
         ) : error ? (
@@ -244,7 +244,7 @@ export default function ManagerDashboardPage() {
             </p>
           </div>
         ) : casesResponse?.content?.length === 0 ? (
-          <div className="bg-white rounded-lg shadow-sm border p-8 text-center">
+          <div className="card p-8 text-center">
             <svg
               className="w-12 h-12 text-gray-400 mx-auto mb-4"
               fill="none"
@@ -269,7 +269,7 @@ export default function ManagerDashboardPage() {
           </div>
         ) : (
           <>
-            <div className="bg-white rounded-lg shadow-sm border overflow-hidden">
+            <div className="card overflow-hidden">
               <table className="w-full">
                 <thead className="bg-gray-50 border-b">
                   <tr>
@@ -302,8 +302,8 @@ export default function ManagerDashboardPage() {
                             <p className="font-medium text-gray-900">{c.flowName}</p>
                             <p className="text-sm text-gray-500">{c.referenceNumber}</p>
                             {!!c.unreadMessages && (
-                              <p className="mt-1 inline-flex items-center gap-1 text-xs font-medium text-blue-700">
-                                <span className="w-2 h-2 rounded-full bg-blue-600" aria-hidden="true" />
+                              <p className="mt-1 inline-flex items-center gap-1 text-xs font-medium text-brand-700">
+                                <span className="w-2 h-2 rounded-full bg-brand-600" aria-hidden="true" />
                                 {c.unreadMessages === 1 ? '1 nytt meddelande' : `${c.unreadMessages} nya meddelanden`}
                               </p>
                             )}
@@ -332,7 +332,7 @@ export default function ManagerDashboardPage() {
                         <td className="px-6 py-4 text-right">
                           <Link
                             href={`/manager/cases/${c.id}`}
-                            className="text-blue-600 hover:text-blue-800 font-medium text-sm"
+                            className="text-brand-600 hover:text-brand-800 font-medium text-sm"
                           >
                             Visa
                           </Link>

@@ -29,7 +29,7 @@ export function AutoSaveIndicator({
       <div
         role="status"
         aria-live="polite"
-        className={`${wrapperClass} bg-blue-50 text-blue-700`}
+        className={`${wrapperClass} bg-brand-50 text-brand-700`}
       >
         <Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" />
         <span>Sparar utkast…</span>

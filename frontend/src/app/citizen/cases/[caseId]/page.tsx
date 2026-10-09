@@ -110,11 +110,11 @@ export default function CaseDetailPage() {
       <>
         <Header />
         <div className="container mx-auto px-4 py-8">
-          <div className="bg-blue-50 border border-blue-200 rounded-lg p-8 text-center">
-            <p className="text-blue-900 mb-4">Du behöver vara inloggad för att se ditt ärende.</p>
+          <div className="bg-brand-50 border border-brand-200 rounded-lg p-8 text-center">
+            <p className="text-brand-900 mb-4">Du behöver vara inloggad för att se ditt ärende.</p>
             <Link
               href="/auth/login"
-              className="inline-flex items-center justify-center bg-blue-600 text-white px-6 py-3 rounded-lg font-medium hover:bg-blue-700 transition-colors"
+              className="inline-flex items-center justify-center bg-brand-600 text-white px-6 py-3 rounded-lg font-medium hover:bg-brand-700 transition-colors"
             >
               Logga in
             </Link>
@@ -133,7 +133,7 @@ export default function CaseDetailPage() {
       <div className="container mx-auto px-4 py-8 max-w-4xl">
         <Link
           href="/citizen/cases"
-          className="inline-flex items-center text-blue-600 hover:text-blue-800 text-sm font-medium mb-6"
+          className="inline-flex items-center text-brand-600 hover:text-brand-800 text-sm font-medium mb-6"
         >
           <ArrowLeft className="w-4 h-4 mr-1" />
           Tillbaka till mina ärenden
@@ -141,7 +141,7 @@ export default function CaseDetailPage() {
 
         {loading && (
           <div className="flex items-center justify-center py-12">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-brand-600"></div>
             <span className="ml-3 text-gray-600">Laddar ärende…</span>
           </div>
         )}
@@ -159,7 +159,7 @@ export default function CaseDetailPage() {
             <header className="bg-white rounded-lg border p-6">
               <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
                 <div>
-                  <h1 className="text-2xl font-bold text-gray-900 mb-1">
+                  <h1 className="page-title mb-1">
                     {caseQuery.data.flowName}
                   </h1>
                   <p className="text-sm text-gray-500 mb-3">
@@ -171,7 +171,7 @@ export default function CaseDetailPage() {
                   type="button"
                   onClick={handleDownload}
                   disabled={isDownloading}
-                  className="inline-flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg font-medium hover:bg-blue-700 disabled:bg-blue-300 transition-colors"
+                  className="inline-flex items-center gap-2 bg-brand-600 text-white px-4 py-2 rounded-lg font-medium hover:bg-brand-700 disabled:bg-brand-300 transition-colors"
                 >
                   <Download className="w-4 h-4" />
                   {isDownloading ? 'Förbereder…' : 'Ladda ner som PDF'}

@@ -175,8 +175,8 @@ export function FileField({ query, userId, caseId, ensureCaseId }: FileFieldProp
           className={`
             border-2 border-dashed rounded-lg p-6 transition-colors cursor-pointer
             ${dragOver
-              ? 'border-blue-500 bg-blue-50'
-              : 'border-gray-300 hover:border-blue-400 bg-gray-50'
+              ? 'border-brand-500 bg-brand-50'
+              : 'border-gray-300 hover:border-brand-400 bg-gray-50'
             }
             ${isDisabled ? 'opacity-50 cursor-not-allowed' : ''}
           `}
@@ -187,7 +187,7 @@ export function FileField({ query, userId, caseId, ensureCaseId }: FileFieldProp
         >
           <div className="text-center">
             <svg
-              className={`mx-auto h-10 w-10 ${dragOver ? 'text-blue-500' : 'text-gray-400'}`}
+              className={`mx-auto h-10 w-10 ${dragOver ? 'text-brand-500' : 'text-gray-400'}`}
               fill="none"
               stroke="currentColor"
               viewBox="0 0 24 24"
@@ -239,7 +239,7 @@ export function FileField({ query, userId, caseId, ensureCaseId }: FileFieldProp
                 key={`uploading-${i}`}
                 className={`
                   flex items-center gap-3 px-4 py-3 rounded-lg border
-                  ${upload.error ? 'bg-red-50 border-red-200' : 'bg-blue-50 border-blue-200'}
+                  ${upload.error ? 'bg-red-50 border-red-200' : 'bg-brand-50 border-brand-200'}
                 `}
               >
                 <div className="flex-1 min-w-0">
@@ -250,13 +250,13 @@ export function FileField({ query, userId, caseId, ensureCaseId }: FileFieldProp
                     <p className="text-xs text-red-600">{upload.error}</p>
                   ) : (
                     <div className="mt-1 flex items-center gap-2">
-                      <div className="flex-1 h-1.5 bg-blue-200 rounded-full overflow-hidden">
+                      <div className="flex-1 h-1.5 bg-brand-200 rounded-full overflow-hidden">
                         <div
-                          className="h-full bg-blue-600 transition-all duration-300"
+                          className="h-full bg-brand-600 transition-all duration-300"
                           style={{ width: `${upload.progress}%` }}
                         />
                       </div>
-                      <span className="text-xs text-blue-600 font-medium">
+                      <span className="text-xs text-brand-600 font-medium">
                         {upload.progress}%
                       </span>
                     </div>
@@ -307,7 +307,7 @@ export function FileField({ query, userId, caseId, ensureCaseId }: FileFieldProp
                   <button
                     type="button"
                     onClick={() => downloadAttachment(attachment).catch(() => undefined)}
-                    className="text-blue-500 hover:text-blue-700 p-1"
+                    className="text-brand-500 hover:text-brand-700 p-1"
                     title="Ladda ner"
                     aria-label={`Ladda ner ${attachment.originalFilename}`}
                   >

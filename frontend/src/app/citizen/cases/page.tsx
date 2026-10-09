@@ -77,9 +77,9 @@ export default function CasesPage() {
         </p>
 
         {!authLoading && !isAuthenticated && (
-          <div className="bg-blue-50 border border-blue-200 rounded-lg p-8 text-center mb-8">
+          <div className="bg-brand-50 border border-brand-200 rounded-lg p-8 text-center mb-8">
             <svg
-              className="w-12 h-12 text-blue-500 mx-auto mb-4"
+              className="w-12 h-12 text-brand-500 mx-auto mb-4"
               fill="none"
               stroke="currentColor"
               viewBox="0 0 24 24"
@@ -91,15 +91,15 @@ export default function CasesPage() {
                 d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"
               />
             </svg>
-            <h3 className="text-lg font-medium text-blue-900 mb-2">
+            <h3 className="text-lg font-medium text-brand-900 mb-2">
               Logga in för att se dina ärenden
             </h3>
-            <p className="text-blue-700 mb-4">
+            <p className="text-brand-700 mb-4">
               Du behöver logga in med BankID eller annan e-legitimation för att se dina ärenden.
             </p>
             <Link
               href="/auth/login"
-              className="inline-flex items-center justify-center bg-blue-600 text-white px-6 py-3 rounded-lg font-medium hover:bg-blue-700 transition-colors"
+              className="inline-flex items-center justify-center bg-brand-600 text-white px-6 py-3 rounded-lg font-medium hover:bg-brand-700 transition-colors"
             >
               Logga in
             </Link>
@@ -108,7 +108,7 @@ export default function CasesPage() {
 
         {isAuthenticated && isLoading && (
           <div className="flex items-center justify-center py-12">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-brand-600"></div>
             <span className="ml-3 text-gray-600">Laddar dina ärenden...</span>
           </div>
         )}
@@ -144,7 +144,7 @@ export default function CasesPage() {
             </p>
             <Link
               href="/citizen/services"
-              className="inline-flex items-center justify-center bg-blue-600 text-white px-6 py-3 rounded-lg font-medium hover:bg-blue-700 transition-colors"
+              className="inline-flex items-center justify-center bg-brand-600 text-white px-6 py-3 rounded-lg font-medium hover:bg-brand-700 transition-colors"
             >
               Utforska tjänster
             </Link>
@@ -227,8 +227,8 @@ export default function CasesPage() {
                               <p className="font-medium text-gray-900">{c.flowName}</p>
                               <p className="text-sm text-gray-500">{c.referenceNumber}</p>
                               {!!c.unreadMessages && (
-                                <p className="mt-1 inline-flex items-center gap-1 text-xs font-medium text-blue-700">
-                                  <span className="w-2 h-2 rounded-full bg-blue-600" aria-hidden="true" />
+                                <p className="mt-1 inline-flex items-center gap-1 text-xs font-medium text-brand-700">
+                                  <span className="w-2 h-2 rounded-full bg-brand-600" aria-hidden="true" />
                                   {unreadLabel(c.unreadMessages)}
                                 </p>
                               )}
@@ -251,7 +251,7 @@ export default function CasesPage() {
                           <td className="px-6 py-4 text-right">
                             <Link
                               href={c.isDraft ? `/citizen/services/${c.flowId}?caseId=${c.id}` : `/citizen/cases/${c.id}`}
-                              className="text-blue-600 hover:text-blue-800 font-medium text-sm"
+                              className="text-brand-600 hover:text-brand-800 font-medium text-sm"
                             >
                               {c.isDraft ? 'Fortsätt' : 'Visa'}
                             </Link>

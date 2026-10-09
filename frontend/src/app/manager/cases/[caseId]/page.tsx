@@ -182,7 +182,7 @@ export default function ManagerCaseDetailPage() {
           <h2 className="text-xl font-bold mb-2">Inloggning krävs</h2>
           <Link
             href={`/auth/login?redirect=/manager/cases/${caseId}`}
-            className="text-blue-600 hover:underline"
+            className="text-brand-600 hover:underline"
           >
             Logga in
           </Link>
@@ -197,7 +197,7 @@ export default function ManagerCaseDetailPage() {
         <ManagerHeader userName={user?.displayName} />
         <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           <div className="flex items-center justify-center py-12">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-brand-600"></div>
             <span className="ml-3 text-gray-600">Laddar ärende...</span>
           </div>
         </main>
@@ -235,7 +235,7 @@ export default function ManagerCaseDetailPage() {
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Breadcrumb */}
         <nav className="flex items-center gap-2 text-sm text-gray-500 mb-6">
-          <Link href="/manager/dashboard" className="hover:text-blue-600">
+          <Link href="/manager/dashboard" className="hover:text-brand-600">
             Ärenden
           </Link>
           <span>/</span>
@@ -243,11 +243,11 @@ export default function ManagerCaseDetailPage() {
         </nav>
 
         {/* Header */}
-        <div className="bg-white rounded-lg shadow-sm border p-6 mb-6">
+        <div className="card p-6 mb-6">
           <div className="flex items-start justify-between">
             <div>
               <div className="flex items-center gap-3 mb-2">
-                <h1 className="text-2xl font-bold text-gray-900">
+                <h1 className="page-title">
                   {caseData.flowName}
                 </h1>
                 <span className={`px-2 py-1 text-xs font-medium rounded-full ${priority.color}`}>
@@ -274,7 +274,7 @@ export default function ManagerCaseDetailPage() {
               )}
               <button
                 onClick={() => setShowStatusModal(true)}
-                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm font-medium"
+                className="px-4 py-2 bg-brand-600 text-white rounded-lg hover:bg-brand-700 text-sm font-medium"
               >
                 Ändra status
               </button>
@@ -314,7 +314,7 @@ export default function ManagerCaseDetailPage() {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Main content - Form values */}
           <div className="lg:col-span-2 space-y-6">
-            <div className="bg-white rounded-lg shadow-sm border">
+            <div className="card">
               <div className="px-6 py-4 border-b">
                 <h2 className="text-lg font-semibold text-gray-900">
                   Formulärdata
@@ -339,7 +339,7 @@ export default function ManagerCaseDetailPage() {
             </div>
 
             {/* Communication */}
-            <div ref={messagesRef} className="bg-white rounded-lg shadow-sm border scroll-mt-4">
+            <div ref={messagesRef} className="card scroll-mt-4">
               <div className="px-6 pt-4 border-b">
                 <h2 className="text-lg font-semibold text-gray-900">Kommunikation</h2>
                 <div className="mt-3 flex gap-6" role="tablist" aria-label="Kommunikation">
@@ -355,7 +355,7 @@ export default function ManagerCaseDetailPage() {
                       onClick={() => setMessageTab(tab)}
                       className={`pb-3 text-sm font-medium border-b-2 -mb-px ${
                         messageTab === tab
-                          ? 'border-blue-600 text-blue-600'
+                          ? 'border-brand-600 text-brand-600'
                           : 'border-transparent text-gray-500 hover:text-gray-700'
                       }`}
                     >
@@ -402,7 +402,7 @@ export default function ManagerCaseDetailPage() {
             </div>
 
             {/* Timeline */}
-            <div className="bg-white rounded-lg shadow-sm border">
+            <div className="card">
               <div className="px-6 py-4 border-b">
                 <h2 className="text-lg font-semibold text-gray-900">Händelser</h2>
               </div>
@@ -419,7 +419,7 @@ export default function ManagerCaseDetailPage() {
           {/* Sidebar */}
           <div className="space-y-6">
             {/* Actions */}
-            <div className="bg-white rounded-lg shadow-sm border">
+            <div className="card">
               <div className="px-6 py-4 border-b">
                 <h3 className="text-lg font-semibold text-gray-900">Åtgärder</h3>
               </div>
@@ -464,7 +464,7 @@ export default function ManagerCaseDetailPage() {
             </div>
 
             {/* Assignment */}
-            <div className="bg-white rounded-lg shadow-sm border">
+            <div className="card">
               <div className="px-6 py-4 border-b">
                 <h3 className="text-lg font-semibold text-gray-900">Ansvarig handläggare</h3>
               </div>
@@ -477,7 +477,7 @@ export default function ManagerCaseDetailPage() {
                     type="button"
                     onClick={() => user && assignMutation.mutate(user.id)}
                     disabled={assignMutation.isPending}
-                    className="w-full px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
+                    className="w-full px-4 py-2 bg-brand-600 text-white rounded-lg hover:bg-brand-700 disabled:opacity-50"
                   >
                     Tilldela mig
                   </button>
@@ -491,7 +491,7 @@ export default function ManagerCaseDetailPage() {
                     value={caseData.assignedToId ?? ''}
                     onChange={(e) => assignMutation.mutate(e.target.value || null)}
                     disabled={assignMutation.isPending}
-                    className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-500"
                   >
                     <option value="">Ingen</option>
                     {assignees?.map((a) => (
@@ -505,7 +505,7 @@ export default function ManagerCaseDetailPage() {
             </div>
 
             {/* Quick info */}
-            <div className="bg-white rounded-lg shadow-sm border">
+            <div className="card">
               <div className="px-6 py-4 border-b">
                 <h3 className="text-lg font-semibold text-gray-900">Information</h3>
               </div>
@@ -559,7 +559,7 @@ export default function ManagerCaseDetailPage() {
                     id="new-status"
                     value={selectedStatus}
                     onChange={(e) => setSelectedStatus(e.target.value)}
-                    className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-500"
                   >
                     <option value="">Välj status...</option>
                     {allowedStatuses.map((t) => (
@@ -580,7 +580,7 @@ export default function ManagerCaseDetailPage() {
                   value={statusComment}
                   onChange={(e) => setStatusComment(e.target.value)}
                   rows={3}
-                  className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-500"
                   placeholder="Lägg till en kommentar..."
                 />
               </div>
@@ -604,7 +604,7 @@ export default function ManagerCaseDetailPage() {
               <button
                 onClick={handleStatusChange}
                 disabled={!selectedStatus || (commentRequired && !statusComment.trim()) || statusMutation.isPending}
-                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="px-4 py-2 bg-brand-600 text-white rounded-lg hover:bg-brand-700 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {statusMutation.isPending ? 'Sparar...' : 'Spara'}
               </button>
@@ -623,7 +623,7 @@ function ManagerHeader({ userName }: { userName?: string }) {
         <div className="flex justify-between items-center h-16">
           <div className="flex items-center gap-4">
             <Link href="/manager/dashboard" className="flex items-center gap-2">
-              <div className="w-8 h-8 bg-blue-600 rounded flex items-center justify-center">
+              <div className="w-8 h-8 bg-brand-600 rounded flex items-center justify-center">
                 <span className="text-white font-bold text-sm">E</span>
               </div>
               <span className="font-semibold text-gray-900">Handläggare</span>
@@ -631,7 +631,7 @@ function ManagerHeader({ userName }: { userName?: string }) {
             <nav className="hidden md:flex gap-6 ml-8">
               <Link
                 href="/manager/dashboard"
-                className="text-blue-600 font-medium"
+                className="text-brand-600 font-medium"
               >
                 Ärenden
               </Link>

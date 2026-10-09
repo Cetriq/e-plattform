@@ -12,7 +12,7 @@ export function HeadingElement({ query }: LayoutElementProps) {
   const content = query.name || query.config.content || '';
 
   const headingClasses: Record<number, string> = {
-    1: 'text-2xl font-bold text-gray-900',
+    1: 'page-title',
     2: 'text-xl font-semibold text-gray-800',
     3: 'text-lg font-semibold text-gray-800',
     4: 'text-base font-medium text-gray-700',

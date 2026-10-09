@@ -102,7 +102,7 @@ export default function CitizenProfilePage() {
       <Header />
       <main className="container mx-auto px-4 py-10 max-w-2xl">
         <nav aria-label="Brödsmulor" className="text-sm text-gray-500 mb-4">
-          <Link href="/citizen/cases" className="hover:text-blue-700">
+          <Link href="/citizen/cases" className="hover:text-brand-700">
             Mina sidor
           </Link>
           <span className="mx-2">/</span>
@@ -156,7 +156,7 @@ export default function CitizenProfilePage() {
                 autoComplete="given-name"
                 aria-invalid={errors.firstName ? 'true' : 'false'}
                 aria-describedby={errors.firstName ? 'firstName-error' : undefined}
-                className="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 px-3 py-2 border"
+                className="w-full rounded-md border-gray-300 shadow-sm focus:border-brand-500 focus:ring-brand-500 px-3 py-2 border"
                 {...register('firstName')}
               />
               {errors.firstName && (
@@ -179,7 +179,7 @@ export default function CitizenProfilePage() {
                 autoComplete="family-name"
                 aria-invalid={errors.lastName ? 'true' : 'false'}
                 aria-describedby={errors.lastName ? 'lastName-error' : undefined}
-                className="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 px-3 py-2 border"
+                className="w-full rounded-md border-gray-300 shadow-sm focus:border-brand-500 focus:ring-brand-500 px-3 py-2 border"
                 {...register('lastName')}
               />
               {errors.lastName && (
@@ -205,7 +205,7 @@ export default function CitizenProfilePage() {
               placeholder="+46 70 123 45 67"
               aria-invalid={errors.phone ? 'true' : 'false'}
               aria-describedby={errors.phone ? 'phone-error' : 'phone-help'}
-              className="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 px-3 py-2 border"
+              className="w-full rounded-md border-gray-300 shadow-sm focus:border-brand-500 focus:ring-brand-500 px-3 py-2 border"
               {...register('phone')}
             />
             {errors.phone ? (
@@ -237,7 +237,7 @@ export default function CitizenProfilePage() {
             <button
               type="submit"
               disabled={!isDirty || isSubmitting}
-              className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="px-4 py-2 text-sm font-medium text-white bg-brand-600 rounded-md hover:bg-brand-700 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {isSubmitting ? 'Sparar…' : 'Spara ändringar'}
             </button>

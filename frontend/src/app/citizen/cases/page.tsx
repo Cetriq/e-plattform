@@ -26,6 +26,10 @@ const statusToColors: Record<string, { color: string; bgColor: string }> = {
   REJECTED: { color: '#DC2626', bgColor: '#FEE2E2' },
 };
 
+function unreadLabel(count: number) {
+  return count === 1 ? '1 nytt meddelande' : `${count} nya meddelanden`;
+}
+
 export default function CasesPage() {
   const { isAuthenticated, isLoading: authLoading, user } = useAuth();
 
@@ -173,6 +177,9 @@ export default function CasesPage() {
                           label: 'Uppdaterad',
                           value: formatDate(c.updatedAt),
                         },
+                        ...(c.unreadMessages
+                          ? [{ label: 'Meddelanden', value: unreadLabel(c.unreadMessages) }]
+                          : []),
                       ]}
                       actions={[
                         {
@@ -219,6 +226,12 @@ export default function CasesPage() {
                             <div>
                               <p className="font-medium text-gray-900">{c.flowName}</p>
                               <p className="text-sm text-gray-500">{c.referenceNumber}</p>
+                              {!!c.unreadMessages && (
+                                <p className="mt-1 inline-flex items-center gap-1 text-xs font-medium text-blue-700">
+                                  <span className="w-2 h-2 rounded-full bg-blue-600" aria-hidden="true" />
+                                  {unreadLabel(c.unreadMessages)}
+                                </p>
+                              )}
                             </div>
                           </td>
                           <td className="px-6 py-4">

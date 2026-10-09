@@ -2,10 +2,24 @@
 
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/context/AuthContext';
-import { getManagerCaseDetail, changeCaseStatus, downloadCasePdf, type ChangeStatusRequest, type ManagerCaseDetail } from '@/lib/api/manager';
+import {
+  getManagerCaseDetail,
+  changeCaseStatus,
+  downloadCasePdf,
+  addExternalMessage,
+  addInternalMessage,
+  assignCase,
+  getAssignees,
+  type ChangeStatusRequest,
+  type ManagerCaseDetail,
+} from '@/lib/api/manager';
+import { getCaseEvents, markCaseMessagesRead } from '@/lib/api/cases';
+import { MessageThread } from '@/components/cases/MessageThread';
+import { CaseTimeline } from '@/components/cases/CaseTimeline';
+import { toast } from '@/hooks/useToast';
 import { api } from '@/lib/api/client';
 import type { Flow } from '@/components/form';
 import { getDisplayValues } from '@/lib/caseValues';
@@ -39,6 +53,8 @@ export default function ManagerCaseDetailPage() {
   const [selectedStatus, setSelectedStatus] = useState<string>('');
   const [statusComment, setStatusComment] = useState('');
   const [isDownloadingPdf, setIsDownloadingPdf] = useState(false);
+  const [messageTab, setMessageTab] = useState<'citizen' | 'internal'>('citizen');
+  const messagesRef = useRef<HTMLDivElement>(null);
 
   const { data: caseData, isLoading, error } = useQuery({
     queryKey: ['manager-case', caseId],
@@ -54,19 +70,84 @@ export default function ManagerCaseDetailPage() {
     retry: false,
   });
 
+  const { data: events } = useQuery({
+    queryKey: ['manager-case-events', caseId],
+    queryFn: () => getCaseEvents(caseId),
+    enabled: isAuthenticated && !!caseId,
+  });
+
+  const { data: assignees } = useQuery({
+    queryKey: ['assignees'],
+    queryFn: getAssignees,
+    enabled: isAuthenticated,
+    staleTime: 5 * 60 * 1000,
+  });
+
+  const refreshCase = () =>
+    Promise.all([
+      queryClient.invalidateQueries({ queryKey: ['manager-case', caseId] }),
+      queryClient.invalidateQueries({ queryKey: ['manager-case-events', caseId] }),
+      queryClient.invalidateQueries({ queryKey: ['manager-cases'] }),
+    ]);
+
+  // Opening the case counts as reading the citizen's messages
+  const hasUnread = caseData?.externalMessages?.some((m) => !m.fromManager && !m.readAt) ?? false;
+  useEffect(() => {
+    if (!hasUnread) return;
+    markCaseMessagesRead(caseId)
+      .then(() => queryClient.invalidateQueries({ queryKey: ['manager-cases'] }))
+      .catch(() => undefined);
+  }, [hasUnread, caseId, queryClient]);
+
   const statusMutation = useMutation({
     mutationFn: (request: ChangeStatusRequest) =>
       changeCaseStatus(caseId, request),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['manager-case', caseId] });
+      refreshCase();
       setShowStatusModal(false);
       setSelectedStatus('');
       setStatusComment('');
+      toast.success('Status ändrad');
     },
   });
 
+  const assignMutation = useMutation({
+    mutationFn: (userId: string | null) => assignCase(caseId, userId),
+    onSuccess: (_, userId) => {
+      refreshCase();
+      toast.success(userId ? 'Ärendet tilldelat' : 'Tilldelningen borttagen');
+    },
+    onError: () => toast.error('Kunde inte ändra tilldelningen'),
+  });
+
+  const allowedStatuses = (caseData?.allowedTransitions ?? [])
+    .map((t) => ({
+      ...t,
+      status: caseData?.statusDefinitions.find((s) => s.id === t.statusId),
+    }))
+    .filter((t) => t.status)
+    .sort((a, b) => (a.status!.sortOrder ?? 0) - (b.status!.sortOrder ?? 0));
+  const selectedTransition = allowedStatuses.find((t) => t.statusId === selectedStatus);
+  const commentRequired = !!selectedTransition?.requiresComment;
+
+  const sendToCitizen = async (text: string) => {
+    await addExternalMessage(caseId, text);
+    await refreshCase();
+  };
+
+  const addNote = async (text: string) => {
+    await addInternalMessage(caseId, text);
+    await refreshCase();
+  };
+
+  const openMessages = () => {
+    setMessageTab('citizen');
+    messagesRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    requestAnimationFrame(() => messagesRef.current?.querySelector('textarea')?.focus());
+  };
+
   const handleStatusChange = () => {
-    if (!selectedStatus) return;
+    if (!selectedStatus || (commentRequired && !statusComment.trim())) return;
     statusMutation.mutate({
       statusId: selectedStatus,
       comment: statusComment || undefined,
@@ -256,6 +337,83 @@ export default function ManagerCaseDetailPage() {
                 )}
               </div>
             </div>
+
+            {/* Communication */}
+            <div ref={messagesRef} className="bg-white rounded-lg shadow-sm border scroll-mt-4">
+              <div className="px-6 pt-4 border-b">
+                <h2 className="text-lg font-semibold text-gray-900">Kommunikation</h2>
+                <div className="mt-3 flex gap-6" role="tablist" aria-label="Kommunikation">
+                  {([
+                    ['citizen', `Med sökande (${caseData.externalMessages?.length ?? 0})`],
+                    ['internal', `Interna anteckningar (${caseData.internalMessages?.length ?? 0})`],
+                  ] as const).map(([tab, label]) => (
+                    <button
+                      key={tab}
+                      type="button"
+                      role="tab"
+                      aria-selected={messageTab === tab}
+                      onClick={() => setMessageTab(tab)}
+                      className={`pb-3 text-sm font-medium border-b-2 -mb-px ${
+                        messageTab === tab
+                          ? 'border-blue-600 text-blue-600'
+                          : 'border-transparent text-gray-500 hover:text-gray-700'
+                      }`}
+                    >
+                      {label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <div className="p-6" role="tabpanel">
+                {messageTab === 'citizen' ? (
+                  <MessageThread
+                    messages={[...(caseData.externalMessages ?? [])]
+                      .sort((a, b) => a.createdAt.localeCompare(b.createdAt))
+                      .map((m) => ({
+                        id: m.id,
+                        message: m.message,
+                        createdAt: m.createdAt,
+                        authorName: m.userName,
+                        mine: m.fromManager,
+                      }))}
+                    onSend={sendToCitizen}
+                    placeholder="Skriv till den sökande…"
+                    emptyText="Inga meddelanden med den sökande ännu."
+                  />
+                ) : (
+                  <MessageThread
+                    variant="notes"
+                    messages={[...(caseData.internalMessages ?? [])]
+                      .sort((a, b) => a.createdAt.localeCompare(b.createdAt))
+                      .map((m) => ({
+                        id: m.id,
+                        message: m.message,
+                        createdAt: m.createdAt,
+                        authorName: m.userName,
+                        mine: m.userId === user?.id,
+                      }))}
+                    onSend={addNote}
+                    placeholder="Anteckning som bara handläggare ser…"
+                    sendLabel="Spara anteckning"
+                    emptyText="Inga interna anteckningar."
+                  />
+                )}
+              </div>
+            </div>
+
+            {/* Timeline */}
+            <div className="bg-white rounded-lg shadow-sm border">
+              <div className="px-6 py-4 border-b">
+                <h2 className="text-lg font-semibold text-gray-900">Händelser</h2>
+              </div>
+              <div className="p-6">
+                {events && events.length > 0 ? (
+                  <CaseTimeline events={events} />
+                ) : (
+                  <p className="text-gray-500 text-sm">Inga händelser.</p>
+                )}
+              </div>
+            </div>
           </div>
 
           {/* Sidebar */}
@@ -275,7 +433,11 @@ export default function ManagerCaseDetailPage() {
                   </svg>
                   Ändra status
                 </button>
-                <button className="w-full px-4 py-2 text-left text-sm rounded hover:bg-gray-50 flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={openMessages}
+                  className="w-full px-4 py-2 text-left text-sm rounded hover:bg-gray-50 flex items-center gap-2"
+                >
                   <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
                   </svg>
@@ -298,6 +460,47 @@ export default function ManagerCaseDetailPage() {
                   )}
                   {isDownloadingPdf ? 'Laddar ner...' : 'Ladda ner PDF'}
                 </button>
+              </div>
+            </div>
+
+            {/* Assignment */}
+            <div className="bg-white rounded-lg shadow-sm border">
+              <div className="px-6 py-4 border-b">
+                <h3 className="text-lg font-semibold text-gray-900">Ansvarig handläggare</h3>
+              </div>
+              <div className="p-4 space-y-3 text-sm">
+                <p className="text-gray-900">
+                  {caseData.assignedToName ?? <span className="text-gray-500">Ej tilldelad</span>}
+                </p>
+                {caseData.assignedToId !== user?.id && (
+                  <button
+                    type="button"
+                    onClick={() => user && assignMutation.mutate(user.id)}
+                    disabled={assignMutation.isPending}
+                    className="w-full px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
+                  >
+                    Tilldela mig
+                  </button>
+                )}
+                <div>
+                  <label htmlFor="assignee" className="block text-gray-500 mb-1">
+                    Ändra ansvarig
+                  </label>
+                  <select
+                    id="assignee"
+                    value={caseData.assignedToId ?? ''}
+                    onChange={(e) => assignMutation.mutate(e.target.value || null)}
+                    disabled={assignMutation.isPending}
+                    className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  >
+                    <option value="">Ingen</option>
+                    {assignees?.map((a) => (
+                      <option key={a.id} value={a.id}>
+                        {a.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
               </div>
             </div>
 
@@ -332,33 +535,48 @@ export default function ManagerCaseDetailPage() {
       {/* Status change modal */}
       {showStatusModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg shadow-xl max-w-md w-full mx-4">
+          <div
+            className="bg-white rounded-lg shadow-xl max-w-md w-full mx-4"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="status-dialog-title"
+          >
             <div className="px-6 py-4 border-b">
-              <h3 className="text-lg font-semibold text-gray-900">Ändra status</h3>
+              <h3 id="status-dialog-title" className="text-lg font-semibold text-gray-900">Ändra status</h3>
+              <p className="text-sm text-gray-500 mt-1">Nuvarande status: {caseData.statusName}</p>
             </div>
             <div className="p-6 space-y-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label htmlFor="new-status" className="block text-sm font-medium text-gray-700 mb-2">
                   Ny status
                 </label>
-                <select
-                  value={selectedStatus}
-                  onChange={(e) => setSelectedStatus(e.target.value)}
-                  className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                >
-                  <option value="">Välj status...</option>
-                  {caseData.statusDefinitions?.map((status) => (
-                    <option key={status.id} value={status.id}>
-                      {status.name}
-                    </option>
-                  ))}
-                </select>
+                {allowedStatuses.length === 0 ? (
+                  <p className="text-sm text-gray-500">
+                    Ärendet kan inte byta status från nuvarande status.
+                  </p>
+                ) : (
+                  <select
+                    id="new-status"
+                    value={selectedStatus}
+                    onChange={(e) => setSelectedStatus(e.target.value)}
+                    className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  >
+                    <option value="">Välj status...</option>
+                    {allowedStatuses.map((t) => (
+                      <option key={t.statusId} value={t.statusId}>
+                        {t.status!.name}
+                      </option>
+                    ))}
+                  </select>
+                )}
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Kommentar (valfritt)
+                <label htmlFor="status-comment" className="block text-sm font-medium text-gray-700 mb-2">
+                  Kommentar {commentRequired ? '(krävs)' : '(valfritt)'}
                 </label>
                 <textarea
+                  id="status-comment"
+                  required={commentRequired}
                   value={statusComment}
                   onChange={(e) => setStatusComment(e.target.value)}
                   rows={3}
@@ -367,8 +585,8 @@ export default function ManagerCaseDetailPage() {
                 />
               </div>
               {statusMutation.isError && (
-                <p className="text-sm text-red-600">
-                  Kunde inte ändra status. Försök igen.
+                <p className="text-sm text-red-600" role="alert">
+                  {(statusMutation.error as { message?: string })?.message || 'Kunde inte ändra status. Försök igen.'}
                 </p>
               )}
             </div>
@@ -385,7 +603,7 @@ export default function ManagerCaseDetailPage() {
               </button>
               <button
                 onClick={handleStatusChange}
-                disabled={!selectedStatus || statusMutation.isPending}
+                disabled={!selectedStatus || (commentRequired && !statusComment.trim()) || statusMutation.isPending}
                 className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {statusMutation.isPending ? 'Sparar...' : 'Spara'}

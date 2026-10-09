@@ -19,6 +19,11 @@ export interface CaseSummary {
   createdAt: string;
   updatedAt: string;
   submittedAt?: string;
+  /** Responsible handläggare; only sent to staff. */
+  assignedToId?: string;
+  assignedToName?: string;
+  /** Unread messages from the other party. */
+  unreadMessages?: number;
 }
 
 export interface QueryInstance {
@@ -124,4 +129,34 @@ export async function downloadOwnCasePdf(caseId: string, referenceNumber: string
     `/api/v1/cases/${caseId}/pdf/own`,
     `arende-${referenceNumber}.pdf`
   );
+}
+
+export interface CaseMessage {
+  id: string;
+  message: string;
+  fromManager: boolean;
+  createdAt: string;
+  authorName: string;
+  readAt?: string;
+}
+
+/**
+ * Messages between the citizen and the handläggare, oldest first.
+ */
+export async function getCaseMessages(caseId: string): Promise<CaseMessage[]> {
+  return api.get<CaseMessage[]>(`/api/v1/cases/${caseId}/messages`);
+}
+
+/**
+ * Send a message from the citizen to the handläggare.
+ */
+export async function sendCaseMessage(caseId: string, message: string): Promise<CaseMessage> {
+  return api.post<CaseMessage>(`/api/v1/cases/${caseId}/messages`, { message });
+}
+
+/**
+ * Mark the other party's messages in the case as read.
+ */
+export async function markCaseMessagesRead(caseId: string): Promise<void> {
+  return api.post<void>(`/api/v1/cases/${caseId}/messages/read`);
 }

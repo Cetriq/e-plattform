@@ -37,20 +37,15 @@ export interface CaseDetail extends CaseSummary {
   typeName?: string;
 }
 
-export interface CreateCaseRequest {
-  flowId: string;
-  userId: string;
-}
-
 export interface UpdateValuesRequest {
   [queryId: string]: unknown;
 }
 
 /**
- * Create a new case (draft).
+ * Create a new case (draft) owned by the logged-in user.
  */
-export async function createCase(flowId: string, userId: string): Promise<CaseDetail> {
-  return api.post<CaseDetail>('/api/v1/cases', { flowId, userId });
+export async function createCase(flowId: string): Promise<CaseDetail> {
+  return api.post<CaseDetail>('/api/v1/cases', { flowId });
 }
 
 /**

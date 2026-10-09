@@ -22,6 +22,9 @@ repositories {
     mavenCentral()
 }
 
+// Docker Engine 29 requires a newer Testcontainers than Spring Boot 3.2 manages
+extra["testcontainers.version"] = "1.21.4"
+
 dependencies {
     // Spring Boot Starters
     implementation("org.springframework.boot:spring-boot-starter-web")

@@ -13,6 +13,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import se.eplatform.auth.dto.AuthResponse;
+import se.eplatform.auth.dto.DemoCitizenRequest;
 import se.eplatform.auth.dto.LoginRequest;
 import se.eplatform.auth.dto.UpdateProfileRequest;
 import se.eplatform.auth.service.MockAuthService;
@@ -21,7 +22,7 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * Authentication controller for mock login.
+ * Authentication controller for the demo login.
  * Public endpoints - no authentication required.
  */
 @RestController
@@ -36,13 +37,13 @@ public class AuthController {
     }
 
     @Operation(
-        summary = "Logga in",
+        summary = "Logga in som demopersona",
         description = """
-            Logga in med e-postadress och lösenord.
+            Logga in som en av demopersonorna (se `GET /test-users`). Inget lösenord krävs.
 
-            **I utvecklingsmiljö** fungerar inloggning med valfritt lösenord för testanvändare.
+            Om demon är skyddad med åtkomstkod måste `accessCode` anges.
 
-            Vid lyckad inloggning returneras en JWT-token som ska användas i efterföljande anrop.
+            Vid lyckad inloggning returneras en signerad JWT som ska användas i efterföljande anrop.
             """
     )
     @ApiResponses({
@@ -70,7 +71,7 @@ public class AuthController {
         ),
         @ApiResponse(
             responseCode = "401",
-            description = "Ogiltiga inloggningsuppgifter",
+            description = "Fel åtkomstkod eller okänd persona",
             content = @Content(
                 mediaType = "application/json",
                 examples = @ExampleObject(value = """
@@ -89,16 +90,57 @@ public class AuthController {
                     examples = @ExampleObject(value = """
                         {
                           "email": "admin@example.com",
-                          "password": "valfritt"
+                          "accessCode": "demo-kod"
                         }
                         """)
                 )
             )
             @Valid @RequestBody LoginRequest request) {
-        return authService.login(request.email(), request.password())
+        if (!authService.isValidAccessCode(request.accessCode())) {
+            return invalidAccessCode();
+        }
+        return authService.login(request.email())
             .<ResponseEntity<?>>map(ResponseEntity::ok)
             .orElseGet(() -> ResponseEntity.status(HttpStatus.UNAUTHORIZED)
                 .body(Map.of("error", "Invalid credentials or user not found")));
+    }
+
+    @Operation(
+        summary = "Skapa demomedborgare",
+        description = """
+            Skapar ett nytt, eget medborgarkonto för en demobesökare och loggar in det.
+            Besökaren ser bara sina egna ärenden.
+
+            Om demon är skyddad med åtkomstkod måste `accessCode` anges.
+            """
+    )
+    @ApiResponses({
+        @ApiResponse(responseCode = "200", description = "Kontot skapades",
+            content = @Content(schema = @Schema(implementation = AuthResponse.class))),
+        @ApiResponse(responseCode = "401", description = "Fel åtkomstkod")
+    })
+    @PostMapping("/demo-citizen")
+    public ResponseEntity<?> createDemoCitizen(@RequestBody(required = false) DemoCitizenRequest request) {
+        if (!authService.isValidAccessCode(request == null ? null : request.accessCode())) {
+            return invalidAccessCode();
+        }
+        return ResponseEntity.ok(authService.createDemoCitizen());
+    }
+
+    @Operation(
+        summary = "Inloggningsinställningar",
+        description = "Talar om för inloggningssidan om åtkomstkod krävs och om medborgare får egna demokonton."
+    )
+    @GetMapping("/config")
+    public LoginConfig getLoginConfig() {
+        return new LoginConfig(authService.isAccessCodeRequired(), authService.isIsolatedCitizens());
+    }
+
+    public record LoginConfig(boolean accessCodeRequired, boolean isolatedCitizens) {}
+
+    private ResponseEntity<?> invalidAccessCode() {
+        return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+            .body(Map.of("error", "Fel åtkomstkod"));
     }
 
     @Operation(
@@ -179,7 +221,10 @@ public class AuthController {
 
     @Operation(
         summary = "Logga ut",
-        description = "Invalidera aktuell token och logga ut användaren."
+        description = """
+            Tokens är tillståndslösa och går ut av sig själva, så klienten loggar ut
+            genom att kasta sin token. Endpointen finns kvar för kompatibilitet.
+            """
     )
     @ApiResponses({
         @ApiResponse(
@@ -194,72 +239,25 @@ public class AuthController {
         )
     })
     @PostMapping("/logout")
-    public ResponseEntity<?> logout(
-            @Parameter(description = "JWT Bearer token")
-            @RequestHeader(value = "Authorization", required = false) String authHeader) {
-        if (authHeader != null && authHeader.startsWith("Bearer ")) {
-            String token = authHeader.substring(7);
-            authService.logout(token);
-        }
+    public ResponseEntity<?> logout() {
         return ResponseEntity.ok(Map.of("message", "Logged out successfully"));
     }
 
     @Operation(
-        summary = "Lista testanvändare",
+        summary = "Lista demopersonor",
         description = """
-            Hämta lista över tillgängliga testanvändare.
-
-            **OBS:** Endast tillgänglig i utvecklingsmiljö.
+            Personor som kan väljas på inloggningssidan. När medborgare får egna
+            demokonton visas inte den delade medborgarpersonan.
             """
     )
-    @ApiResponse(
-        responseCode = "200",
-        description = "Lista med testanvändare",
-        content = @Content(
-            mediaType = "application/json",
-            examples = @ExampleObject(value = """
-                {
-                  "users": [
-                    {
-                      "email": "admin@example.com",
-                      "name": "Admin Adminsson",
-                      "roles": ["ADMIN", "FLOW_EDITOR"]
-                    },
-                    {
-                      "email": "handlaggare@example.com",
-                      "name": "Hans Handlaggare",
-                      "roles": ["MANAGER"]
-                    },
-                    {
-                      "email": "medborgare@example.com",
-                      "name": "Maria Medborgare",
-                      "roles": ["USER"]
-                    }
-                  ]
-                }
-                """)
-        )
-    )
+    @ApiResponse(responseCode = "200", description = "Lista med personor")
     @GetMapping("/test-users")
-    public ResponseEntity<?> getTestUsers() {
-        return ResponseEntity.ok(Map.of(
-            "users", List.of(
-                Map.of(
-                    "email", "admin@example.com",
-                    "name", "Admin Adminsson",
-                    "roles", List.of("ADMIN", "FLOW_EDITOR")
-                ),
-                Map.of(
-                    "email", "handlaggare@example.com",
-                    "name", "Hans Handlaggare",
-                    "roles", List.of("MANAGER")
-                ),
-                Map.of(
-                    "email", "medborgare@example.com",
-                    "name", "Maria Medborgare",
-                    "roles", List.of("USER")
-                )
-            )
-        ));
+    public Map<String, List<Persona>> getTestUsers() {
+        List<Persona> personas = authService.getPersonas().stream()
+            .map(u -> new Persona(u.email(), u.displayName(), List.copyOf(u.roles())))
+            .toList();
+        return Map.of("users", personas);
     }
+
+    public record Persona(String email, String name, List<String> roles) {}
 }

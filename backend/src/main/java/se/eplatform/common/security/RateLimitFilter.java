@@ -11,6 +11,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
@@ -122,18 +123,9 @@ public class RateLimitFilter extends OncePerRequestFilter {
     }
 
     private String getClientIp(HttpServletRequest request) {
-        // Check for proxy headers
-        String xForwardedFor = request.getHeader("X-Forwarded-For");
-        if (xForwardedFor != null && !xForwardedFor.isEmpty()) {
-            // Take the first IP in the chain (original client)
-            return xForwardedFor.split(",")[0].trim();
-        }
-
-        String xRealIp = request.getHeader("X-Real-IP");
-        if (xRealIp != null && !xRealIp.isEmpty()) {
-            return xRealIp;
-        }
-
+        // Proxy headers are not read here: anyone can set them. With
+        // server.forward-headers-strategy=native, Tomcat replaces the remote
+        // address with the client address only for requests from trusted proxies.
         return request.getRemoteAddr();
     }
 
@@ -148,8 +140,8 @@ public class RateLimitFilter extends OncePerRequestFilter {
 
     /**
      * Cleanup old buckets periodically to prevent memory leaks.
-     * Called by a scheduled task.
      */
+    @Scheduled(fixedRateString = "PT10M")
     public void cleanupOldBuckets() {
         // In production, you'd want to track last access time
         // and remove buckets that haven't been used in a while.

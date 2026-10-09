@@ -15,18 +15,19 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
-import se.eplatform.auth.dto.AuthResponse;
+import org.springframework.web.server.ResponseStatusException;
+import se.eplatform.auth.dto.AuthResponse.UserInfo;
 import se.eplatform.cases.api.dto.CaseDTO;
 import se.eplatform.cases.api.dto.CaseEventDTO;
 import se.eplatform.cases.api.dto.ManagerCaseDTO;
 import se.eplatform.cases.domain.Case;
 import se.eplatform.cases.domain.ExternalMessage;
 import se.eplatform.cases.domain.InternalMessage;
+import se.eplatform.cases.service.CaseAccessService;
 import se.eplatform.cases.service.CaseService;
+import se.eplatform.common.security.CurrentUser;
 import se.eplatform.pdf.PdfService;
 
 import java.io.IOException;
@@ -43,24 +44,31 @@ import java.util.UUID;
 
     Ett **Case** (ärende) skapas när en medborgare påbörjar en ansökan via en e-tjänst (Flow).
     Ärendet innehåller alla svar (QueryInstances) och går genom olika statusar under handläggning.
+
+    **Behörighet:** medborgare ser och ändrar bara egna ärenden. Handläggare och administratörer
+    (MANAGER, ADMIN) ser alla ärenden och kan ändra status och skicka meddelanden.
+    Den agerande användaren tas alltid från inloggningen.
     """)
 public class CaseController {
 
     private final CaseService caseService;
+    private final CaseAccessService caseAccess;
     private final PdfService pdfService;
 
-    public CaseController(CaseService caseService, PdfService pdfService) {
+    public CaseController(CaseService caseService, CaseAccessService caseAccess, PdfService pdfService) {
         this.caseService = caseService;
+        this.caseAccess = caseAccess;
         this.pdfService = pdfService;
     }
 
     @Operation(
         summary = "Lista inskickade ärenden",
-        description = "Hämtar alla inskickade ärenden med paginering. Utkast (ej inskickade) visas ej."
+        description = "Hämtar alla inskickade ärenden med paginering. Utkast (ej inskickade) visas ej. Kräver handläggarbehörighet."
     )
     @ApiResponse(responseCode = "200", description = "Lista med ärenden")
     @GetMapping
     public Page<CaseDTO> getCases(@PageableDefault(size = 20) Pageable pageable) {
+        CurrentUser.requireStaff();
         return caseService.getSubmittedCases(pageable)
                 .map(CaseDTO::summary);
     }
@@ -77,6 +85,7 @@ public class CaseController {
     public ResponseEntity<CaseDTO> getCase(
             @Parameter(description = "Ärendets UUID", required = true)
             @PathVariable UUID id) {
+        caseAccess.requireRead(id);
         return caseService.getCase(id)
                 .map(CaseDTO::from)
                 .map(ResponseEntity::ok)
@@ -101,6 +110,7 @@ public class CaseController {
     public ResponseEntity<ManagerCaseDTO> getManagerCase(
             @Parameter(description = "Ärendets UUID", required = true)
             @PathVariable UUID id) {
+        CurrentUser.requireStaff();
         return caseService.getCaseForManager(id)
                 .map(ManagerCaseDTO::from)
                 .map(ResponseEntity::ok)
@@ -119,7 +129,9 @@ public class CaseController {
     public ResponseEntity<CaseDTO> getCaseByReference(
             @Parameter(description = "Referensnummer", example = "EP-2024-000001", required = true)
             @PathVariable String referenceNumber) {
+        UserInfo user = CurrentUser.require();
         return caseService.getCaseByReferenceNumber(referenceNumber)
+                .filter(c -> caseAccess.canRead(c.getId(), user))
                 .map(CaseDTO::from)
                 .map(ResponseEntity::ok)
                 .orElse(ResponseEntity.notFound().build());
@@ -127,7 +139,7 @@ public class CaseController {
 
     @Operation(
         summary = "Hämta användarens ärenden",
-        description = "Hämtar alla ärenden som tillhör en specifik användare."
+        description = "Hämtar alla ärenden som tillhör en användare. Medborgare kan bara hämta sina egna."
     )
     @ApiResponse(responseCode = "200", description = "Användarens ärenden")
     @GetMapping("/user/{userId}")
@@ -135,6 +147,7 @@ public class CaseController {
             @Parameter(description = "Användarens UUID", required = true)
             @PathVariable UUID userId,
             @PageableDefault(size = 20) Pageable pageable) {
+        requireSelfOrStaff(userId);
         return caseService.getCasesForUser(userId, pageable)
                 .map(CaseDTO::summary);
     }
@@ -148,6 +161,7 @@ public class CaseController {
     public List<CaseDTO> getDraftsForUser(
             @Parameter(description = "Användarens UUID", required = true)
             @PathVariable UUID userId) {
+        requireSelfOrStaff(userId);
         return caseService.getDraftsForUser(userId).stream()
                 .map(CaseDTO::summary)
                 .toList();
@@ -162,6 +176,7 @@ public class CaseController {
             - Ett unikt referensnummer
             - Status 'DRAFT'
             - Koppling till angiven e-tjänst
+            - Den inloggade användaren som ägare
             """
     )
     @ApiResponses({
@@ -176,14 +191,13 @@ public class CaseController {
                     schema = @Schema(implementation = CreateCaseRequest.class),
                     examples = @ExampleObject(value = """
                         {
-                          "flowId": "00000000-0000-0000-0004-000000000001",
-                          "userId": "00000000-0000-0000-0000-000000000102"
+                          "flowId": "00000000-0000-0000-0004-000000000001"
                         }
                         """)
                 )
             )
             @RequestBody CreateCaseRequest request) {
-        Case newCase = caseService.createCase(request.flowId(), request.userId());
+        Case newCase = caseService.createCase(request.flowId(), CurrentUser.requireId());
         CaseDTO dto = CaseDTO.from(newCase);
         return ResponseEntity
                 .created(URI.create("/api/v1/cases/" + newCase.getId()))
@@ -214,6 +228,7 @@ public class CaseController {
             @Parameter(description = "Ärendets UUID", required = true)
             @PathVariable UUID id,
             @RequestBody Map<UUID, Object> values) {
+        caseAccess.requireOwner(id);
         Case updated = caseService.updateCaseValues(id, values);
         return ResponseEntity.ok(CaseDTO.from(updated));
     }
@@ -236,6 +251,7 @@ public class CaseController {
     public ResponseEntity<CaseDTO> submitCase(
             @Parameter(description = "Ärendets UUID", required = true)
             @PathVariable UUID id) {
+        caseAccess.requireOwner(id);
         Case submitted = caseService.submitCase(id);
         return ResponseEntity.ok(CaseDTO.from(submitted));
     }
@@ -258,13 +274,14 @@ public class CaseController {
             @Parameter(description = "Ärendets UUID", required = true)
             @PathVariable UUID id,
             @RequestBody ChangeStatusRequest request) {
-        Case updated = caseService.changeStatus(id, request.statusId(), request.userId(), request.comment());
+        UserInfo staff = CurrentUser.requireStaff();
+        Case updated = caseService.changeStatus(id, request.statusId(), UUID.fromString(staff.id()), request.comment());
         return ResponseEntity.ok(CaseDTO.from(updated));
     }
 
     @Operation(
         summary = "Sök ärenden",
-        description = "Fritextsökning bland ärenden. Söker i referensnummer och beskrivning."
+        description = "Fritextsökning bland ärenden. Söker i referensnummer och beskrivning. Kräver handläggarbehörighet."
     )
     @ApiResponse(responseCode = "200", description = "Sökresultat")
     @GetMapping("/search")
@@ -272,6 +289,7 @@ public class CaseController {
             @Parameter(description = "Sökfras", required = true, example = "EP-2024")
             @RequestParam String q,
             @PageableDefault(size = 20) Pageable pageable) {
+        CurrentUser.requireStaff();
         return caseService.searchCases(q, pageable)
                 .map(CaseDTO::summary);
     }
@@ -289,6 +307,7 @@ public class CaseController {
     public ResponseEntity<Void> deleteCase(
             @Parameter(description = "Ärendets UUID", required = true)
             @PathVariable UUID id) {
+        caseAccess.requireOwner(id);
         caseService.deleteCase(id);
         return ResponseEntity.noContent().build();
     }
@@ -303,7 +322,8 @@ public class CaseController {
             @Parameter(description = "Ärendets UUID", required = true)
             @PathVariable UUID id,
             @RequestBody MessageRequest request) {
-        InternalMessage msg = caseService.addInternalMessage(id, request.userId(), request.message());
+        UserInfo staff = CurrentUser.requireStaff();
+        InternalMessage msg = caseService.addInternalMessage(id, UUID.fromString(staff.id()), request.message());
         return ResponseEntity.ok(ManagerCaseDTO.InternalMessageDTO.from(msg));
     }
 
@@ -317,13 +337,14 @@ public class CaseController {
             @Parameter(description = "Ärendets UUID", required = true)
             @PathVariable UUID id,
             @RequestBody MessageRequest request) {
-        ExternalMessage msg = caseService.addExternalMessage(id, request.userId(), request.message(), true);
+        UserInfo staff = CurrentUser.requireStaff();
+        ExternalMessage msg = caseService.addExternalMessage(id, UUID.fromString(staff.id()), request.message(), true);
         return ResponseEntity.ok(ManagerCaseDTO.ExternalMessageDTO.from(msg));
     }
 
     @Operation(
         summary = "Generera PDF",
-        description = "Genererar ett PDF-dokument med ärendets alla uppgifter."
+        description = "Genererar ett PDF-dokument med ärendets alla uppgifter. Kräver handläggarbehörighet."
     )
     @ApiResponses({
         @ApiResponse(
@@ -337,6 +358,7 @@ public class CaseController {
     public ResponseEntity<byte[]> generatePdf(
             @Parameter(description = "Ärendets UUID", required = true)
             @PathVariable UUID id) {
+        CurrentUser.requireStaff();
         return caseService.getCaseForManager(id)
                 .map(caseEntity -> {
                     try {
@@ -375,13 +397,10 @@ public class CaseController {
     public ResponseEntity<List<CaseEventDTO>> getCaseEvents(
             @Parameter(description = "Ärendets UUID", required = true)
             @PathVariable UUID id) {
+        UserInfo user = caseAccess.requireRead(id);
+        boolean maskStaffNames = !CurrentUser.isStaff(user);
         return caseService.getCaseForManager(id)
                 .map(caseEntity -> {
-                    AccessLevel access = resolveAccess(caseEntity);
-                    if (access == AccessLevel.DENIED) {
-                        return ResponseEntity.status(HttpStatus.FORBIDDEN).<List<CaseEventDTO>>build();
-                    }
-                    boolean maskStaffNames = (access == AccessLevel.CITIZEN);
                     List<CaseEventDTO> events = caseEntity.getEvents().stream()
                             .sorted(Comparator.comparing(
                                     e -> e.getCreatedAt() != null ? e.getCreatedAt() : java.time.Instant.EPOCH))
@@ -412,12 +431,9 @@ public class CaseController {
     public ResponseEntity<byte[]> generateOwnPdf(
             @Parameter(description = "Ärendets UUID", required = true)
             @PathVariable UUID id) {
+        caseAccess.requireRead(id);
         return caseService.getCaseForManager(id)
                 .map(caseEntity -> {
-                    AccessLevel access = resolveAccess(caseEntity);
-                    if (access == AccessLevel.DENIED) {
-                        return ResponseEntity.status(HttpStatus.FORBIDDEN).<byte[]>build();
-                    }
                     try {
                         byte[] pdfBytes = pdfService.generateCasePdf(caseEntity, caseEntity.getFlow());
                         String filename = "arende-" + caseEntity.getReferenceNumber() + ".pdf";
@@ -435,35 +451,12 @@ public class CaseController {
                 .orElse(ResponseEntity.notFound().build());
     }
 
-    // --- Authorization helpers ---
-
-    private enum AccessLevel { STAFF, CITIZEN, DENIED }
-
-    private AccessLevel resolveAccess(Case caseEntity) {
-        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-        if (auth == null || !auth.isAuthenticated()
-                || !(auth.getPrincipal() instanceof AuthResponse.UserInfo user)) {
-            // These endpoints expose a user's own case, so a logged-in user is
-            // always required, even when role enforcement is turned off.
-            return AccessLevel.DENIED;
+    private void requireSelfOrStaff(UUID userId) {
+        UserInfo user = CurrentUser.require();
+        if (!CurrentUser.isStaff(user) && !user.id().equals(userId.toString())) {
+            throw new ResponseStatusException(
+                    HttpStatus.FORBIDDEN, "Du kan bara se dina egna ärenden");
         }
-
-        if (user.roles().contains("ADMIN") || user.roles().contains("MANAGER")) {
-            return AccessLevel.STAFF;
-        }
-
-        String principalId = user.id();
-        if (principalId == null) {
-            return AccessLevel.DENIED;
-        }
-
-        boolean isOwner = caseEntity.getCreatedBy() != null
-                && principalId.equals(caseEntity.getCreatedBy().getId().toString());
-        if (!isOwner && caseEntity.getOwners() != null) {
-            isOwner = caseEntity.getOwners().stream()
-                    .anyMatch(o -> o.getId() != null && principalId.equals(o.getId().toString()));
-        }
-        return isOwner ? AccessLevel.CITIZEN : AccessLevel.DENIED;
     }
 
     // Request records with Schema annotations
@@ -471,25 +464,19 @@ public class CaseController {
     @Schema(description = "Begäran för att skapa nytt ärende")
     public record CreateCaseRequest(
         @Schema(description = "E-tjänstens UUID", example = "00000000-0000-0000-0004-000000000001")
-        UUID flowId,
-        @Schema(description = "Användarens UUID", example = "00000000-0000-0000-0000-000000000102")
-        UUID userId
+        UUID flowId
     ) {}
 
     @Schema(description = "Begäran för att ändra ärendestatus")
     public record ChangeStatusRequest(
         @Schema(description = "Ny status UUID")
         UUID statusId,
-        @Schema(description = "Handläggarens UUID")
-        UUID userId,
         @Schema(description = "Kommentar till statusändringen", example = "Ärendet behöver kompletterande uppgifter")
         String comment
     ) {}
 
     @Schema(description = "Begäran för att skicka meddelande")
     public record MessageRequest(
-        @Schema(description = "Avsändarens UUID")
-        UUID userId,
         @Schema(description = "Meddelandetext", example = "Vi behöver kompletterande handlingar")
         String message
     ) {}

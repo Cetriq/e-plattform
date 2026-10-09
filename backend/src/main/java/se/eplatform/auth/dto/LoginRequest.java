@@ -8,5 +8,6 @@ public record LoginRequest(
     @Email(message = "Invalid email format")
     String email,
 
-    String password
+    /** Shared demo access code; required when the demo is gated. */
+    String accessCode
 ) {}

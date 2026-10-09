@@ -48,6 +48,13 @@ management:
   endpoint:
     health:
       show-details: when_authorized
+  health:
+    # Redis and RabbitMQ are configured but not used by any code yet, so they
+    # must not make the API report itself as down
+    redis:
+      enabled: ${HEALTH_REDIS_ENABLED:false}
+    rabbit:
+      enabled: ${HEALTH_RABBIT_ENABLED:false}
   metrics:
     tags:
       application: ${spring.application.name}
@@ -76,9 +83,12 @@ server:
   compression:
     enabled: true
     mime-types: application/json,application/xml,text/html,text/xml,text/plain
+  # Use X-Forwarded-For/-Proto only as set by the trusted reverse proxy in front of the API
+  forward-headers-strategy: native
   error:
-    include-message: always
-    include-binding-errors: always
+    # Error details come from GlobalExceptionHandler; never leak internal messages
+    include-message: never
+    include-binding-errors: never
 
 # Logging
 logging:
@@ -86,8 +96,9 @@ logging:
     root: INFO
     se.eplatform: DEBUG
     org.springframework.web: INFO
-    org.hibernate.SQL: DEBUG
-    org.hibernate.type.descriptor.sql.BasicBinder: TRACE
+    # SQL logging with bound parameters would write personal data to the log;
+    # enable it locally in application-dev.yml if needed
+    org.hibernate.SQL: WARN
 
 # Mail configuration
 spring.mail:
@@ -114,16 +125,24 @@ eplatform:
       - http://localhost:3000
       - http://localhost:8080
   security:
-    # Set to true in production to enforce role-based access control
-    enforce-roles: ${ENFORCE_ROLES:false}
     jwt:
+      # HS256 signing key, at least 32 bytes. Required; the dev profile has a default.
+      secret: ${JWT_SECRET:}
       issuer: ${JWT_ISSUER:eplatform}
-      expiration: 3600
+      # Token lifetime in seconds (default 8 hours)
+      expiration: ${JWT_EXPIRATION:28800}
     rate-limit:
       enabled: ${RATE_LIMIT_ENABLED:true}
       requests-per-minute: 100
       auth-requests-per-minute: 10
       upload-requests-per-minute: 20
+  demo:
+    # Shared code visitors must enter before they can log in. Empty = no code.
+    access-code: ${DEMO_ACCESS_CODE:}
+    # Give each visitor who logs in as a citizen their own, new account
+    isolated-citizens: ${DEMO_ISOLATED_CITIZENS:false}
+    # Remove demo citizens and their cases after this many days (0 = keep)
+    retention-days: ${DEMO_RETENTION_DAYS:7}
   email:
     enabled: ${EMAIL_ENABLED:false}
     from-address: ${EMAIL_FROM:noreply@eplatform.se}

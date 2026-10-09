@@ -1,9 +1,12 @@
 package se.eplatform.common.config;
 
+import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
@@ -17,6 +20,8 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 import se.eplatform.common.security.JwtAuthenticationFilter;
 import se.eplatform.common.security.RateLimitFilter;
 
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 import java.util.List;
 
@@ -24,10 +29,11 @@ import java.util.List;
  * Security configuration for the e-Plattform API.
  *
  * Security model:
- * - Public endpoints: Health checks, public flow listings, auth endpoints
- * - Authenticated endpoints: Case management, file uploads
- * - Admin endpoints: Flow/category management (requires ADMIN or FLOW_EDITOR role)
- * - Manager endpoints: Case handling (requires MANAGER role)
+ * - Public: health/info, published flows, login endpoints and API docs
+ * - Admin endpoints (/api/v1/admin/**): ADMIN or FLOW_EDITOR
+ * - Everything else under /api/v1 requires a logged-in user. Which cases and
+ *   files a user may see is decided in the controllers (see CaseAccessService):
+ *   citizens see their own, staff see all.
  */
 @Configuration
 @EnableWebSecurity
@@ -36,9 +42,6 @@ public class SecurityConfig {
 
     @Value("${eplatform.cors.allowed-origins:http://localhost:3000}")
     private List<String> allowedOrigins;
-
-    @Value("${eplatform.security.enforce-roles:false}")
-    private boolean enforceRoles;
 
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
     private final RateLimitFilter rateLimitFilter;
@@ -51,97 +54,49 @@ public class SecurityConfig {
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         http
-            .csrf(AbstractHttpConfigurer::disable)  // Disable CSRF for stateless API
+            .csrf(AbstractHttpConfigurer::disable)  // Stateless API with bearer tokens, no cookies
             .cors(cors -> cors.configurationSource(corsConfigurationSource()))
             .sessionManagement(session ->
                     session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+            .exceptionHandling(ex -> ex
+                    .authenticationEntryPoint((request, response, e) ->
+                            writeError(response, HttpStatus.UNAUTHORIZED, "Inloggning krävs"))
+                    .accessDeniedHandler((request, response, e) ->
+                            writeError(response, HttpStatus.FORBIDDEN, "Saknar behörighet")))
             .addFilterBefore(rateLimitFilter, UsernamePasswordAuthenticationFilter.class)
-            .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
-
-        if (enforceRoles) {
-            // Production mode: enforce role-based access
-            configureProductionSecurity(http);
-        } else {
-            // Development mode: relaxed security for easier testing
-            configureDevelopmentSecurity(http);
-        }
+            .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
+            .authorizeHttpRequests(auth -> auth
+                .requestMatchers(
+                        "/actuator/health",
+                        "/actuator/health/**",
+                        "/actuator/info",
+                        "/actuator/prometheus",
+                        "/error",
+                        "/api/v1/public/**",
+                        "/swagger-ui.html",
+                        "/swagger-ui/**",
+                        "/api-docs",
+                        "/api-docs/**",
+                        "/v3/api-docs",
+                        "/v3/api-docs/**"
+                ).permitAll()
+                // Published flows (e-tjänster) are public
+                .requestMatchers(HttpMethod.GET, "/api/v1/flows", "/api/v1/flows/**").permitAll()
+                .requestMatchers("/actuator/**").hasRole("ADMIN")
+                .requestMatchers("/api/v1/admin/**").hasAnyRole("ADMIN", "FLOW_EDITOR")
+                .requestMatchers("/api/v1/**").authenticated()
+                .anyRequest().denyAll()
+            );
 
         return http.build();
     }
 
-    /**
-     * Development security configuration - relaxed for testing.
-     * All endpoints are accessible but JWT tokens are still validated when present.
-     */
-    private void configureDevelopmentSecurity(HttpSecurity http) throws Exception {
-        http.authorizeHttpRequests(auth -> auth
-                // Public endpoints
-                .requestMatchers(
-                        "/actuator/health",
-                        "/actuator/info",
-                        "/api/v1/public/**",
-                        // Swagger/OpenAPI endpoints
-                        "/swagger-ui.html",
-                        "/swagger-ui/**",
-                        "/api-docs",
-                        "/api-docs/**",
-                        "/v3/api-docs",
-                        "/v3/api-docs/**"
-                ).permitAll()
-                // Public read-only flow endpoints (e-tjänster)
-                .requestMatchers(
-                        HttpMethod.GET,
-                        "/api/v1/flows",
-                        "/api/v1/flows/{id}",
-                        "/api/v1/flows/by-type/{typeId}",
-                        "/api/v1/flows/by-category/{categoryId}",
-                        "/api/v1/flows/search"
-                ).permitAll()
-                // In dev mode, allow all other requests (but still validate JWT if present)
-                .anyRequest().permitAll()
-        );
-    }
-
-    /**
-     * Production security configuration - strict role-based access.
-     */
-    private void configureProductionSecurity(HttpSecurity http) throws Exception {
-        http.authorizeHttpRequests(auth -> auth
-                // Public endpoints
-                .requestMatchers(
-                        "/actuator/health",
-                        "/actuator/info",
-                        "/api/v1/public/**",
-                        // Swagger/OpenAPI endpoints
-                        "/swagger-ui.html",
-                        "/swagger-ui/**",
-                        "/api-docs",
-                        "/api-docs/**",
-                        "/v3/api-docs",
-                        "/v3/api-docs/**"
-                ).permitAll()
-                // Public read-only flow endpoints (e-tjänster)
-                .requestMatchers(
-                        HttpMethod.GET,
-                        "/api/v1/flows",
-                        "/api/v1/flows/{id}",
-                        "/api/v1/flows/by-type/{typeId}",
-                        "/api/v1/flows/by-category/{categoryId}",
-                        "/api/v1/flows/search"
-                ).permitAll()
-                // Admin endpoints - require ADMIN or FLOW_EDITOR role
-                .requestMatchers("/api/v1/admin/**").hasAnyRole("ADMIN", "FLOW_EDITOR")
-                // Manager endpoints - require MANAGER role
-                .requestMatchers("/api/v1/manager/**").hasRole("MANAGER")
-                // Case endpoints - authenticated users
-                .requestMatchers("/api/v1/cases/**").authenticated()
-                // File endpoints - authenticated users
-                .requestMatchers("/api/v1/files/**").authenticated()
-                // All other API endpoints require authentication
-                .requestMatchers("/api/v1/**").authenticated()
-                // Permit other requests (static resources, etc.)
-                .anyRequest().permitAll()
-        );
+    private static void writeError(HttpServletResponse response, HttpStatus status, String message)
+            throws IOException {
+        response.setStatus(status.value());
+        response.setContentType(MediaType.APPLICATION_JSON_VALUE);
+        response.setCharacterEncoding(StandardCharsets.UTF_8.name());
+        response.getWriter().write("{\"error\":\"" + message + "\"}");
     }
 
     @Bean

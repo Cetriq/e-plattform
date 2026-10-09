@@ -18,7 +18,15 @@ export interface AuthState {
 
 export interface LoginCredentials {
   email: string;
-  password?: string;
+  /** Shared demo access code, when the demo requires one. */
+  accessCode?: string;
+}
+
+export interface LoginConfig {
+  /** Visitors must enter a shared access code before logging in. */
+  accessCodeRequired: boolean;
+  /** Citizens get a new, isolated demo account instead of a shared persona. */
+  isolatedCitizens: boolean;
 }
 
 export interface AuthResponse {

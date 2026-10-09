@@ -8,6 +8,8 @@ import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 import se.eplatform.user.domain.User;
 
+import java.time.Instant;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -15,6 +17,12 @@ import java.util.UUID;
 public interface UserRepository extends JpaRepository<User, UUID> {
 
     Optional<User> findByEmail(String email);
+
+    /**
+     * Ids of the temporary citizen accounts created for demo visitors.
+     */
+    @Query("SELECT u.id FROM User u WHERE u.email LIKE CONCAT('%', :domain) AND u.createdAt < :before")
+    List<UUID> findDemoUserIdsCreatedBefore(@Param("domain") String domain, @Param("before") Instant before);
 
     Optional<User> findByExternalId(String externalId);
 

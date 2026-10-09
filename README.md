@@ -160,10 +160,29 @@ make psql
 
 Test data is created automatically on startup:
 
-**Users:**
+**Users (demo personas, picked on the login page without a password):**
 - admin@example.com (Admin)
 - handlaggare@example.com (Manager)
 - medborgare@example.com (Citizen)
+
+## Login and access control
+
+There is no e-legitimation yet. Visitors log in by picking a persona, and the
+API issues a signed JWT (`JWT_SECRET`, valid for 8 hours by default).
+
+Access rules are always enforced by the API:
+- Citizens see and change only their own cases and files
+- Managers (`MANAGER`) and administrators (`ADMIN`) see all cases and handle them
+- `/api/v1/admin/**` requires `ADMIN` or `FLOW_EDITOR`
+
+For a public demo, set:
+
+| Variable | Purpose |
+|----------|---------|
+| `JWT_SECRET` | Token signing key, at least 32 characters (required outside local dev) |
+| `DEMO_ACCESS_CODE` | Shared code visitors must enter before logging in |
+| `DEMO_ISOLATED_CITIZENS=true` | Each citizen visitor gets a new, isolated account instead of the shared persona |
+| `DEMO_RETENTION_DAYS` | Demo citizens and their cases are removed after this many days (default 7) |
 
 **Flows:**
 - Building Permit Application (with steps and questions)

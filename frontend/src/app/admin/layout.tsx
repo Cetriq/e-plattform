@@ -3,13 +3,13 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
+import { RequireRole } from '@/components/auth/RequireRole';
 
 const navigation = [
   { name: 'E-tjänster', href: '/admin/flows', icon: 'document' },
   { name: 'Kategorier', href: '/admin/categories', icon: 'folder' },
   { name: 'Statistik', href: '/admin/statistics', icon: 'chart' },
   { name: 'Användare', href: '/admin/users', icon: 'users' },
-  { name: 'Inställningar', href: '/admin/settings', icon: 'cog' },
 ];
 
 function NavIcon({ icon }: { icon: string }) {
@@ -55,48 +55,16 @@ export default function AdminLayout({
 }: {
   children: React.ReactNode;
 }) {
+  return (
+    <RequireRole roles={['ADMIN', 'FLOW_EDITOR']}>
+      <AdminShell>{children}</AdminShell>
+    </RequireRole>
+  );
+}
+
+function AdminShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
-  const { isAuthenticated, isLoading, user } = useAuth();
-
-  if (isLoading) {
-    return (
-      <div className="min-h-screen bg-gray-100 flex items-center justify-center">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-      </div>
-    );
-  }
-
-  if (!isAuthenticated) {
-    return (
-      <div className="min-h-screen bg-gray-100 flex items-center justify-center">
-        <div className="bg-white p-8 rounded-lg shadow-md text-center max-w-md">
-          <svg
-            className="w-12 h-12 text-purple-500 mx-auto mb-4"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"
-            />
-          </svg>
-          <h2 className="text-xl font-bold mb-2">Administratörsinloggning krävs</h2>
-          <p className="text-gray-600 mb-4">
-            Du måste vara inloggad som administratör för att komma åt denna sida.
-          </p>
-          <Link
-            href="/auth/login?redirect=/admin/flows"
-            className="inline-flex items-center justify-center bg-purple-600 text-white px-6 py-3 rounded-lg font-medium hover:bg-purple-700"
-          >
-            Logga in
-          </Link>
-        </div>
-      </div>
-    );
-  }
+  const { user } = useAuth();
 
   return (
     <div className="min-h-screen bg-gray-100">

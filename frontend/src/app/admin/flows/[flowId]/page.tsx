@@ -103,6 +103,7 @@ export default function FlowEditorPage() {
     allowSaveDraft: true,
     allowMultiple: true,
     enabled: false,
+    retentionMonths: '',
   });
 
   // Update form when flow data loads
@@ -120,6 +121,7 @@ export default function FlowEditorPage() {
         allowSaveDraft: flow.allowSaveDraft,
         allowMultiple: flow.allowMultiple,
         enabled: flow.enabled,
+        retentionMonths: flow.retentionMonths ? String(flow.retentionMonths) : '',
       });
       if (flow.steps.length > 0 && !selectedStepId) {
         setSelectedStepId(flow.steps[0].id);
@@ -129,7 +131,9 @@ export default function FlowEditorPage() {
 
   // Mutations
   const updateFlowMutation = useMutation({
-    mutationFn: (data: typeof flowForm) => updateFlow(flowId, data),
+    mutationFn: ({ retentionMonths, ...data }: typeof flowForm) =>
+      // An empty field means the cases are kept (0 clears the gallringsfrist)
+      updateFlow(flowId, { ...data, retentionMonths: retentionMonths ? Number(retentionMonths) : 0 }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin-flow', flowId] });
     },
@@ -657,6 +661,25 @@ export default function FlowEditorPage() {
                   </div>
                 </label>
               </div>
+            </div>
+
+            <div>
+              <label htmlFor="retention-months" className="block text-sm font-medium text-gray-700 mb-1">
+                Gallringsfrist (månader efter avslut)
+              </label>
+              <input
+                id="retention-months"
+                type="number"
+                min={1}
+                value={flowForm.retentionMonths}
+                onChange={(e) => setFlowForm({ ...flowForm, retentionMonths: e.target.value })}
+                placeholder="Bevaras"
+                aria-describedby="retention-help"
+                className="w-40 px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
+              />
+              <p id="retention-help" className="text-xs text-gray-500 mt-1">
+                Enligt kommunens gallringsbeslut för ärendetypen. Lämna tomt om ärendena ska bevaras.
+              </p>
             </div>
           </div>
         </div>

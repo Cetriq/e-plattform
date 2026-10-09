@@ -54,6 +54,16 @@ export function Header() {
               Admin
             </Link>
           )}
+          {isAuthenticated && hasRole('SECURITY_OFFICER') && (
+            <Link href="/security" className="text-gray-600 hover:text-gray-900">
+              Informationssäkerhet
+            </Link>
+          )}
+          {isAuthenticated && hasRole('OPERATIONS') && (
+            <Link href="/ops" className="text-gray-600 hover:text-gray-900">
+              IT & drift
+            </Link>
+          )}
 
           {isLoading ? (
             <div className="w-8 h-8 rounded-full bg-gray-200 animate-pulse"></div>
@@ -131,6 +141,26 @@ export function Header() {
                       onClick={() => setShowUserMenu(false)}
                     >
                       Administration
+                    </Link>
+                  )}
+
+                  {hasRole('SECURITY_OFFICER') && (
+                    <Link
+                      href="/security"
+                      className="block px-4 py-2 text-gray-700 hover:bg-gray-100"
+                      onClick={() => setShowUserMenu(false)}
+                    >
+                      Informationssäkerhet & dataskydd
+                    </Link>
+                  )}
+
+                  {hasRole('OPERATIONS') && (
+                    <Link
+                      href="/ops"
+                      className="block px-4 py-2 text-gray-700 hover:bg-gray-100"
+                      onClick={() => setShowUserMenu(false)}
+                    >
+                      IT & drift
                     </Link>
                   )}
 

@@ -37,6 +37,8 @@ const ROLE_LABELS: Record<string, string> = {
   ADMIN: 'Administratör',
   FLOW_EDITOR: 'E-tjänstredaktör',
   MANAGER: 'Handläggare',
+  SECURITY_OFFICER: 'Informationssäkerhet & dataskydd',
+  OPERATIONS: 'IT & drift',
   USER: 'Medborgare',
 };
 

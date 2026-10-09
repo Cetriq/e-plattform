@@ -11,10 +11,15 @@ import se.eplatform.flow.repository.FlowTypeRepository;
 import se.eplatform.flow.repository.StepRepository;
 import se.eplatform.flow.repository.QueryDefinitionRepository;
 
+import java.util.ArrayList;
+import java.util.EnumSet;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 /**
  * Admin service for managing flows (e-services).
@@ -509,5 +514,150 @@ public class AdminFlowService {
         completed.setSortOrder(3);
         completed.setFlow(flow);
         flow.getStatusDefinitions().add(completed);
+    }
+
+    // Conditions (evaluators)
+
+    /** Condition types that can be configured in the admin UI. */
+    private static final Set<EvaluatorType> EDITABLE_EVALUATOR_TYPES = EnumSet.of(
+            EvaluatorType.VALUE_EQUALS, EvaluatorType.VALUE_NOT_EQUALS,
+            EvaluatorType.VALUE_IN, EvaluatorType.VALUE_NOT_IN,
+            EvaluatorType.VALUE_CONTAINS, EvaluatorType.VALUE_NOT_CONTAINS,
+            EvaluatorType.VALUE_GREATER_THAN, EvaluatorType.VALUE_LESS_THAN,
+            EvaluatorType.VALUE_BETWEEN, EvaluatorType.REGEX_MATCH,
+            EvaluatorType.IS_EMPTY, EvaluatorType.IS_NOT_EMPTY);
+
+    /** Target states that make a field appear when the condition is met. */
+    private static final Set<QueryState> SHOWING_STATES = EnumSet.of(QueryState.VISIBLE, QueryState.VISIBLE_REQUIRED);
+
+    /**
+     * Add a condition to a field: when its answer meets the condition, the
+     * target fields get the target state.
+     */
+    @Transactional
+    public EvaluatorDefinition addEvaluator(UUID flowId, UUID queryId, EvaluatorType type,
+                                            Map<String, Object> condition, List<UUID> targetQueryIds,
+                                            QueryState targetState) {
+        QueryDefinition source = queryInFlow(flowId, queryId);
+        validateEvaluator(source, type, targetQueryIds, targetState);
+
+        EvaluatorDefinition evaluator = new EvaluatorDefinition();
+        evaluator.setEvaluatorType(type);
+        evaluator.setCondition(condition != null ? condition : Map.of());
+        evaluator.setTargetQueryIds(new ArrayList<>(targetQueryIds));
+        evaluator.setTargetState(targetState);
+        evaluator.setSortOrder(source.getEvaluators().size());
+        source.addEvaluator(evaluator);
+        // The source is managed, so flushing persists the new condition through
+        // the cascade on this very instance (save() would merge a copy) and
+        // gives it its id before it is returned
+        queryDefinitionRepository.flush();
+
+        syncDefaultStates(source.getStep().getFlow(), new HashSet<>(targetQueryIds));
+        return evaluator;
+    }
+
+    @Transactional
+    public EvaluatorDefinition updateEvaluator(UUID flowId, UUID queryId, UUID evaluatorId, EvaluatorType type,
+                                               Map<String, Object> condition, List<UUID> targetQueryIds,
+                                               QueryState targetState) {
+        QueryDefinition source = queryInFlow(flowId, queryId);
+        EvaluatorDefinition evaluator = evaluatorOf(source, evaluatorId);
+        validateEvaluator(source, type, targetQueryIds, targetState);
+
+        Set<UUID> affected = new HashSet<>(evaluator.getTargetQueryIds());
+        affected.addAll(targetQueryIds);
+
+        evaluator.setEvaluatorType(type);
+        evaluator.setCondition(condition != null ? condition : Map.of());
+        evaluator.setTargetQueryIds(new ArrayList<>(targetQueryIds));
+        evaluator.setTargetState(targetState);
+        queryDefinitionRepository.save(source);
+
+        syncDefaultStates(source.getStep().getFlow(), affected);
+        return evaluator;
+    }
+
+    @Transactional
+    public void deleteEvaluator(UUID flowId, UUID queryId, UUID evaluatorId) {
+        QueryDefinition source = queryInFlow(flowId, queryId);
+        EvaluatorDefinition evaluator = evaluatorOf(source, evaluatorId);
+        Set<UUID> affected = new HashSet<>(evaluator.getTargetQueryIds());
+
+        source.getEvaluators().remove(evaluator);
+        queryDefinitionRepository.save(source);
+
+        syncDefaultStates(source.getStep().getFlow(), affected);
+    }
+
+    private QueryDefinition queryInFlow(UUID flowId, UUID queryId) {
+        QueryDefinition query = queryDefinitionRepository.findById(queryId)
+                .orElseThrow(() -> new IllegalArgumentException("Query not found: " + queryId));
+        if (!query.getStep().getFlow().getId().equals(flowId)) {
+            throw new IllegalArgumentException("Query does not belong to flow");
+        }
+        return query;
+    }
+
+    private EvaluatorDefinition evaluatorOf(QueryDefinition source, UUID evaluatorId) {
+        return source.getEvaluators().stream()
+                .filter(e -> e.getId().equals(evaluatorId))
+                .findFirst()
+                .orElseThrow(() -> new IllegalArgumentException("Condition not found: " + evaluatorId));
+    }
+
+    private void validateEvaluator(QueryDefinition source, EvaluatorType type, List<UUID> targetQueryIds,
+                                   QueryState targetState) {
+        if (type == null || !EDITABLE_EVALUATOR_TYPES.contains(type)) {
+            throw new IllegalArgumentException("Villkorstypen stöds inte");
+        }
+        if (targetState == null) {
+            throw new IllegalArgumentException("Välj vad som ska hända med fälten");
+        }
+        if (targetQueryIds == null || targetQueryIds.isEmpty()) {
+            throw new IllegalArgumentException("Välj minst ett fält som villkoret påverkar");
+        }
+        Set<UUID> flowQueryIds = allQueries(source.getStep().getFlow()).stream()
+                .map(QueryDefinition::getId)
+                .collect(Collectors.toSet());
+        for (UUID target : targetQueryIds) {
+            if (target.equals(source.getId())) {
+                throw new IllegalArgumentException("Ett fält kan inte styra sig självt");
+            }
+            if (!flowQueryIds.contains(target)) {
+                throw new IllegalArgumentException("Fältet finns inte i e-tjänsten: " + target);
+            }
+        }
+    }
+
+    /**
+     * Fields that a condition shows must start hidden, otherwise they are
+     * always visible. Fields no condition shows any more start visible again.
+     */
+    private void syncDefaultStates(Flow flow, Set<UUID> affectedQueryIds) {
+        List<QueryDefinition> queries = allQueries(flow);
+        Set<UUID> shownByCondition = queries.stream()
+                .flatMap(q -> q.getEvaluators().stream())
+                .filter(e -> e.isEnabled() && SHOWING_STATES.contains(e.getTargetState()))
+                .flatMap(e -> e.getTargetQueryIds().stream())
+                .collect(Collectors.toSet());
+
+        for (QueryDefinition query : queries) {
+            if (!affectedQueryIds.contains(query.getId())) {
+                continue;
+            }
+            if (shownByCondition.contains(query.getId())) {
+                query.setDefaultState(QueryState.HIDDEN);
+            } else if (query.getDefaultState() == QueryState.HIDDEN) {
+                query.setDefaultState(QueryState.VISIBLE);
+            }
+            queryDefinitionRepository.save(query);
+        }
+    }
+
+    private List<QueryDefinition> allQueries(Flow flow) {
+        return flow.getSteps().stream()
+                .flatMap(step -> step.getQueryDefinitions().stream())
+                .toList();
     }
 }

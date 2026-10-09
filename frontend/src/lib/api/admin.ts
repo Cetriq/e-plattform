@@ -40,7 +40,7 @@ export interface QueryDefinitionInput {
   queryType: string;
   config: Record<string, unknown>;
   required: boolean;
-  defaultState?: 'VISIBLE' | 'HIDDEN' | 'DISABLED';
+  defaultState?: 'VISIBLE' | 'VISIBLE_REQUIRED' | 'HIDDEN';
   sortOrder: number;
   width?: 'FULL' | 'HALF' | 'THIRD';
 }
@@ -74,19 +74,41 @@ export interface QueryDefinitionDetail {
   queryType: string;
   config: Record<string, unknown>;
   required: boolean;
-  defaultState: 'VISIBLE' | 'HIDDEN' | 'DISABLED';
+  defaultState: 'VISIBLE' | 'VISIBLE_REQUIRED' | 'HIDDEN';
   sortOrder: number;
   width: string;
   evaluators?: EvaluatorDetail[];
 }
 
+export type EvaluatorType =
+  | 'VALUE_EQUALS'
+  | 'VALUE_NOT_EQUALS'
+  | 'VALUE_IN'
+  | 'VALUE_NOT_IN'
+  | 'VALUE_CONTAINS'
+  | 'VALUE_NOT_CONTAINS'
+  | 'VALUE_GREATER_THAN'
+  | 'VALUE_LESS_THAN'
+  | 'VALUE_BETWEEN'
+  | 'REGEX_MATCH'
+  | 'IS_EMPTY'
+  | 'IS_NOT_EMPTY';
+
+export type TargetState = 'VISIBLE' | 'VISIBLE_REQUIRED' | 'HIDDEN';
+
+/**
+ * A condition on a field: when its answer meets the condition, the target
+ * fields get the target state.
+ */
 export interface EvaluatorDetail {
   id: string;
-  evaluatorType: string;
-  config: Record<string, unknown>;
-  action: string;
-  sortOrder: number;
+  evaluatorType: EvaluatorType;
+  condition: Record<string, unknown>;
+  targetQueryIds: string[];
+  targetState: TargetState;
 }
+
+export type EvaluatorInput = Omit<EvaluatorDetail, 'id'>;
 
 export interface CreateFlowRequest {
   name: string;
@@ -300,6 +322,29 @@ export async function reorderQueries(
 }
 
 // Categories API
+
+/**
+ * Add a condition to a field.
+ */
+export async function addEvaluator(flowId: string, queryId: string, evaluator: EvaluatorInput): Promise<EvaluatorDetail> {
+  return api.post<EvaluatorDetail>(`/api/v1/admin/flows/${flowId}/queries/${queryId}/evaluators`, evaluator);
+}
+
+export async function updateEvaluator(
+  flowId: string,
+  queryId: string,
+  evaluatorId: string,
+  evaluator: EvaluatorInput
+): Promise<EvaluatorDetail> {
+  return api.put<EvaluatorDetail>(
+    `/api/v1/admin/flows/${flowId}/queries/${queryId}/evaluators/${evaluatorId}`,
+    evaluator
+  );
+}
+
+export async function deleteEvaluator(flowId: string, queryId: string, evaluatorId: string): Promise<void> {
+  return api.delete<void>(`/api/v1/admin/flows/${flowId}/queries/${queryId}/evaluators/${evaluatorId}`);
+}
 
 /**
  * Get all categories.

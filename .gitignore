@@ -114,3 +114,5 @@ test-files/
 # Screenshots (temporary)
 # ========================
 *.png
+.vercel
+.env*.local

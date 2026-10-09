@@ -33,6 +33,9 @@ class CaseAuthorizationTest extends IntegrationTest {
     @Autowired
     AttachmentRepository attachmentRepository;
 
+    @Autowired
+    org.springframework.jdbc.core.JdbcTemplate jdbc;
+
     String owner;
     String ownerId;
     String otherCitizen;
@@ -148,13 +151,17 @@ class CaseAuthorizationTest extends IntegrationTest {
 
     @Test
     void managerCanReadAndHandleButNotEditTheApplication() throws Exception {
+        // Status can only change once the case is submitted
+        jdbc.update("UPDATE cases SET submitted_at = NOW(), status_id = ? WHERE id = ?",
+                UUID.fromString("00000000-0000-0000-0008-000000000002"), UUID.fromString(caseId));
+
         mvc.perform(as(manager, get("/api/v1/cases"))).andExpect(status().isOk());
         mvc.perform(as(manager, get("/api/v1/cases/" + caseId))).andExpect(status().isOk());
         String managerView = mvc.perform(as(manager, get("/api/v1/cases/" + caseId + "/manager")))
                 .andExpect(status().isOk())
                 .andReturn().getResponse().getContentAsString();
 
-        String statusId = json.readTree(managerView).get("statusDefinitions").get(1).get("id").asText();
+        String statusId = json.readTree(managerView).get("allowedTransitions").get(0).get("statusId").asText();
         mvc.perform(as(manager, put("/api/v1/cases/" + caseId + "/status"))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(json.writeValueAsString(Map.of("statusId", statusId, "comment", "Granskas"))))

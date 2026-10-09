@@ -14,6 +14,8 @@ import {
   addQueryDefinition,
   updateQueryDefinition,
   deleteQueryDefinition,
+  addEvaluator,
+  deleteEvaluator,
   getFlowTypes,
   type FlowDetail,
   type StepDetail,
@@ -23,6 +25,7 @@ import {
   type FlowType,
   type Category,
 } from '@/lib/api/admin';
+import { ConditionEditor, canHaveConditions, describeCondition } from '@/components/admin/ConditionEditor';
 
 // Query types available - grouped by category
 const queryTypes = [
@@ -69,6 +72,7 @@ export default function FlowEditorPage() {
   const [activeTab, setActiveTab] = useState<Tab>('steps');
   const [selectedStepId, setSelectedStepId] = useState<string | null>(null);
   const [editingQuery, setEditingQuery] = useState<QueryDefinitionDetail | null>(null);
+  const [conditionsQueryId, setConditionsQueryId] = useState<string | null>(null);
   const [showAddQueryModal, setShowAddQueryModal] = useState(false);
   const [showStepModal, setShowStepModal] = useState(false);
   const [editingStep, setEditingStep] = useState<StepDetail | null>(null);
@@ -427,6 +431,8 @@ export default function FlowEditorPage() {
                         <QueryCard
                           key={query.id}
                           query={query}
+                          allQueries={flow?.steps.flatMap((s) => s.queries) ?? []}
+                          onConditions={() => setConditionsQueryId(query.id)}
                           onEdit={() => setEditingQuery(query)}
                           onDelete={() => {
                             if (confirm('Ta bort detta fält?')) {
@@ -698,6 +704,28 @@ export default function FlowEditorPage() {
         />
       )}
 
+      {/* Conditions */}
+      {conditionsQueryId && flow && (() => {
+        const source = flow.steps.flatMap((s) => s.queries).find((q) => q.id === conditionsQueryId);
+        if (!source) return null;
+        const refresh = () => queryClient.invalidateQueries({ queryKey: ['admin-flow', flowId] });
+        return (
+          <ConditionEditor
+            source={source}
+            steps={[...flow.steps].sort((a, b) => a.sortOrder - b.sortOrder)}
+            onAdd={async (evaluator) => {
+              await addEvaluator(flowId, source.id, evaluator);
+              await refresh();
+            }}
+            onDelete={async (evaluatorId) => {
+              await deleteEvaluator(flowId, source.id, evaluatorId);
+              await refresh();
+            }}
+            onClose={() => setConditionsQueryId(null)}
+          />
+        );
+      })()}
+
       {/* Edit Query Modal */}
       {editingQuery && (
         <EditQueryModal
@@ -714,13 +742,21 @@ export default function FlowEditorPage() {
 // Query Card Component
 function QueryCard({
   query,
+  allQueries,
+  onConditions,
   onEdit,
   onDelete,
 }: {
   query: QueryDefinitionDetail;
+  allQueries: QueryDefinitionDetail[];
+  onConditions: () => void;
   onEdit: () => void;
   onDelete: () => void;
 }) {
+  const conditions = query.evaluators ?? [];
+  const controlledBy = allQueries.filter((q) =>
+    (q.evaluators ?? []).some((e) => e.targetQueryIds.includes(query.id))
+  );
   const typeInfo = queryTypes.find((t) => t.value === query.queryType) || { label: query.queryType, icon: '?' };
 
   return (
@@ -735,13 +771,40 @@ function QueryCard({
             {query.required && (
               <span className="text-xs bg-red-100 text-red-600 px-1.5 py-0.5 rounded">Obligatoriskt</span>
             )}
+            {controlledBy.length > 0 && (
+              <span
+                className="text-xs bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded"
+                title={`Styrs av ${controlledBy.map((q) => q.name).join(', ')}`}
+              >
+                Villkorat
+              </span>
+            )}
           </div>
           <p className="text-sm text-gray-500">{typeInfo.label}</p>
           {query.description && (
             <p className="text-sm text-gray-400 mt-1 truncate">{query.description}</p>
           )}
+          {conditions.length > 0 && (
+            <ul className="mt-2 space-y-1">
+              {conditions.map((ev) => (
+                <li key={ev.id} className="text-xs text-purple-700">
+                  När svaret {describeCondition(ev, query, allQueries)}
+                </li>
+              ))}
+            </ul>
+          )}
         </div>
         <div className="flex items-center gap-1">
+          {canHaveConditions(query) && (
+            <button
+              type="button"
+              onClick={onConditions}
+              className="px-2 py-1 text-xs text-gray-500 hover:text-purple-600 rounded border border-transparent hover:border-purple-200"
+              title="Villkor"
+            >
+              Villkor{conditions.length > 0 ? ` (${conditions.length})` : ''}
+            </button>
+          )}
           <button
             onClick={onEdit}
             className="p-1 text-gray-400 hover:text-purple-600 rounded"

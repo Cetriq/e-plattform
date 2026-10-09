@@ -1,6 +1,7 @@
 package se.eplatform.cases.api.dto;
 
 import se.eplatform.cases.domain.Case;
+import se.eplatform.user.domain.User;
 import se.eplatform.cases.domain.Priority;
 
 import java.time.Instant;
@@ -28,7 +29,12 @@ public record CaseDTO(
         Instant updatedAt,
         Instant submittedAt,
         Instant completedAt,
-        List<QueryInstanceDTO> values
+        List<QueryInstanceDTO> values,
+        /** Responsible handläggare; only filled in for staff. */
+        UUID assignedToId,
+        String assignedToName,
+        /** Unread messages from the other party (staff for citizens, citizen for staff). */
+        long unreadMessages
 ) {
     public static CaseDTO from(Case caseEntity) {
         return new CaseDTO(
@@ -51,7 +57,10 @@ public record CaseDTO(
                 caseEntity.getCompletedAt(),
                 caseEntity.getQueryInstances().stream()
                         .map(QueryInstanceDTO::from)
-                        .toList()
+                        .toList(),
+                null,
+                null,
+                0
         );
     }
 
@@ -77,7 +86,32 @@ public record CaseDTO(
                 caseEntity.getUpdatedAt(),
                 caseEntity.getSubmittedAt(),
                 caseEntity.getCompletedAt(),
-                null
+                null,
+                null,
+                null,
+                0
         );
+    }
+
+    /**
+     * Summary for the staff case list, including the assigned handläggare.
+     */
+    public static CaseDTO staffSummary(Case caseEntity) {
+        CaseDTO summary = summary(caseEntity);
+        User assignee = caseEntity.getAssignedTo();
+        return new CaseDTO(summary.id, summary.referenceNumber, summary.flowId, summary.flowName,
+                summary.statusId, summary.statusName, summary.statusColor, summary.priority,
+                summary.currentStepIndex, summary.totalSteps, summary.userDescription, summary.isDraft,
+                summary.isCompleted, summary.createdAt, summary.updatedAt, summary.submittedAt,
+                summary.completedAt, null,
+                assignee != null ? assignee.getId() : null,
+                assignee != null ? assignee.getFullName() : null,
+                0);
+    }
+
+    public CaseDTO withUnreadMessages(long count) {
+        return new CaseDTO(id, referenceNumber, flowId, flowName, statusId, statusName, statusColor,
+                priority, currentStepIndex, totalSteps, userDescription, isDraft, isCompleted, createdAt,
+                updatedAt, submittedAt, completedAt, values, assignedToId, assignedToName, count);
     }
 }

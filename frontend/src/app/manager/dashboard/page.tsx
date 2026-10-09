@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useAuth } from '@/context/AuthContext';
-import { getSubmittedCases, searchCases, type PaginatedResponse } from '@/lib/api/manager';
+import { getSubmittedCases, searchCases, type AssigneeFilter } from '@/lib/api/manager';
 import type { CaseSummary } from '@/lib/api/cases';
 
 const statusColors: Record<string, { bg: string; text: string }> = {
@@ -18,29 +18,42 @@ const statusColors: Record<string, { bg: string; text: string }> = {
   ARCHIVED: { bg: 'bg-gray-100', text: 'text-gray-500' },
 };
 
-const priorityLabels: Record<string, { label: string; color: string }> = {
-  LOW: { label: 'Låg', color: 'text-gray-500' },
-  NORMAL: { label: 'Normal', color: 'text-gray-700' },
-  HIGH: { label: 'Hög', color: 'text-orange-600' },
-  URGENT: { label: 'Brådskande', color: 'text-red-600' },
-};
-
 export default function ManagerDashboardPage() {
   const { isAuthenticated, isLoading: authLoading, user } = useAuth();
   const [searchQuery, setSearchQuery] = useState('');
   const [currentPage, setCurrentPage] = useState(0);
   const [isSearching, setIsSearching] = useState(false);
+  const [assigneeFilter, setAssigneeFilter] = useState<AssigneeFilter>('all');
 
   const { data: casesResponse, isLoading, error, refetch } = useQuery({
-    queryKey: ['manager-cases', currentPage, isSearching ? searchQuery : ''],
+    queryKey: ['manager-cases', currentPage, assigneeFilter, isSearching ? searchQuery : ''],
     queryFn: async () => {
       if (isSearching && searchQuery.trim()) {
         return searchCases(searchQuery, currentPage);
       }
-      return getSubmittedCases(currentPage);
+      return getSubmittedCases(currentPage, 20, assigneeFilter);
     },
     enabled: isAuthenticated,
   });
+
+  // Totals for the summary cards (one-row pages, only the count is used)
+  const { data: counts } = useQuery({
+    queryKey: ['manager-cases', 'counts'],
+    queryFn: async () => {
+      const [all, mine, unassigned] = await Promise.all(
+        (['all', 'mine', 'unassigned'] as const).map((f) => getSubmittedCases(0, 1, f))
+      );
+      return { all: all.totalElements, mine: mine.totalElements, unassigned: unassigned.totalElements };
+    },
+    enabled: isAuthenticated,
+  });
+
+  const selectFilter = (filter: AssigneeFilter) => {
+    setAssigneeFilter(filter);
+    setIsSearching(false);
+    setSearchQuery('');
+    setCurrentPage(0);
+  };
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
@@ -161,26 +174,26 @@ export default function ManagerDashboardPage() {
           </p>
         </div>
 
-        {/* Stats cards */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
-          <div className="bg-white rounded-lg shadow-sm p-4 border">
-            <div className="text-sm text-gray-500">Totalt</div>
-            <div className="text-2xl font-bold text-gray-900">
-              {casesResponse?.totalElements ?? '-'}
-            </div>
-          </div>
-          <div className="bg-white rounded-lg shadow-sm p-4 border">
-            <div className="text-sm text-gray-500">Nya idag</div>
-            <div className="text-2xl font-bold text-blue-600">-</div>
-          </div>
-          <div className="bg-white rounded-lg shadow-sm p-4 border">
-            <div className="text-sm text-gray-500">Under behandling</div>
-            <div className="text-2xl font-bold text-yellow-600">-</div>
-          </div>
-          <div className="bg-white rounded-lg shadow-sm p-4 border">
-            <div className="text-sm text-gray-500">Brådskande</div>
-            <div className="text-2xl font-bold text-red-600">-</div>
-          </div>
+        {/* Summary and filter: click a card to show those cases */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8" role="group" aria-label="Filtrera ärenden">
+          {([
+            ['all', 'Alla ärenden', counts?.all, 'text-gray-900'],
+            ['mine', 'Tilldelade mig', counts?.mine, 'text-blue-600'],
+            ['unassigned', 'Ej tilldelade', counts?.unassigned, 'text-amber-600'],
+          ] as const).map(([filter, label, count, color]) => (
+            <button
+              key={filter}
+              type="button"
+              onClick={() => selectFilter(filter)}
+              aria-pressed={!isSearching && assigneeFilter === filter}
+              className={`text-left bg-white rounded-lg shadow-sm p-4 border transition-colors ${
+                !isSearching && assigneeFilter === filter ? 'border-blue-500 ring-1 ring-blue-500' : 'hover:border-gray-300'
+              }`}
+            >
+              <div className="text-sm text-gray-500">{label}</div>
+              <div className={`text-2xl font-bold ${color}`}>{count ?? '–'}</div>
+            </button>
+          ))}
         </div>
 
         {/* Search and filters */}
@@ -267,7 +280,7 @@ export default function ManagerDashboardPage() {
                       Status
                     </th>
                     <th className="text-left px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Prioritet
+                      Handläggare
                     </th>
                     <th className="text-left px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Inkom
@@ -281,7 +294,6 @@ export default function ManagerDashboardPage() {
                       ? { backgroundColor: `${c.statusColor}20`, color: c.statusColor }
                       : undefined;
                     const defaultStatus = statusColors['SUBMITTED'];
-                    const priority = priorityLabels[(c as unknown as { priority?: string }).priority || 'NORMAL'] || priorityLabels.NORMAL;
 
                     return (
                       <tr key={c.id} className="hover:bg-gray-50">
@@ -289,6 +301,12 @@ export default function ManagerDashboardPage() {
                           <div>
                             <p className="font-medium text-gray-900">{c.flowName}</p>
                             <p className="text-sm text-gray-500">{c.referenceNumber}</p>
+                            {!!c.unreadMessages && (
+                              <p className="mt-1 inline-flex items-center gap-1 text-xs font-medium text-blue-700">
+                                <span className="w-2 h-2 rounded-full bg-blue-600" aria-hidden="true" />
+                                {c.unreadMessages === 1 ? '1 nytt meddelande' : `${c.unreadMessages} nya meddelanden`}
+                              </p>
+                            )}
                           </div>
                         </td>
                         <td className="px-6 py-4">
@@ -299,10 +317,14 @@ export default function ManagerDashboardPage() {
                             {c.statusName || 'Inskickad'}
                           </span>
                         </td>
-                        <td className="px-6 py-4">
-                          <span className={`text-sm ${priority.color}`}>
-                            {priority.label}
-                          </span>
+                        <td className="px-6 py-4 text-sm">
+                          {c.assignedToName ? (
+                            <span className={c.assignedToId === user?.id ? 'font-medium text-gray-900' : 'text-gray-700'}>
+                              {c.assignedToId === user?.id ? 'Du' : c.assignedToName}
+                            </span>
+                          ) : (
+                            <span className="text-amber-600">Ej tilldelad</span>
+                          )}
                         </td>
                         <td className="px-6 py-4 text-sm text-gray-600">
                           {c.submittedAt ? formatRelativeDate(c.submittedAt) : '-'}

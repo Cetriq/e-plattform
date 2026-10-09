@@ -61,6 +61,17 @@ export interface ManagerCaseDetail extends CaseDetail {
   owners: { id: string; name: string }[];
   createdByName: string;
   managerDescription?: string;
+  assignedToId?: string;
+  assignedToName?: string;
+  /** Statuses the case may move to next. */
+  allowedTransitions: { statusId: string; requiresComment: boolean }[];
+}
+
+export type AssigneeFilter = 'all' | 'mine' | 'unassigned';
+
+export interface Assignee {
+  id: string;
+  name: string;
 }
 
 export interface PaginatedResponse<T> {
@@ -79,11 +90,26 @@ export interface PaginatedResponse<T> {
 export async function getSubmittedCases(
   page = 0,
   size = 20,
+  assignee: AssigneeFilter = 'all',
   sort = 'submittedAt,desc'
 ): Promise<PaginatedResponse<CaseSummary>> {
   return api.get<PaginatedResponse<CaseSummary>>(
-    `/api/v1/cases?page=${page}&size=${size}&sort=${sort}`
+    `/api/v1/cases?page=${page}&size=${size}&sort=${sort}&assignee=${assignee}`
   );
+}
+
+/**
+ * Handläggare who can be assigned to cases.
+ */
+export async function getAssignees(): Promise<Assignee[]> {
+  return api.get<Assignee[]>('/api/v1/cases/assignees');
+}
+
+/**
+ * Assign the case to a handläggare, or clear the assignment with null.
+ */
+export async function assignCase(caseId: string, userId: string | null): Promise<CaseSummary> {
+  return api.put<CaseSummary>(`/api/v1/cases/${caseId}/assignee`, { userId });
 }
 
 /**

@@ -1,9 +1,9 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { ArrowLeft, Download } from 'lucide-react';
 import { Header } from '@/components/layout';
 import { useAuth } from '@/context/AuthContext';
@@ -11,12 +11,16 @@ import {
   getCase,
   getCaseEvents,
   downloadOwnCasePdf,
+  getCaseMessages,
+  markCaseMessagesRead,
+  sendCaseMessage,
   type CaseDetail,
 } from '@/lib/api/cases';
 import { api } from '@/lib/api/client';
 import type { Flow } from '@/components/form';
 import { getDisplayValues } from '@/lib/caseValues';
 import { CaseTimeline } from '@/components/cases/CaseTimeline';
+import { MessageThread } from '@/components/cases/MessageThread';
 import { toast } from '@/hooks/useToast';
 
 function StatusBadge({ caseDetail }: { caseDetail: CaseDetail }) {
@@ -37,6 +41,7 @@ export default function CaseDetailPage() {
   const params = useParams();
   const caseId = params.caseId as string;
   const { isAuthenticated, isLoading: authLoading } = useAuth();
+  const queryClient = useQueryClient();
   const [isDownloading, setIsDownloading] = useState(false);
 
   const caseQuery = useQuery({
@@ -60,6 +65,32 @@ export default function CaseDetailPage() {
     enabled: isAuthenticated,
     retry: false,
   });
+
+  const isSubmitted = !!caseQuery.data && !caseQuery.data.isDraft;
+
+  const messagesQuery = useQuery({
+    queryKey: ['citizen-case-messages', caseId],
+    queryFn: () => getCaseMessages(caseId),
+    enabled: isAuthenticated && isSubmitted,
+    retry: false,
+  });
+
+  // Opening the case counts as reading the handläggare's messages
+  const hasUnread = messagesQuery.data?.some((m) => m.fromManager && !m.readAt) ?? false;
+  useEffect(() => {
+    if (!hasUnread) return;
+    markCaseMessagesRead(caseId)
+      .then(() => queryClient.invalidateQueries({ queryKey: ['my-cases'] }))
+      .catch(() => undefined);
+  }, [hasUnread, caseId, queryClient]);
+
+  const handleSendMessage = async (text: string) => {
+    await sendCaseMessage(caseId, text);
+    await Promise.all([
+      queryClient.invalidateQueries({ queryKey: ['citizen-case-messages', caseId] }),
+      queryClient.invalidateQueries({ queryKey: ['citizen-case-events', caseId] }),
+    ]);
+  };
 
   const handleDownload = async () => {
     if (!caseQuery.data) return;
@@ -147,6 +178,29 @@ export default function CaseDetailPage() {
                 </button>
               </div>
             </header>
+
+            {isSubmitted && (
+              <section className="bg-white rounded-lg border p-6" aria-labelledby="messages-heading">
+                <h2 id="messages-heading" className="text-lg font-semibold text-gray-900 mb-1">
+                  Meddelanden
+                </h2>
+                <p className="text-sm text-gray-500 mb-4">
+                  Här kan du och handläggaren skriva till varandra om ärendet.
+                </p>
+                <MessageThread
+                  messages={(messagesQuery.data ?? []).map((m) => ({
+                    id: m.id,
+                    message: m.message,
+                    createdAt: m.createdAt,
+                    authorName: m.fromManager ? m.authorName : 'Du',
+                    mine: !m.fromManager,
+                  }))}
+                  onSend={handleSendMessage}
+                  placeholder="Skriv till handläggaren…"
+                  emptyText="Inga meddelanden ännu."
+                />
+              </section>
+            )}
 
             <section className="bg-white rounded-lg border p-6">
               <h2 className="text-lg font-semibold text-gray-900 mb-4">Händelser</h2>

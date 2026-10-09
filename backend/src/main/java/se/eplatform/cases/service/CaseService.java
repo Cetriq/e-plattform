@@ -6,6 +6,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import se.eplatform.cases.domain.*;
 import se.eplatform.cases.repository.CaseRepository;
+import se.eplatform.cases.repository.ExternalMessageRepository;
+import se.eplatform.flow.service.StatusTransitionService;
 import se.eplatform.flow.domain.Flow;
 import se.eplatform.flow.domain.QueryDefinition;
 import se.eplatform.flow.domain.StatusDefinition;
@@ -16,6 +18,9 @@ import se.eplatform.notification.service.NotificationService;
 import se.eplatform.user.domain.User;
 import se.eplatform.user.repository.UserRepository;
 
+import java.time.Instant;
+import java.util.Collection;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -29,13 +34,22 @@ public class CaseService {
     private final FlowRepository flowRepository;
     private final UserRepository userRepository;
     private final NotificationService notificationService;
+    private final StatusTransitionService statusTransitions;
+    private final ExternalMessageRepository externalMessageRepository;
+
+    /** Roles that handle cases and can be assigned to them. */
+    public static final List<String> STAFF_ROLES = List.of("MANAGER", "ADMIN");
 
     public CaseService(CaseRepository caseRepository, FlowRepository flowRepository,
-                       UserRepository userRepository, NotificationService notificationService) {
+                       UserRepository userRepository, NotificationService notificationService,
+                       StatusTransitionService statusTransitions,
+                       ExternalMessageRepository externalMessageRepository) {
         this.caseRepository = caseRepository;
         this.flowRepository = flowRepository;
         this.userRepository = userRepository;
         this.notificationService = notificationService;
+        this.statusTransitions = statusTransitions;
+        this.externalMessageRepository = externalMessageRepository;
     }
 
     /**
@@ -66,6 +80,7 @@ public class CaseService {
             org.hibernate.Hibernate.initialize(c.getInternalMessages());
             org.hibernate.Hibernate.initialize(c.getExternalMessages());
             org.hibernate.Hibernate.initialize(c.getOwners());
+            org.hibernate.Hibernate.initialize(c.getAssignedTo());
 
             // Initialize createdBy for each event (needed for DTO mapping)
             c.getEvents().forEach(event -> {
@@ -235,12 +250,25 @@ public class CaseService {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new IllegalArgumentException("User not found: " + userId));
 
-        StatusDefinition oldStatus = caseEntity.getStatus();
+        if (caseEntity.isDraft()) {
+            throw new IllegalStateException("Ärendet är inte inskickat än");
+        }
 
-        StatusDefinition newStatus = caseEntity.getFlow().getStatusDefinitionsSorted().stream()
+        StatusDefinition oldStatus = caseEntity.getStatus();
+        List<StatusDefinition> flowStatuses = caseEntity.getFlow().getStatusDefinitionsSorted();
+
+        StatusDefinition newStatus = flowStatuses.stream()
                 .filter(s -> s.getId().equals(statusId))
                 .findFirst()
                 .orElseThrow(() -> new IllegalArgumentException("Status not found: " + statusId));
+
+        StatusTransitionService.Transition transition = statusTransitions.find(oldStatus, newStatus, flowStatuses)
+                .orElseThrow(() -> new IllegalStateException(
+                        "Ärendet kan inte gå från " + (oldStatus != null ? oldStatus.getName() : "–")
+                                + " till " + newStatus.getName()));
+        if (transition.requiresComment() && (comment == null || comment.isBlank())) {
+            throw new IllegalArgumentException("En kommentar krävs för att ändra status till " + newStatus.getName());
+        }
 
         caseEntity.changeStatus(newStatus, user, comment);
 
@@ -301,15 +329,124 @@ public class CaseService {
             // Notify case owner about new message from manager
             User caseOwner = caseEntity.getCreatedBy();
             notificationService.notifyNewMessageFromManager(caseEntity, caseOwner, msg);
-        } else {
-            // Notify all managers/owners about new message from citizen
-            org.hibernate.Hibernate.initialize(caseEntity.getOwners());
-            for (User manager : caseEntity.getOwners()) {
-                notificationService.notifyManagersNewMessage(caseEntity, manager, msg);
-            }
+        } else if (caseEntity.getAssignedTo() != null) {
+            // Notify the handläggare responsible for the case
+            notificationService.notifyManagersNewMessage(caseEntity, caseEntity.getAssignedTo(), msg);
         }
 
         return msg;
+    }
+
+    /**
+     * Statuses the case may move to next, for the manager's status menu.
+     */
+    @Transactional(readOnly = true)
+    public List<StatusTransitionService.Transition> allowedTransitions(Case caseEntity) {
+        if (caseEntity.isDraft()) {
+            return List.of();
+        }
+        return statusTransitions.allowedFrom(caseEntity.getStatus(), caseEntity.getFlow().getStatusDefinitionsSorted());
+    }
+
+    /**
+     * Messages between the citizen and staff, oldest first.
+     */
+    @Transactional(readOnly = true)
+    public List<ExternalMessage> getExternalMessages(UUID caseId) {
+        return externalMessageRepository.findByCaseId(caseId);
+    }
+
+    /**
+     * Send a message from the citizen to the handläggare.
+     */
+    @Transactional
+    public ExternalMessage addCitizenMessage(UUID caseId, UUID userId, String message) {
+        Case caseEntity = caseRepository.findById(caseId)
+                .orElseThrow(() -> new IllegalArgumentException("Case not found: " + caseId));
+        if (caseEntity.isDraft()) {
+            throw new IllegalStateException("Skicka in ärendet innan du skickar meddelanden");
+        }
+        if (caseEntity.getStatus() != null && !caseEntity.getStatus().isUserCanMessage()) {
+            throw new IllegalStateException("Det går inte att skicka meddelanden i ärendets nuvarande status");
+        }
+        return addExternalMessage(caseId, userId, message, false);
+    }
+
+    /**
+     * Mark the messages from the other party as read by this user.
+     */
+    @Transactional
+    public void markMessagesRead(UUID caseId, UUID readerId, boolean readerIsStaff) {
+        User reader = userRepository.findById(readerId)
+                .orElseThrow(() -> new IllegalArgumentException("User not found: " + readerId));
+        // Staff read the citizen's messages; the citizen reads the staff's
+        externalMessageRepository.markRead(caseId, !readerIsStaff, reader, Instant.now());
+    }
+
+    /**
+     * Number of unread messages per case. fromStaff=true counts messages the
+     * citizen hasn't read; false counts messages staff haven't read.
+     */
+    @Transactional(readOnly = true)
+    public Map<UUID, Long> unreadMessageCounts(Collection<UUID> caseIds, boolean fromStaff) {
+        if (caseIds.isEmpty()) {
+            return Map.of();
+        }
+        Map<UUID, Long> counts = new HashMap<>();
+        for (Object[] row : externalMessageRepository.countUnread(caseIds, fromStaff)) {
+            counts.put((UUID) row[0], (Long) row[1]);
+        }
+        return counts;
+    }
+
+    /**
+     * Assign the case to a handläggare, or clear the assignment with null.
+     */
+    @Transactional
+    public Case assign(UUID caseId, UUID assigneeId, UUID assignedById) {
+        Case caseEntity = caseRepository.findById(caseId)
+                .orElseThrow(() -> new IllegalArgumentException("Case not found: " + caseId));
+        User assignedBy = userRepository.findById(assignedById)
+                .orElseThrow(() -> new IllegalArgumentException("User not found: " + assignedById));
+
+        User assignee = null;
+        if (assigneeId != null) {
+            assignee = userRepository.findById(assigneeId)
+                    .filter(User::isActive)
+                    .filter(u -> STAFF_ROLES.stream().anyMatch(u::hasRole))
+                    .orElseThrow(() -> new IllegalArgumentException("Användaren kan inte handlägga ärenden"));
+        }
+
+        User previous = caseEntity.getAssignedTo();
+        boolean unchanged = previous == null ? assignee == null
+                : assignee != null && previous.getId().equals(assignee.getId());
+        if (!unchanged) {
+            caseEntity.setAssignedTo(assignee);
+            caseEntity.addEvent(CaseEvent.assigned(caseEntity, assignee, assignedBy));
+        }
+        Case saved = caseRepository.save(caseEntity);
+        // The controller maps the result to a summary after the transaction
+        org.hibernate.Hibernate.initialize(saved.getFlow());
+        org.hibernate.Hibernate.initialize(saved.getFlow().getSteps());
+        org.hibernate.Hibernate.initialize(saved.getStatus());
+        org.hibernate.Hibernate.initialize(saved.getAssignedTo());
+        return saved;
+    }
+
+    /**
+     * Users who can be assigned to cases.
+     */
+    @Transactional(readOnly = true)
+    public List<User> getAssignableUsers() {
+        return userRepository.findActiveWithAnyRole(STAFF_ROLES);
+    }
+
+    /**
+     * Submitted cases for the manager list. mine/unassigned narrow the list.
+     */
+    @Transactional(readOnly = true)
+    public Page<Case> getSubmittedCases(UUID assignedTo, boolean unassignedOnly, Pageable pageable) {
+        return caseRepository.findSubmitted(assignedTo, unassignedOnly, pageable);
     }
 
     /**

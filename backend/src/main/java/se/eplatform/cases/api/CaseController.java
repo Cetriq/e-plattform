@@ -10,6 +10,7 @@ import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.data.web.PageableDefault;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
@@ -21,6 +22,7 @@ import org.springframework.web.server.ResponseStatusException;
 import se.eplatform.auth.dto.AuthResponse.UserInfo;
 import se.eplatform.cases.api.dto.CaseDTO;
 import se.eplatform.cases.api.dto.CaseEventDTO;
+import se.eplatform.cases.api.dto.CaseMessageDTO;
 import se.eplatform.cases.api.dto.ManagerCaseDTO;
 import se.eplatform.cases.domain.Case;
 import se.eplatform.cases.domain.ExternalMessage;
@@ -63,14 +65,76 @@ public class CaseController {
 
     @Operation(
         summary = "Lista inskickade ärenden",
-        description = "Hämtar alla inskickade ärenden med paginering. Utkast (ej inskickade) visas ej. Kräver handläggarbehörighet."
+        description = """
+            Hämtar inskickade ärenden med paginering. Utkast visas ej. Kräver handläggarbehörighet.
+
+            `assignee`: `all` (standard), `mine` (tilldelade mig) eller `unassigned` (ej tilldelade).
+            """
     )
     @ApiResponse(responseCode = "200", description = "Lista med ärenden")
     @GetMapping
-    public Page<CaseDTO> getCases(@PageableDefault(size = 20) Pageable pageable) {
+    public Page<CaseDTO> getCases(
+            @RequestParam(defaultValue = "all") String assignee,
+            @PageableDefault(size = 20, sort = "submittedAt", direction = Sort.Direction.DESC) Pageable pageable) {
+        UserInfo staff = CurrentUser.requireStaff();
+        UUID assignedTo = "mine".equals(assignee) ? UUID.fromString(staff.id()) : null;
+        boolean unassignedOnly = "unassigned".equals(assignee);
+        Page<CaseDTO> page = caseService.getSubmittedCases(assignedTo, unassignedOnly, pageable)
+                .map(CaseDTO::staffSummary);
+        return withUnreadCounts(page, false);
+    }
+
+    @Operation(summary = "Handläggare som kan tilldelas ärenden")
+    @GetMapping("/assignees")
+    public List<AssigneeDTO> getAssignees() {
         CurrentUser.requireStaff();
-        return caseService.getSubmittedCases(pageable)
-                .map(CaseDTO::summary);
+        return caseService.getAssignableUsers().stream()
+                .map(u -> new AssigneeDTO(u.getId(), u.getFullName()))
+                .toList();
+    }
+
+    @Operation(
+        summary = "Tilldela ärende",
+        description = "Sätter ansvarig handläggare. `userId: null` tar bort tilldelningen."
+    )
+    @PutMapping("/{id}/assignee")
+    public ResponseEntity<CaseDTO> assignCase(
+            @PathVariable UUID id,
+            @RequestBody AssignRequest request) {
+        UserInfo staff = CurrentUser.requireStaff();
+        Case updated = caseService.assign(id, request.userId(), UUID.fromString(staff.id()));
+        return ResponseEntity.ok(CaseDTO.staffSummary(updated));
+    }
+
+    @Operation(
+        summary = "Meddelanden i ärendet",
+        description = "Meddelanden mellan medborgaren och handläggaren, äldst först. Interna anteckningar ingår inte."
+    )
+    @GetMapping("/{id}/messages")
+    public List<CaseMessageDTO> getMessages(@PathVariable UUID id) {
+        UserInfo user = caseAccess.requireRead(id);
+        boolean forCitizen = !CurrentUser.isStaff(user);
+        return caseService.getExternalMessages(id).stream()
+                .map(m -> CaseMessageDTO.from(m, forCitizen))
+                .toList();
+    }
+
+    @Operation(summary = "Skicka meddelande till handläggaren", description = "Medborgarens svar i sitt eget ärende.")
+    @PostMapping("/{id}/messages")
+    public ResponseEntity<CaseMessageDTO> sendCitizenMessage(
+            @PathVariable UUID id,
+            @RequestBody MessageRequest request) {
+        UserInfo owner = caseAccess.requireOwner(id);
+        ExternalMessage msg = caseService.addCitizenMessage(id, UUID.fromString(owner.id()), requireText(request));
+        return ResponseEntity.ok(CaseMessageDTO.from(msg, true));
+    }
+
+    @Operation(summary = "Markera meddelanden som lästa", description = "Markerar motpartens meddelanden som lästa.")
+    @PostMapping("/{id}/messages/read")
+    public ResponseEntity<Void> markMessagesRead(@PathVariable UUID id) {
+        UserInfo user = caseAccess.requireRead(id);
+        caseService.markMessagesRead(id, UUID.fromString(user.id()), CurrentUser.isStaff(user));
+        return ResponseEntity.noContent().build();
     }
 
     @Operation(
@@ -112,7 +176,7 @@ public class CaseController {
             @PathVariable UUID id) {
         CurrentUser.requireStaff();
         return caseService.getCaseForManager(id)
-                .map(ManagerCaseDTO::from)
+                .map(c -> ManagerCaseDTO.from(c, caseService.allowedTransitions(c)))
                 .map(ResponseEntity::ok)
                 .orElse(ResponseEntity.notFound().build());
     }
@@ -148,8 +212,7 @@ public class CaseController {
             @PathVariable UUID userId,
             @PageableDefault(size = 20) Pageable pageable) {
         requireSelfOrStaff(userId);
-        return caseService.getCasesForUser(userId, pageable)
-                .map(CaseDTO::summary);
+        return withUnreadCounts(caseService.getCasesForUser(userId, pageable).map(CaseDTO::summary), true);
     }
 
     @Operation(
@@ -290,8 +353,7 @@ public class CaseController {
             @RequestParam String q,
             @PageableDefault(size = 20) Pageable pageable) {
         CurrentUser.requireStaff();
-        return caseService.searchCases(q, pageable)
-                .map(CaseDTO::summary);
+        return withUnreadCounts(caseService.searchCases(q, pageable).map(CaseDTO::staffSummary), false);
     }
 
     @Operation(
@@ -323,7 +385,7 @@ public class CaseController {
             @PathVariable UUID id,
             @RequestBody MessageRequest request) {
         UserInfo staff = CurrentUser.requireStaff();
-        InternalMessage msg = caseService.addInternalMessage(id, UUID.fromString(staff.id()), request.message());
+        InternalMessage msg = caseService.addInternalMessage(id, UUID.fromString(staff.id()), requireText(request));
         return ResponseEntity.ok(ManagerCaseDTO.InternalMessageDTO.from(msg));
     }
 
@@ -338,7 +400,7 @@ public class CaseController {
             @PathVariable UUID id,
             @RequestBody MessageRequest request) {
         UserInfo staff = CurrentUser.requireStaff();
-        ExternalMessage msg = caseService.addExternalMessage(id, UUID.fromString(staff.id()), request.message(), true);
+        ExternalMessage msg = caseService.addExternalMessage(id, UUID.fromString(staff.id()), requireText(request), true);
         return ResponseEntity.ok(ManagerCaseDTO.ExternalMessageDTO.from(msg));
     }
 
@@ -404,6 +466,7 @@ public class CaseController {
                     List<CaseEventDTO> events = caseEntity.getEvents().stream()
                             .sorted(Comparator.comparing(
                                     e -> e.getCreatedAt() != null ? e.getCreatedAt() : java.time.Instant.EPOCH))
+                            .filter(e -> !maskStaffNames || !e.isInternal())
                             .map(e -> maskStaffNames ? CaseEventDTO.forCitizen(e) : CaseEventDTO.forManager(e))
                             .toList();
                     return ResponseEntity.ok(events);
@@ -451,6 +514,29 @@ public class CaseController {
                 .orElse(ResponseEntity.notFound().build());
     }
 
+    private static final int MAX_MESSAGE_LENGTH = 5000;
+
+    private static String requireText(MessageRequest request) {
+        String text = request == null || request.message() == null ? "" : request.message().trim();
+        if (text.isEmpty()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Meddelandet är tomt");
+        }
+        if (text.length() > MAX_MESSAGE_LENGTH) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Meddelandet är för långt");
+        }
+        return text;
+    }
+
+    /**
+     * Add unread message counts to a page of cases. fromStaff=true counts the
+     * staff's messages the citizen hasn't read, false the citizen's messages.
+     */
+    private Page<CaseDTO> withUnreadCounts(Page<CaseDTO> page, boolean fromStaff) {
+        Map<UUID, Long> counts = caseService.unreadMessageCounts(
+                page.getContent().stream().map(CaseDTO::id).toList(), fromStaff);
+        return page.map(dto -> dto.withUnreadMessages(counts.getOrDefault(dto.id(), 0L)));
+    }
+
     private void requireSelfOrStaff(UUID userId) {
         UserInfo user = CurrentUser.require();
         if (!CurrentUser.isStaff(user) && !user.id().equals(userId.toString())) {
@@ -460,6 +546,13 @@ public class CaseController {
     }
 
     // Request records with Schema annotations
+
+    public record AssignRequest(
+        @Schema(description = "Handläggarens UUID, eller null för att ta bort tilldelningen")
+        UUID userId
+    ) {}
+
+    public record AssigneeDTO(UUID id, String name) {}
 
     @Schema(description = "Begäran för att skapa nytt ärende")
     public record CreateCaseRequest(

@@ -1,5 +1,6 @@
 package se.eplatform.cases.api.dto;
 
+import se.eplatform.flow.service.StatusTransitionService;
 import se.eplatform.cases.domain.Case;
 import se.eplatform.cases.domain.CaseEvent;
 import se.eplatform.cases.domain.ExternalMessage;
@@ -40,9 +41,13 @@ public record ManagerCaseDTO(
         List<CaseEventDTO> events,
         List<InternalMessageDTO> internalMessages,
         List<ExternalMessageDTO> externalMessages,
-        List<OwnerDTO> owners
+        List<OwnerDTO> owners,
+        UUID assignedToId,
+        String assignedToName,
+        /** Statuses the case may move to next. */
+        List<TransitionDTO> allowedTransitions
 ) {
-    public static ManagerCaseDTO from(Case caseEntity) {
+    public static ManagerCaseDTO from(Case caseEntity, List<StatusTransitionService.Transition> transitions) {
         return new ManagerCaseDTO(
                 caseEntity.getId(),
                 caseEntity.getReferenceNumber(),
@@ -80,9 +85,16 @@ public record ManagerCaseDTO(
                         .toList(),
                 caseEntity.getOwners().stream()
                         .map(OwnerDTO::from)
+                        .toList(),
+                caseEntity.getAssignedTo() != null ? caseEntity.getAssignedTo().getId() : null,
+                caseEntity.getAssignedTo() != null ? caseEntity.getAssignedTo().getFullName() : null,
+                transitions.stream()
+                        .map(t -> new TransitionDTO(t.toStatusId(), t.requiresComment()))
                         .toList()
         );
     }
+
+    public record TransitionDTO(UUID statusId, boolean requiresComment) {}
 
     // Nested DTOs
 

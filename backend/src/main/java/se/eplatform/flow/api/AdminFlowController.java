@@ -5,6 +5,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.web.PageableDefault;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import se.eplatform.flow.api.dto.EvaluatorDTO;
 import se.eplatform.flow.api.dto.FlowDTO;
 import se.eplatform.flow.api.dto.QueryDefinitionDTO;
 import se.eplatform.flow.api.dto.StepDTO;
@@ -256,6 +257,49 @@ public class AdminFlowController {
         adminFlowService.deleteQueryDefinition(flowId, stepId, queryId);
         return ResponseEntity.noContent().build();
     }
+
+    // Conditions (evaluators)
+
+    /**
+     * Add a condition to a field: when the field's answer meets the
+     * condition, the target fields are shown, required or hidden.
+     */
+    @PostMapping("/{flowId}/queries/{queryId}/evaluators")
+    public ResponseEntity<EvaluatorDTO> addEvaluator(
+            @PathVariable UUID flowId,
+            @PathVariable UUID queryId,
+            @RequestBody EvaluatorRequest request) {
+        EvaluatorDefinition evaluator = adminFlowService.addEvaluator(flowId, queryId,
+                request.evaluatorType(), request.condition(), request.targetQueryIds(), request.targetState());
+        return ResponseEntity.ok(EvaluatorDTO.from(evaluator));
+    }
+
+    @PutMapping("/{flowId}/queries/{queryId}/evaluators/{evaluatorId}")
+    public ResponseEntity<EvaluatorDTO> updateEvaluator(
+            @PathVariable UUID flowId,
+            @PathVariable UUID queryId,
+            @PathVariable UUID evaluatorId,
+            @RequestBody EvaluatorRequest request) {
+        EvaluatorDefinition evaluator = adminFlowService.updateEvaluator(flowId, queryId, evaluatorId,
+                request.evaluatorType(), request.condition(), request.targetQueryIds(), request.targetState());
+        return ResponseEntity.ok(EvaluatorDTO.from(evaluator));
+    }
+
+    @DeleteMapping("/{flowId}/queries/{queryId}/evaluators/{evaluatorId}")
+    public ResponseEntity<Void> deleteEvaluator(
+            @PathVariable UUID flowId,
+            @PathVariable UUID queryId,
+            @PathVariable UUID evaluatorId) {
+        adminFlowService.deleteEvaluator(flowId, queryId, evaluatorId);
+        return ResponseEntity.noContent().build();
+    }
+
+    public record EvaluatorRequest(
+            EvaluatorType evaluatorType,
+            Map<String, Object> condition,
+            List<UUID> targetQueryIds,
+            QueryState targetState
+    ) {}
 
     /**
      * Reorder query definitions within a step.

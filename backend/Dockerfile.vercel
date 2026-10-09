@@ -1,0 +1,36 @@
+# Backend image for Vercel (Services, runtime "container").
+# Runs with the "vercel" profile: Neon Postgres, files in Vercel Blob.
+
+FROM eclipse-temurin:21-jdk-jammy AS builder
+WORKDIR /app
+
+# Resolve dependencies first so they are cached between builds
+COPY gradle gradle
+COPY gradlew build.gradle.kts settings.gradle.kts gradle.properties ./
+RUN chmod +x gradlew && ./gradlew dependencies --no-daemon -q > /dev/null
+
+COPY src src
+RUN ./gradlew bootJar --no-daemon -x test -q \
+    && cp build/libs/*-SNAPSHOT.jar app.jar \
+    && java -Djarmode=layertools -jar app.jar extract --destination layers
+
+FROM eclipse-temurin:21-jre-jammy
+WORKDIR /app
+
+RUN groupadd --system app && useradd --system --gid app app
+
+# Layered jar: dependencies change less often than application code
+COPY --from=builder /app/layers/dependencies/ ./
+COPY --from=builder /app/layers/spring-boot-loader/ ./
+COPY --from=builder /app/layers/snapshot-dependencies/ ./
+COPY --from=builder /app/layers/application/ ./
+
+USER app
+
+ENV SPRING_PROFILES_ACTIVE=vercel
+# Instances start often (scale to zero), so favour fast startup over peak throughput
+ENV JAVA_TOOL_OPTIONS="-XX:MaxRAMPercentage=75 -XX:+UseSerialGC -XX:TieredStopAtLevel=1 -Xss512k"
+
+# Vercel routes traffic to $PORT (set PORT=8080 in the project settings)
+EXPOSE 8080
+ENTRYPOINT ["java", "org.springframework.boot.loader.launch.JarLauncher"]

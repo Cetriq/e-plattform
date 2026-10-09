@@ -146,4 +146,6 @@ export interface FormContext {
   validateQueries: (queryIds: string[]) => string[];
   userId?: string;
   caseId?: string;
+  /** Returns the id of the case, creating the draft first if needed. */
+  ensureCaseId?: () => Promise<string>;
 }

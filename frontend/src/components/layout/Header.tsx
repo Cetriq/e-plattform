@@ -45,7 +45,7 @@ export function Header() {
 
           {/* Show manager/admin links if user has those roles */}
           {isAuthenticated && hasRole('MANAGER') && (
-            <Link href="/manager" className="text-gray-600 hover:text-gray-900">
+            <Link href="/manager/dashboard" className="text-gray-600 hover:text-gray-900">
               Handläggare
             </Link>
           )}
@@ -116,7 +116,7 @@ export function Header() {
 
                   {hasRole('MANAGER') && (
                     <Link
-                      href="/manager"
+                      href="/manager/dashboard"
                       className="block px-4 py-2 text-gray-700 hover:bg-gray-100"
                       onClick={() => setShowUserMenu(false)}
                     >

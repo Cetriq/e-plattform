@@ -21,6 +21,7 @@ interface FormProviderProps {
   onChange?: (values: FormValues) => void;
   userId?: string;
   caseId?: string;
+  ensureCaseId?: () => Promise<string>;
 }
 
 export function FormProvider({
@@ -31,6 +32,7 @@ export function FormProvider({
   onChange,
   userId,
   caseId,
+  ensureCaseId,
 }: FormProviderProps) {
   const [values, setValues] = useState<FormValues>(initialValues);
   const [fieldStates, setFieldStates] = useState<FieldStates>(initialFieldStates);
@@ -130,7 +132,8 @@ export function FormProvider({
     validateQueries,
     userId,
     caseId,
-  }), [values, fieldStates, setValue, setTouched, getFieldState, validateQueries, userId, caseId]);
+    ensureCaseId,
+  }), [values, fieldStates, setValue, setTouched, getFieldState, validateQueries, userId, caseId, ensureCaseId]);
 
   return (
     <FormContext.Provider value={contextValue}>

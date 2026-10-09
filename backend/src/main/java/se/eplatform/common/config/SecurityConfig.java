@@ -73,6 +73,8 @@ public class SecurityConfig {
                         "/actuator/prometheus",
                         "/error",
                         "/api/v1/public/**",
+                        // Protected by CRON_SECRET in CronController
+                        "/api/v1/internal/cron/**",
                         "/swagger-ui.html",
                         "/swagger-ui/**",
                         "/api-docs",

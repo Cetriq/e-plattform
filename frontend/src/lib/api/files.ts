@@ -1,5 +1,6 @@
 import { api, handleUnauthorized } from './client';
-import { API_BASE_URL } from '@/lib/config';
+import { upload } from '@vercel/blob/client';
+import { API_BASE_URL, FILE_STORAGE } from '@/lib/config';
 import { getStoredToken } from '@/lib/auth';
 
 /**
@@ -18,7 +19,9 @@ export interface Attachment {
   uploadedAt: string;
   isImage: boolean;
   isPdf: boolean;
+  /** Backend path, or a path under /api/blob/ for files in Vercel Blob. */
   downloadUrl: string;
+  blobPathname?: string | null;
 }
 
 export interface UploadProgress {
@@ -28,9 +31,73 @@ export interface UploadProgress {
 }
 
 /**
- * Upload a file.
+ * Upload a file to a case. Depending on the environment the file goes through
+ * the backend, or straight from the browser to Vercel Blob.
  */
 export async function uploadFile(
+  file: File,
+  options?: {
+    caseId?: string;
+    queryDefinitionId?: string;
+    onProgress?: (progress: UploadProgress) => void;
+  }
+): Promise<Attachment> {
+  if (FILE_STORAGE === 'blob') {
+    return uploadToBlob(file, options);
+  }
+  return uploadThroughBackend(file, options);
+}
+
+/** Keep the extension but avoid characters that are awkward in storage paths. */
+function storageName(filename: string): string {
+  return filename
+    .normalize('NFKD')
+    .replace(/[\u0300-\u036f]/g, '') // å -> a, ö -> o
+    .replace(/[^\w.-]+/g, '-').replace(/-+/g, '-').slice(-100) || 'fil';
+}
+
+async function uploadToBlob(
+  file: File,
+  options?: {
+    caseId?: string;
+    queryDefinitionId?: string;
+    onProgress?: (progress: UploadProgress) => void;
+  }
+): Promise<Attachment> {
+  if (!options?.caseId) {
+    throw new Error('Ärendet måste sparas innan filer kan laddas upp');
+  }
+  const token = getStoredToken();
+  const authHeaders: Record<string, string> = token ? { Authorization: `Bearer ${token}` } : {};
+
+  const blob = await upload(`cases/${options.caseId}/${storageName(file.name)}`, file, {
+    access: 'private',
+    handleUploadUrl: '/api/blob/upload',
+    clientPayload: JSON.stringify({ caseId: options.caseId }),
+    headers: authHeaders,
+    multipart: file.size > 5 * 1024 * 1024,
+    onUploadProgress: (progress) => options.onProgress?.(progress),
+  });
+
+  const response = await fetch('/api/blob/register', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...authHeaders },
+    body: JSON.stringify({
+      pathname: blob.pathname,
+      originalFilename: file.name,
+      caseId: options.caseId,
+      queryDefinitionId: options.queryDefinitionId,
+    }),
+  });
+  if (!response.ok) {
+    handleUnauthorized(response.status);
+    const body = await response.json().catch(() => ({}));
+    throw new Error(body.error || 'Uppladdning misslyckades');
+  }
+  return response.json();
+}
+
+async function uploadThroughBackend(
   file: File,
   options?: {
     caseId?: string;
@@ -109,14 +176,14 @@ export function getDownloadUrl(attachmentId: string): string {
  * Download an attachment with the user's token and save it.
  */
 export async function downloadAttachment(attachment: Attachment): Promise<void> {
-  return api.downloadBlob(`/api/v1/files/${attachment.id}/download`, attachment.originalFilename);
+  return api.downloadBlob(attachment.downloadUrl, attachment.originalFilename);
 }
 
 /**
  * Fetch an attachment with the user's token, e.g. to show an image preview.
  */
-export async function getAttachmentBlob(attachmentId: string): Promise<Blob> {
-  return api.getBlob(`/api/v1/files/${attachmentId}/download`);
+export async function getAttachmentBlob(attachment: Attachment): Promise<Blob> {
+  return api.getBlob(attachment.downloadUrl);
 }
 
 /**

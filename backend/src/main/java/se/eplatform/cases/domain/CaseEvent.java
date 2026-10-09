@@ -103,8 +103,34 @@ public class CaseEvent {
         event.setCaseEntity(caseEntity);
         event.setEventType(EventType.MESSAGE_SENT);
         event.setCreatedBy(sender);
-        event.setDescription(isExternal ? "Externt meddelande skickat" : "Internt meddelande skickat");
+        event.setDescription(isExternal ? "Meddelande skickat" : "Intern anteckning");
+        if (!isExternal) {
+            event.markInternal();
+        }
         return event;
+    }
+
+    public static CaseEvent assigned(Case caseEntity, User assignee, User assignedBy) {
+        CaseEvent event = new CaseEvent();
+        event.setCaseEntity(caseEntity);
+        event.setEventType(assignee != null ? EventType.ASSIGNED : EventType.UNASSIGNED);
+        event.setCreatedBy(assignedBy);
+        event.setDescription(assignee != null
+                ? "Tilldelat " + assignee.getFullName()
+                : "Tilldelning borttagen");
+        event.markInternal();
+        return event;
+    }
+
+    /**
+     * Internal events (notes between staff, assignments) are not shown to the citizen.
+     */
+    public void markInternal() {
+        data.put("internal", true);
+    }
+
+    public boolean isInternal() {
+        return Boolean.TRUE.equals(data.get("internal"));
     }
 
     // Getters and setters

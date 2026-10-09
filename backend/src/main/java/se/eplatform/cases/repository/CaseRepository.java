@@ -83,6 +83,18 @@ public interface CaseRepository extends JpaRepository<Case, UUID> {
     Page<Case> findAllSubmitted(Pageable pageable);
 
     /**
+     * Submitted cases, optionally limited to those assigned to a user
+     * (assignedTo set) or to unassigned ones (unassignedOnly).
+     */
+    @EntityGraph(attributePaths = {"flow", "flow.steps", "status", "assignedTo"})
+    @Query("SELECT c FROM Case c LEFT JOIN c.assignedTo a WHERE c.submittedAt IS NOT NULL " +
+           "AND (:assignedTo IS NULL OR a.id = :assignedTo) " +
+           "AND (:unassignedOnly = false OR a IS NULL)")
+    Page<Case> findSubmitted(@Param("assignedTo") UUID assignedTo,
+                             @Param("unassignedOnly") boolean unassignedOnly,
+                             Pageable pageable);
+
+    /**
      * Find draft cases for a user.
      */
     @Query("SELECT c FROM Case c WHERE c.createdBy.id = :userId AND c.submittedAt IS NULL " +
@@ -142,6 +154,7 @@ public interface CaseRepository extends JpaRepository<Case, UUID> {
     /**
      * Search cases by reference number or description.
      */
+    @EntityGraph(attributePaths = {"flow", "flow.steps", "status", "assignedTo"})
     @Query("SELECT c FROM Case c WHERE " +
            "LOWER(c.referenceNumber) LIKE LOWER(CONCAT('%', :query, '%')) OR " +
            "LOWER(c.userDescription) LIKE LOWER(CONCAT('%', :query, '%'))")

@@ -54,6 +54,11 @@ public class Case extends BaseEntity {
     @JoinColumn(name = "created_by", nullable = false)
     private User createdBy;
 
+    /** The handläggare responsible for the case, if any. */
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "assigned_to")
+    private User assignedTo;
+
     @Column(name = "submitted_at")
     private Instant submittedAt;
 
@@ -252,6 +257,14 @@ public class Case extends BaseEntity {
 
     public User getCreatedBy() {
         return createdBy;
+    }
+
+    public User getAssignedTo() {
+        return assignedTo;
+    }
+
+    public void setAssignedTo(User assignedTo) {
+        this.assignedTo = assignedTo;
     }
 
     public void setCreatedBy(User createdBy) {

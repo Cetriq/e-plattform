@@ -9,6 +9,7 @@ import org.springframework.stereotype.Repository;
 import se.eplatform.user.domain.User;
 
 import java.time.Instant;
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -17,6 +18,10 @@ import java.util.UUID;
 public interface UserRepository extends JpaRepository<User, UUID> {
 
     Optional<User> findByEmail(String email);
+
+    @Query("SELECT DISTINCT u FROM User u JOIN u.roles r " +
+           "WHERE r.name IN :roleNames AND u.active = true ORDER BY u.firstName, u.lastName")
+    List<User> findActiveWithAnyRole(@Param("roleNames") Collection<String> roleNames);
 
     /**
      * Ids of the temporary citizen accounts created for demo visitors.

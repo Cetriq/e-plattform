@@ -95,7 +95,7 @@ function AuditLog() {
             Vem som har läst eller ändrat vilka uppgifter, och när. Loggen kan inte ändras i efterhand.
           </p>
         </div>
-        <div className="flex flex-wrap gap-2">
+        <div className="flex flex-wrap md:flex-nowrap gap-2 shrink-0">
           <button
             type="button"
             onClick={check}

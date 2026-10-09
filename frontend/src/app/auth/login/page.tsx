@@ -6,6 +6,15 @@ import { useState, useEffect } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { getTestUsers, TestUser } from '@/lib/auth';
 
+/** Only allow same-site paths so ?redirect= cannot send users to another site. */
+function getRedirectTarget(): string {
+  const target = new URLSearchParams(window.location.search).get('redirect');
+  if (target && target.startsWith('/') && !target.startsWith('//')) {
+    return target;
+  }
+  return '/';
+}
+
 export default function LoginPage() {
   const router = useRouter();
   const { login, isAuthenticated, isLoading: authLoading } = useAuth();
@@ -18,7 +27,7 @@ export default function LoginPage() {
   // Redirect if already authenticated
   useEffect(() => {
     if (isAuthenticated) {
-      router.push('/');
+      router.push(getRedirectTarget());
     }
   }, [isAuthenticated, router]);
 
@@ -36,7 +45,7 @@ export default function LoginPage() {
 
     try {
       await login({ email, password: 'dev' });
-      router.push('/');
+      router.push(getRedirectTarget());
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Inloggning misslyckades');
     } finally {

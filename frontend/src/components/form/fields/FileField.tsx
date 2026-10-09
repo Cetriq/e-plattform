@@ -69,6 +69,17 @@ export function FileField({ query, userId, caseId }: FileFieldProps) {
       }, 5000);
     }
 
+    if (!userId) {
+      setUploading(prev => [
+        ...prev,
+        ...validFiles.map(file => ({ file, progress: 0, error: 'Du måste vara inloggad för att ladda upp filer' })),
+      ]);
+      setTimeout(() => {
+        setUploading(prev => prev.filter(u => !u.error));
+      }, 5000);
+      return;
+    }
+
     // Upload valid files
     for (const file of validFiles) {
       setUploading(prev => [...prev, { file, progress: 0 }]);
@@ -76,7 +87,7 @@ export function FileField({ query, userId, caseId }: FileFieldProps) {
       try {
         const attachment = await uploadFile(
           file,
-          userId || 'anonymous',
+          userId,
           {
             caseId,
             queryDefinitionId: query.id,
@@ -131,8 +142,12 @@ export function FileField({ query, userId, caseId }: FileFieldProps) {
   };
 
   const handleRemove = async (attachment: Attachment) => {
+    if (!userId) {
+      onChange(attachments.filter(a => a.id !== attachment.id));
+      return;
+    }
     try {
-      await deleteAttachment(attachment.id, userId || 'anonymous');
+      await deleteAttachment(attachment.id, userId);
       onChange(attachments.filter(a => a.id !== attachment.id));
     } catch (error) {
       console.error('Failed to delete attachment:', error);

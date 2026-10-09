@@ -142,6 +142,8 @@ export interface FormContext {
   setValue: (queryId: string, value: unknown) => void;
   setTouched: (queryId: string) => void;
   getFieldState: (queryId: string) => FieldState;
+  /** Marks the fields as touched and returns the ids of those that are invalid. */
+  validateQueries: (queryIds: string[]) => string[];
   userId?: string;
   caseId?: string;
 }

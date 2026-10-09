@@ -1,6 +1,7 @@
 package se.eplatform.cases.domain;
 
 import jakarta.persistence.*;
+import org.hibernate.annotations.Generated;
 import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.type.SqlTypes;
 import se.eplatform.common.domain.BaseEntity;
@@ -27,7 +28,9 @@ public class Case extends BaseEntity {
     @JoinColumn(name = "status_id")
     private StatusDefinition status;
 
-    @Column(name = "reference_number", nullable = false, unique = true, length = 50)
+    // Assigned by the trg_case_reference database trigger and read back after insert
+    @Generated
+    @Column(name = "reference_number", unique = true, length = 50, insertable = false, updatable = false)
     private String referenceNumber;
 
     @ManyToOne(fetch = FetchType.LAZY)

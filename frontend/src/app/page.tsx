@@ -71,23 +71,6 @@ export default function Home() {
           </div>
         </div>
       </section>
-
-      {/* Footer */}
-      <footer className="border-t bg-gray-50 mt-20">
-        <div className="container mx-auto px-4 py-8">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <div className="w-6 h-6 bg-blue-600 rounded flex items-center justify-center">
-                <span className="text-white text-sm font-bold">E</span>
-              </div>
-              <span className="font-medium">e-Plattform</span>
-            </div>
-            <p className="text-gray-500 text-sm">
-              Modern e-tjänstplattform byggd med Java 21 & Next.js
-            </p>
-          </div>
-        </div>
-      </footer>
     </main>
   );
 }

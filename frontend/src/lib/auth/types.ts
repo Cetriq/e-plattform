@@ -4,6 +4,7 @@ export interface User {
   firstName: string | null;
   lastName: string | null;
   displayName: string;
+  phone: string | null;
   roles: string[];
   permissions: string[];
 }

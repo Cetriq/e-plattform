@@ -101,3 +101,32 @@ export async function submitCase(caseId: string): Promise<CaseDetail> {
 export async function deleteCase(caseId: string): Promise<void> {
   return api.delete<void>(`/api/v1/cases/${caseId}`);
 }
+
+export interface CaseEvent {
+  id: string;
+  eventType: string;
+  description: string;
+  createdAt: string;
+  actorName: string | null;
+  actorRole: 'ADMIN' | 'MANAGER' | 'USER' | null;
+  oldStatusName: string | null;
+  newStatusName: string | null;
+  comment: string | null;
+}
+
+/**
+ * Get the event history for a case (timeline).
+ */
+export async function getCaseEvents(caseId: string): Promise<CaseEvent[]> {
+  return api.get<CaseEvent[]>(`/api/v1/cases/${caseId}/events`);
+}
+
+/**
+ * Download the current user's case as PDF.
+ */
+export async function downloadOwnCasePdf(caseId: string, referenceNumber: string): Promise<void> {
+  return api.downloadBlob(
+    `/api/v1/cases/${caseId}/pdf/own`,
+    `arende-${referenceNumber}.pdf`
+  );
+}

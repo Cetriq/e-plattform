@@ -4,6 +4,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import se.eplatform.auth.dto.AuthResponse;
 import se.eplatform.auth.dto.AuthResponse.UserInfo;
+import se.eplatform.auth.dto.UpdateProfileRequest;
 import se.eplatform.user.domain.User;
 import se.eplatform.user.repository.UserRepository;
 
@@ -84,6 +85,33 @@ public class MockAuthService {
         return userRepository.findById(UUID.fromString(userId));
     }
 
+    /**
+     * Update profile for the user owning this token. Email cannot be changed.
+     */
+    @Transactional
+    public Optional<UserInfo> updateProfile(String token, UpdateProfileRequest request) {
+        String userId = tokenToUserId.get(token);
+        if (userId == null) {
+            return Optional.empty();
+        }
+        return userRepository.findById(UUID.fromString(userId))
+            .filter(User::isActive)
+            .map(user -> {
+                if (request.firstName() != null && !request.firstName().isBlank()) {
+                    user.setFirstName(request.firstName().trim());
+                }
+                if (request.lastName() != null && !request.lastName().isBlank()) {
+                    user.setLastName(request.lastName().trim());
+                }
+                if (request.phone() != null) {
+                    String trimmed = request.phone().trim();
+                    user.setPhone(trimmed.isEmpty() ? null : trimmed);
+                }
+                User saved = userRepository.save(user);
+                return toUserInfo(saved);
+            });
+    }
+
     private String generateToken(User user) {
         String payload = user.getId() + ":" + System.currentTimeMillis() + ":" + UUID.randomUUID();
         return Base64.getEncoder().encodeToString(payload.getBytes());
@@ -104,6 +132,7 @@ public class MockAuthService {
             user.getFirstName(),
             user.getLastName(),
             user.getFullName(),
+            user.getPhone(),
             roles,
             permissions
         );

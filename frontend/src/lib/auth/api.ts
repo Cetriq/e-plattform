@@ -1,6 +1,5 @@
 import { AuthResponse, LoginCredentials, TestUser, User } from './types';
-
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080';
+import { API_BASE_URL } from '@/lib/config';
 
 export async function login(credentials: LoginCredentials): Promise<AuthResponse> {
   const response = await fetch(`${API_BASE_URL}/api/v1/public/auth/login`, {
@@ -28,6 +27,33 @@ export async function getCurrentUser(token: string): Promise<User> {
 
   if (!response.ok) {
     throw new Error('Failed to get current user');
+  }
+
+  return response.json();
+}
+
+export interface UpdateProfileRequest {
+  firstName?: string;
+  lastName?: string;
+  phone?: string | null;
+}
+
+export async function updateProfile(
+  token: string,
+  data: UpdateProfileRequest,
+): Promise<User> {
+  const response = await fetch(`${API_BASE_URL}/api/v1/public/auth/me`, {
+    method: 'PATCH',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${token}`,
+    },
+    body: JSON.stringify(data),
+  });
+
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({ error: 'Update failed' }));
+    throw new Error(error.error || 'Update failed');
   }
 
   return response.json();

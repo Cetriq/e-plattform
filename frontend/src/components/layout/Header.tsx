@@ -106,6 +106,14 @@ export function Header() {
                     Mina ärenden
                   </Link>
 
+                  <Link
+                    href="/citizen/profile"
+                    className="block px-4 py-2 text-gray-700 hover:bg-gray-100"
+                    onClick={() => setShowUserMenu(false)}
+                  >
+                    Min profil
+                  </Link>
+
                   {hasRole('MANAGER') && (
                     <Link
                       href="/manager"

@@ -14,6 +14,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import se.eplatform.auth.dto.AuthResponse;
 import se.eplatform.auth.dto.LoginRequest;
+import se.eplatform.auth.dto.UpdateProfileRequest;
 import se.eplatform.auth.service.MockAuthService;
 
 import java.util.List;
@@ -136,6 +137,42 @@ public class AuthController {
         String token = authHeader.substring(7);
         return authService.validateToken(token)
             .<ResponseEntity<?>>map(auth -> ResponseEntity.ok(auth.user()))
+            .orElseGet(() -> ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                .body(Map.of("error", "Invalid or expired token")));
+    }
+
+    @Operation(
+        summary = "Uppdatera egen profil",
+        description = """
+            Uppdatera förnamn, efternamn och/eller telefonnummer för inloggad användare.
+
+            E-post kan inte ändras eftersom den i produktion hämtas från e-legitimation.
+            """
+    )
+    @ApiResponses({
+        @ApiResponse(
+            responseCode = "200",
+            description = "Profil uppdaterad",
+            content = @Content(
+                mediaType = "application/json",
+                schema = @Schema(implementation = AuthResponse.UserInfo.class)
+            )
+        ),
+        @ApiResponse(responseCode = "401", description = "Ogiltig token")
+    })
+    @PatchMapping("/me")
+    public ResponseEntity<?> updateProfile(
+            @Parameter(description = "JWT Bearer token")
+            @RequestHeader(value = "Authorization", required = false) String authHeader,
+            @Valid @RequestBody UpdateProfileRequest request) {
+        if (authHeader == null || !authHeader.startsWith("Bearer ")) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                .body(Map.of("error", "No valid token provided"));
+        }
+
+        String token = authHeader.substring(7);
+        return authService.updateProfile(token, request)
+            .<ResponseEntity<?>>map(ResponseEntity::ok)
             .orElseGet(() -> ResponseEntity.status(HttpStatus.UNAUTHORIZED)
                 .body(Map.of("error", "Invalid or expired token")));
     }

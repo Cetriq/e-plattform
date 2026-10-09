@@ -17,6 +17,7 @@ import {
 interface AuthContextType extends AuthState {
   login: (credentials: LoginCredentials) => Promise<void>;
   logout: () => Promise<void>;
+  updateUser: (user: User) => void;
   hasRole: (role: string) => boolean;
   hasPermission: (permission: string) => boolean;
 }
@@ -103,6 +104,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     });
   }, [state.token]);
 
+  const updateUser = useCallback((user: User) => {
+    setStoredUser(user);
+    setState(prev => ({ ...prev, user }));
+  }, []);
+
   const hasRole = useCallback((role: string) => {
     return state.user?.roles.includes(role) ?? false;
   }, [state.user]);
@@ -123,6 +129,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         ...state,
         login,
         logout,
+        updateUser,
         hasRole,
         hasPermission,
       }}

@@ -18,6 +18,14 @@ function getHeaders(): HeadersInit {
 }
 
 /**
+ * Paths under /api/blob/ are served by this Next.js app (files in Vercel
+ * Blob); everything else is a backend path.
+ */
+export function resolveUrl(path: string): string {
+  return path.startsWith('/api/blob/') ? path : `${API_BASE_URL}${path}`;
+}
+
+/**
  * A 401 on a request that carried a token means the session has expired or
  * the user no longer exists. Clear it and send the user to the login page,
  * bringing them back here afterwards.
@@ -105,7 +113,7 @@ export const api = {
     if (token) {
       headers['Authorization'] = `Bearer ${token}`;
     }
-    const response = await fetch(`${API_BASE_URL}${path}`, { headers });
+    const response = await fetch(resolveUrl(path), { headers });
     if (!response.ok) {
       handleUnauthorized(response.status);
       const error: ApiError = {

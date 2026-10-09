@@ -1,0 +1,19 @@
+# Keep CLI uploads small and free of local secrets
+.env
+.env.*
+!.env.example
+.vercel
+.git
+.github
+.playwright-mcp
+openeplatform
+test-files
+docs
+docker
+*.png
+**/node_modules
+frontend/.next
+frontend/tsconfig.tsbuildinfo
+backend/build
+backend/.gradle
+backend/bin

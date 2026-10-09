@@ -17,6 +17,7 @@ backend/bin/
 backend/out/
 *.class
 *.jar
+!backend/gradle/wrapper/gradle-wrapper.jar
 *.war
 *.nar
 *.ear
@@ -113,3 +114,5 @@ test-files/
 # Screenshots (temporary)
 # ========================
 *.png
+.vercel
+.env*.local

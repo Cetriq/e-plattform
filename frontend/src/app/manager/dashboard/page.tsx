@@ -132,7 +132,7 @@ export default function ManagerDashboardPage() {
                   Ärenden
                 </Link>
                 <Link
-                  href="/manager/flows"
+                  href="/citizen/services"
                   className="text-gray-600 hover:text-gray-900"
                 >
                   E-tjänster

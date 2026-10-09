@@ -27,7 +27,7 @@ interface QueryRendererProps {
 }
 
 export function QueryRenderer({ query }: QueryRendererProps) {
-  const { getFieldState, userId, caseId } = useFormContext();
+  const { getFieldState, userId, caseId, ensureCaseId } = useFormContext();
   const fieldState = getFieldState(query.id);
 
   // Don't render hidden fields
@@ -68,7 +68,7 @@ export function QueryRenderer({ query }: QueryRendererProps) {
     // Files
     case 'FILE':
     case 'IMAGE':
-      return <FileField query={query} userId={userId} caseId={caseId} />;
+      return <FileField query={query} userId={userId} caseId={caseId} ensureCaseId={ensureCaseId} />;
 
     // Layout elements
     case 'HEADING':

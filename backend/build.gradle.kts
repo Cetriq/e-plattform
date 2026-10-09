@@ -28,14 +28,10 @@ extra["testcontainers.version"] = "1.21.4"
 dependencies {
     // Spring Boot Starters
     implementation("org.springframework.boot:spring-boot-starter-web")
-    implementation("org.springframework.boot:spring-boot-starter-webflux")
     implementation("org.springframework.boot:spring-boot-starter-data-jpa")
-    implementation("org.springframework.boot:spring-boot-starter-data-redis")
     implementation("org.springframework.boot:spring-boot-starter-security")
-    implementation("org.springframework.boot:spring-boot-starter-oauth2-resource-server")
     implementation("org.springframework.boot:spring-boot-starter-validation")
     implementation("org.springframework.boot:spring-boot-starter-actuator")
-    implementation("org.springframework.boot:spring-boot-starter-amqp")
     implementation("org.springframework.boot:spring-boot-starter-cache")
     implementation("org.springframework.boot:spring-boot-starter-mail")
     implementation("org.springframework.boot:spring-boot-starter-thymeleaf")
@@ -47,12 +43,12 @@ dependencies {
     // Object Storage (MinIO/S3)
     implementation("io.minio:minio:8.5.7")
 
-    // Search (Meilisearch)
-    implementation("com.meilisearch.sdk:meilisearch-java:0.11.8")
-
     // PDF Generation
     implementation("com.openhtmltopdf:openhtmltopdf-core:1.0.10")
     implementation("com.openhtmltopdf:openhtmltopdf-pdfbox:1.0.10")
+
+    // Signed tokens (JWT)
+    implementation("com.nimbusds:nimbus-jose-jwt:10.10")
 
     // Rate Limiting
     implementation("com.bucket4j:bucket4j-core:8.10.1")
@@ -63,10 +59,6 @@ dependencies {
     // API Documentation (OpenAPI/Swagger)
     implementation("org.springdoc:springdoc-openapi-starter-webmvc-ui:2.3.0")
 
-    // Utilities
-    implementation("org.apache.commons:commons-lang3:3.14.0")
-    implementation("com.google.guava:guava:33.0.0-jre")
-
     // JSON
     implementation("com.fasterxml.jackson.datatype:jackson-datatype-jsr310")
     implementation("com.fasterxml.jackson.module:jackson-module-parameter-names")
@@ -74,10 +66,6 @@ dependencies {
     // Lombok
     compileOnly("org.projectlombok:lombok")
     annotationProcessor("org.projectlombok:lombok")
-
-    // MapStruct for DTO mapping
-    implementation("org.mapstruct:mapstruct:1.5.5.Final")
-    annotationProcessor("org.mapstruct:mapstruct-processor:1.5.5.Final")
 
     // Dev tools
     developmentOnly("org.springframework.boot:spring-boot-devtools")

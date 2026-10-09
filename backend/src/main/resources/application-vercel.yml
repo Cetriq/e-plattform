@@ -1,0 +1,49 @@
+# Profile for running the backend as a container on Vercel, with Neon Postgres
+# and files in a private Vercel Blob store. Set SPRING_PROFILES_ACTIVE=vercel.
+
+spring:
+  datasource:
+    # The Neon Marketplace integration provides the PG* variables. Use the direct
+    # (unpooled) host: the pooled one runs PgBouncer in transaction mode, which
+    # does not work with server-side prepared statements or Flyway.
+    url: jdbc:postgresql://${PGHOST_UNPOOLED}/${PGDATABASE}?sslmode=${PGSSLMODE:require}
+    username: ${PGUSER}
+    password: ${PGPASSWORD}
+    hikari:
+      # Each container instance gets a small pool; instances scale to zero
+      maximum-pool-size: 3
+      minimum-idle: 0
+      idle-timeout: 60000
+      connection-timeout: 20000
+
+  jpa:
+    show-sql: false
+    properties:
+      hibernate:
+        generate_statistics: false
+
+server:
+  # Vercel tells the container which port to listen on
+  port: ${PORT:8080}
+
+logging:
+  level:
+    root: WARN
+    se.eplatform: INFO
+    org.springframework: WARN
+    org.hibernate: WARN
+
+eplatform:
+  storage:
+    provider: vercel-blob
+  security:
+    # Vercel's edge sets this header itself, so clients can't spoof it
+    client-ip-header: x-vercel-forwarded-for
+  demo:
+    # Instances are stopped when idle, so Vercel Cron triggers the cleanup instead
+    cleanup-cron: "-"
+  cron:
+    secret: ${CRON_SECRET:}
+  cors:
+    # Frontend and API are served from the same domain
+    allowed-origins: ${CORS_ALLOWED_ORIGINS:}

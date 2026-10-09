@@ -46,6 +46,10 @@ public class RateLimitFilter extends OncePerRequestFilter {
     @Value("${eplatform.security.rate-limit.upload-requests-per-minute:20}")
     private int uploadRequestsPerMinute;
 
+    /** Header set by our own edge proxy with the real client IP; empty = use the remote address. */
+    @Value("${eplatform.security.client-ip-header:}")
+    private String trustedClientIpHeader;
+
     // Cache buckets per IP address
     private final Map<String, Bucket> generalBuckets = new ConcurrentHashMap<>();
     private final Map<String, Bucket> authBuckets = new ConcurrentHashMap<>();
@@ -123,9 +127,16 @@ public class RateLimitFilter extends OncePerRequestFilter {
     }
 
     private String getClientIp(HttpServletRequest request) {
-        // Proxy headers are not read here: anyone can set them. With
-        // server.forward-headers-strategy=native, Tomcat replaces the remote
-        // address with the client address only for requests from trusted proxies.
+        // Only read a client IP header that our own edge proxy sets and
+        // overwrites (e.g. x-vercel-forwarded-for on Vercel); clients can set
+        // any other header. Otherwise, with server.forward-headers-strategy=native,
+        // Tomcat resolves the address from trusted proxies only.
+        if (!trustedClientIpHeader.isBlank()) {
+            String value = request.getHeader(trustedClientIpHeader);
+            if (value != null && !value.isBlank()) {
+                return value.split(",")[0].trim();
+            }
+        }
         return request.getRemoteAddr();
     }
 

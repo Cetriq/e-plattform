@@ -15,13 +15,10 @@ Modern e-service platform for public administration, inspired by Open-ePlatform 
 ### Backend
 - **Java 21** with Spring Boot 3.2
 - **PostgreSQL 16** for database
-- **Redis 7** for cache and sessions
-- **Meilisearch** for full-text search
 - **MinIO** for file storage (S3-compatible)
-- **RabbitMQ** for message queue
 
 ### Frontend
-- **Next.js 14** with React 18
+- **Next.js 15** with React 19
 - **TypeScript** for type safety
 - **Tailwind CSS** for styling
 - **TanStack Query** for server state
@@ -57,9 +54,7 @@ Then open:
 - **Frontend**: http://localhost:3000
 - **API**: http://localhost:8080
 - **API Documentation (Swagger)**: http://localhost:8080/swagger-ui.html
-- **Meilisearch**: http://localhost:7700
 - **MinIO Console**: http://localhost:9001
-- **RabbitMQ Management**: http://localhost:15672
 - **Mailpit (Email)**: http://localhost:8025
 - **Grafana**: http://localhost:3001
 - **Prometheus**: http://localhost:9090

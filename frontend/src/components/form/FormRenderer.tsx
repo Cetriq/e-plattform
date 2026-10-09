@@ -16,6 +16,8 @@ interface FormRendererProps {
   onCancel?: () => void;
   userId?: string;
   caseId?: string;
+  /** Creates the draft case if needed, so files can be attached to it. */
+  ensureCaseId?: () => Promise<string>;
 }
 
 export function FormRenderer({
@@ -26,6 +28,7 @@ export function FormRenderer({
   onCancel,
   userId,
   caseId,
+  ensureCaseId,
 }: FormRendererProps) {
   const [values, setValues] = useState<FormValues>(initialValues);
   const [autoSaveStatus, setAutoSaveStatus] = useState<AutoSaveStatus>('idle');
@@ -120,7 +123,7 @@ export function FormRenderer({
   };
 
   return (
-    <FormProvider steps={steps} initialValues={values} onChange={handleValuesChange} userId={userId} caseId={caseId}>
+    <FormProvider steps={steps} initialValues={values} onChange={handleValuesChange} userId={userId} caseId={caseId} ensureCaseId={ensureCaseId}>
       <FormBody
         steps={steps}
         onSubmit={handleSubmit}

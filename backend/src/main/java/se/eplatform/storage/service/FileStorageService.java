@@ -4,6 +4,7 @@ import io.minio.*;
 import io.minio.http.Method;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -20,14 +21,28 @@ import java.time.temporal.ChronoUnit;
 import java.util.*;
 import java.util.concurrent.TimeUnit;
 
+/**
+ * Attachment storage.
+ *
+ * Two modes, chosen with eplatform.storage.provider:
+ * - "minio" (default): files are uploaded to and downloaded from the backend,
+ *   which stores them in MinIO/S3.
+ * - "vercel-blob": the browser uploads files straight to a private Vercel Blob
+ *   store (Vercel Functions only accept 4.5 MB per request). The backend
+ *   decides who may upload, records the file and decides who may read it; the
+ *   frontend streams the bytes.
+ */
 @Service
 @Transactional(readOnly = true)
 public class FileStorageService {
 
+    public static final String VERCEL_BLOB_PROVIDER = "vercel-blob";
+    public static final String VERCEL_BLOB_BUCKET = "vercel-blob";
+
     private static final Logger log = LoggerFactory.getLogger(FileStorageService.class);
 
-    private static final long MAX_FILE_SIZE = 50 * 1024 * 1024; // 50 MB
-    private static final Set<String> ALLOWED_CONTENT_TYPES = Set.of(
+    public static final long MAX_FILE_SIZE = 50 * 1024 * 1024; // 50 MB
+    public static final Set<String> ALLOWED_CONTENT_TYPES = Set.of(
             "application/pdf",
             "image/jpeg",
             "image/png",
@@ -41,19 +56,56 @@ public class FileStorageService {
             "text/csv"
     );
 
-    private final MinioClient minioClient;
+    private final MinioClient minioClient;  // null when files live in Vercel Blob
     private final AttachmentRepository attachmentRepository;
     private final CaseRepository caseRepository;
+    private final boolean externalStorage;
 
-    @Value("${minio.bucket.attachments}")
+    @Value("${minio.bucket.attachments:eplatform-attachments}")
     private String attachmentsBucket;
 
-    public FileStorageService(MinioClient minioClient,
+    public FileStorageService(ObjectProvider<MinioClient> minioClient,
                               AttachmentRepository attachmentRepository,
-                              CaseRepository caseRepository) {
-        this.minioClient = minioClient;
+                              CaseRepository caseRepository,
+                              @Value("${eplatform.storage.provider:minio}") String provider) {
+        this.minioClient = minioClient.getIfAvailable();
         this.attachmentRepository = attachmentRepository;
         this.caseRepository = caseRepository;
+        this.externalStorage = VERCEL_BLOB_PROVIDER.equals(provider);
+    }
+
+    /**
+     * True when the browser uploads files directly to Vercel Blob.
+     */
+    public boolean isExternalStorage() {
+        return externalStorage;
+    }
+
+    private MinioClient requireMinio() {
+        if (minioClient == null) {
+            throw new IllegalStateException("Files are stored in Vercel Blob and are not handled by the backend");
+        }
+        return minioClient;
+    }
+
+    /**
+     * Record a file the browser has uploaded to Vercel Blob. The caller must
+     * already have checked that the user may add files to the case.
+     */
+    @Transactional
+    public Attachment registerExternalFile(String pathname, String originalFilename, String contentType,
+                                           long fileSize, UUID userId, UUID caseId, UUID queryDefinitionId) {
+        if (!externalStorage) {
+            throw new IllegalStateException("Files are uploaded through the backend in this environment");
+        }
+        Case caseEntity = caseRepository.findById(caseId)
+                .orElseThrow(() -> new IllegalArgumentException("Case not found: " + caseId));
+
+        Attachment attachment = new Attachment(
+                originalFilename, pathname, contentType, fileSize, VERCEL_BLOB_BUCKET, userId);
+        attachment.setQueryDefinitionId(queryDefinitionId);
+        attachment.setCaseEntity(caseEntity);
+        return attachmentRepository.save(attachment);
     }
 
     /**
@@ -75,7 +127,7 @@ public class FileStorageService {
             String checksum = calculateChecksum(file.getBytes());
 
             // Upload to MinIO
-            minioClient.putObject(PutObjectArgs.builder()
+            requireMinio().putObject(PutObjectArgs.builder()
                     .bucket(attachmentsBucket)
                     .object(storedFilename)
                     .stream(file.getInputStream(), fileSize, -1)
@@ -123,7 +175,7 @@ public class FileStorageService {
         }
 
         try {
-            return minioClient.getObject(GetObjectArgs.builder()
+            return requireMinio().getObject(GetObjectArgs.builder()
                     .bucket(attachment.getBucket())
                     .object(attachment.getStoredFilename())
                     .build());
@@ -167,7 +219,7 @@ public class FileStorageService {
         }
 
         try {
-            return minioClient.getPresignedObjectUrl(GetPresignedObjectUrlArgs.builder()
+            return requireMinio().getPresignedObjectUrl(GetPresignedObjectUrlArgs.builder()
                     .method(Method.GET)
                     .bucket(attachment.getBucket())
                     .object(attachment.getStoredFilename())
@@ -209,7 +261,12 @@ public class FileStorageService {
 
         try {
             // Delete from MinIO
-            minioClient.removeObject(RemoveObjectArgs.builder()
+            if (VERCEL_BLOB_BUCKET.equals(attachment.getBucket())) {
+                // Blob files are removed by the frontend, which holds the Blob credentials
+                attachmentRepository.delete(attachment);
+                return;
+            }
+            requireMinio().removeObject(RemoveObjectArgs.builder()
                     .bucket(attachment.getBucket())
                     .object(attachment.getStoredFilename())
                     .build());

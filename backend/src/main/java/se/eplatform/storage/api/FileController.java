@@ -64,6 +64,10 @@ public class FileController {
             @RequestParam(value = "queryDefinitionId", required = false) UUID queryDefinitionId) {
 
         UUID userId = CurrentUser.requireId();
+        if (fileStorageService.isExternalStorage()) {
+            return ResponseEntity.badRequest().body(new ErrorResponse(
+                    "Filer laddas upp direkt till fillagringen i den här miljön"));
+        }
         if (caseId != null) {
             caseAccess.requireOwner(caseId);
         }
@@ -89,11 +93,78 @@ public class FileController {
     public record ErrorResponse(String error) {}
 
     /**
+     * Ask whether the logged-in user may upload files to a case. Used by the
+     * frontend before it lets the browser upload straight to Vercel Blob.
+     */
+    @PostMapping("/upload-permission")
+    public UploadPermission getUploadPermission(@RequestBody UploadPermissionRequest request) {
+        if (request.caseId() == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "caseId krävs");
+        }
+        caseAccess.requireOwner(request.caseId());
+        return new UploadPermission(
+                blobPrefix(request.caseId()),
+                FileStorageService.MAX_FILE_SIZE,
+                List.copyOf(FileStorageService.ALLOWED_CONTENT_TYPES));
+    }
+
+    /**
+     * Record a file that the browser uploaded to Vercel Blob.
+     */
+    @PostMapping("/register")
+    public ResponseEntity<?> registerUploadedFile(@RequestBody RegisterFileRequest request) {
+        UUID userId = CurrentUser.requireId();
+        if (request.caseId() == null || request.pathname() == null || request.originalFilename() == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "pathname, originalFilename och caseId krävs");
+        }
+        caseAccess.requireOwner(request.caseId());
+
+        if (!request.pathname().startsWith(blobPrefix(request.caseId())) || request.pathname().contains("..")) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Filen hör inte till ärendet");
+        }
+        if (request.contentType() == null || !FileStorageService.ALLOWED_CONTENT_TYPES.contains(request.contentType())) {
+            return ResponseEntity.badRequest().body(new ErrorResponse("Filtypen är inte tillåten"));
+        }
+        if (request.fileSize() <= 0 || request.fileSize() > FileStorageService.MAX_FILE_SIZE) {
+            return ResponseEntity.badRequest().body(new ErrorResponse("Filen är för stor"));
+        }
+
+        Attachment attachment = fileStorageService.registerExternalFile(
+                request.pathname(), request.originalFilename(), request.contentType(), request.fileSize(),
+                userId, request.caseId(), request.queryDefinitionId());
+
+        auditService.logFile(AuditAction.FILE_UPLOAD, attachment.getId().toString(),
+                "Uploaded file: " + attachment.getOriginalFilename() +
+                " (" + formatBytes(attachment.getFileSize()) + ")");
+
+        return ResponseEntity.ok(AttachmentDTO.from(attachment));
+    }
+
+    private static String blobPrefix(UUID caseId) {
+        return "cases/" + caseId + "/";
+    }
+
+    public record UploadPermissionRequest(UUID caseId) {}
+
+    public record UploadPermission(String pathnamePrefix, long maxFileSize, List<String> allowedContentTypes) {}
+
+    public record RegisterFileRequest(
+            String pathname,
+            String originalFilename,
+            String contentType,
+            long fileSize,
+            UUID caseId,
+            UUID queryDefinitionId) {}
+
+    /**
      * Download a file by attachment ID.
      */
     @GetMapping("/{id}/download")
     public ResponseEntity<Resource> downloadFile(@PathVariable UUID id) {
         Attachment attachment = requireReadable(id);
+        if (FileStorageService.VERCEL_BLOB_BUCKET.equals(attachment.getBucket())) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Filen hämtas via " + AttachmentDTO.from(attachment).downloadUrl());
+        }
 
         InputStream inputStream = fileStorageService.downloadFile(id);
 

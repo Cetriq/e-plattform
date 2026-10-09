@@ -49,12 +49,9 @@ management:
     health:
       show-details: when_authorized
   health:
-    # Redis and RabbitMQ are configured but not used by any code yet, so they
-    # must not make the API report itself as down
-    redis:
-      enabled: ${HEALTH_REDIS_ENABLED:false}
-    rabbit:
-      enabled: ${HEALTH_RABBIT_ENABLED:false}
+    # Only check the mail server when e-mail is actually sent
+    mail:
+      enabled: ${EMAIL_ENABLED:false}
   metrics:
     tags:
       application: ${spring.application.name}

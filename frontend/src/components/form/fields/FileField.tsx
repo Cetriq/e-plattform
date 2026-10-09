@@ -20,6 +20,7 @@ interface FileFieldProps {
   query: QueryDefinition;
   userId?: string;
   caseId?: string;
+  ensureCaseId?: () => Promise<string>;
 }
 
 interface UploadingFile {
@@ -28,7 +29,7 @@ interface UploadingFile {
   error?: string;
 }
 
-export function FileField({ query, userId, caseId }: FileFieldProps) {
+export function FileField({ query, userId, caseId, ensureCaseId }: FileFieldProps) {
   const { value, onChange, onBlur, state } = useField(query.id);
   const inputRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState<UploadingFile[]>([]);
@@ -87,10 +88,12 @@ export function FileField({ query, userId, caseId }: FileFieldProps) {
       setUploading(prev => [...prev, { file, progress: 0 }]);
 
       try {
+        // Files belong to a case, so create the draft first if it doesn't exist yet
+        const targetCaseId = caseId ?? (ensureCaseId ? await ensureCaseId() : undefined);
         const attachment = await uploadFile(
           file,
           {
-            caseId,
+            caseId: targetCaseId,
             queryDefinitionId: query.id,
             onProgress: (progress: UploadProgress) => {
               setUploading(prev =>
@@ -123,7 +126,7 @@ export function FileField({ query, userId, caseId }: FileFieldProps) {
         }, 5000);
       }
     }
-  }, [attachments, caseId, onChange, query.config.accept, query.config.maxSize, query.config.multiple, query.id, userId]);
+  }, [attachments, caseId, ensureCaseId, onChange, query.config.accept, query.config.maxSize, query.config.multiple, query.id, userId]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFiles = e.target.files;
@@ -344,7 +347,7 @@ function AttachmentThumbnail({ attachment }: { attachment: Attachment }) {
   useEffect(() => {
     let objectUrl: string | null = null;
     let cancelled = false;
-    getAttachmentBlob(attachment.id)
+    getAttachmentBlob(attachment)
       .then((blob) => {
         if (cancelled) return;
         objectUrl = URL.createObjectURL(blob);

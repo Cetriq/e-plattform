@@ -151,6 +151,8 @@ services:
       EMAIL_ENABLED: "true"
       EMAIL_FROM: noreply@eplatform.se
       EMAIL_BASE_URL: http://localhost:3000
+      DEMO_ACCESS_CODE: ${DEMO_ACCESS_CODE:-}
+      DEMO_ISOLATED_CITIZENS: ${DEMO_ISOLATED_CITIZENS:-false}
     volumes:
       - ./backend/src:/app/src:delegated
       - gradle_cache:/root/.gradle

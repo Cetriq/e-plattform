@@ -54,3 +54,9 @@ logging:
   level:
     se.eplatform: DEBUG
     org.springframework.security: DEBUG
+
+# Insecure signing key for local development only; set JWT_SECRET everywhere else
+eplatform:
+  security:
+    jwt:
+      secret: ${JWT_SECRET:dev-only-insecure-jwt-secret-change-me-0123456789}

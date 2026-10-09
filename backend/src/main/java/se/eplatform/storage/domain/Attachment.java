@@ -36,6 +36,10 @@ public class Attachment extends BaseEntity {
     @JoinColumn(name = "case_id")
     private Case caseEntity;
 
+    // Read-only copy of the case id, so access checks don't need to load the case
+    @Column(name = "case_id", insertable = false, updatable = false)
+    private UUID caseId;
+
     @Column(name = "query_definition_id")
     private UUID queryDefinitionId;
 
@@ -136,6 +140,10 @@ public class Attachment extends BaseEntity {
 
     public Case getCaseEntity() {
         return caseEntity;
+    }
+
+    public UUID getCaseId() {
+        return caseId;
     }
 
     public void setCaseEntity(Case caseEntity) {

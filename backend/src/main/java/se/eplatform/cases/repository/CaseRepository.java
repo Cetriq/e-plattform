@@ -31,6 +31,19 @@ public interface CaseRepository extends JpaRepository<Case, UUID> {
     Optional<Case> findByReferenceNumber(String referenceNumber);
 
     /**
+     * Whether the user created the case or is one of its owners.
+     */
+    @Query("SELECT COUNT(c) > 0 FROM Case c LEFT JOIN c.owners o " +
+           "WHERE c.id = :caseId AND (c.createdBy.id = :userId OR o.id = :userId)")
+    boolean isOwnedBy(@Param("caseId") UUID caseId, @Param("userId") UUID userId);
+
+    /**
+     * Ids of the cases created by any of the given users.
+     */
+    @Query("SELECT c.id FROM Case c WHERE c.createdBy.id IN :userIds")
+    List<UUID> findIdsByCreatedByIn(@Param("userIds") List<UUID> userIds);
+
+    /**
      * Find all cases for a user (as owner).
      */
     @Query("SELECT DISTINCT c FROM Case c " +

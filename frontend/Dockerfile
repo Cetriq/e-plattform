@@ -1,7 +1,7 @@
 # ===================
 # BASE
 # ===================
-FROM node:20-bookworm-slim AS base
+FROM node:22-bookworm-slim AS base
 WORKDIR /app
 
 # ===================
@@ -48,7 +48,7 @@ RUN npm run build
 # ===================
 # PRODUCTION
 # ===================
-FROM node:20-bookworm-slim AS production
+FROM node:22-bookworm-slim AS production
 WORKDIR /app
 
 ENV NODE_ENV=production

@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
+import { useParams } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
 import { ArrowLeft, Download } from 'lucide-react';
 import { Header } from '@/components/layout';
@@ -32,8 +33,9 @@ function StatusBadge({ caseDetail }: { caseDetail: CaseDetail }) {
   );
 }
 
-export default function CaseDetailPage({ params }: { params: { caseId: string } }) {
-  const { caseId } = params;
+export default function CaseDetailPage() {
+  const params = useParams();
+  const caseId = params.caseId as string;
   const { isAuthenticated, isLoading: authLoading } = useAuth();
   const [isDownloading, setIsDownloading] = useState(false);
 

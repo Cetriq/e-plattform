@@ -8,19 +8,6 @@ spring:
       maximum-pool-size: 10
       minimum-idle: 2
 
-  # Redis
-  data:
-    redis:
-      host: ${SPRING_DATA_REDIS_HOST:localhost}
-      port: ${SPRING_DATA_REDIS_PORT:6379}
-
-  # RabbitMQ
-  rabbitmq:
-    host: ${SPRING_RABBITMQ_HOST:localhost}
-    port: 5672
-    username: ${SPRING_RABBITMQ_USERNAME:guest}
-    password: ${SPRING_RABBITMQ_PASSWORD:guest}
-
   # JPA
   jpa:
     show-sql: true
@@ -34,11 +21,6 @@ spring:
       enabled: true
     livereload:
       enabled: true
-
-# Meilisearch
-meilisearch:
-  host: ${MEILISEARCH_HOST:http://localhost:7700}
-  api-key: ${MEILISEARCH_KEY:devmasterkey123}
 
 # MinIO
 minio:

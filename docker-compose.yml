@@ -23,44 +23,6 @@ services:
     networks:
       - eplatform-network
 
-  redis:
-    image: redis:7-alpine
-    container_name: eplatform-redis
-    command: redis-server --appendonly yes
-    volumes:
-      - redis_data:/data
-    ports:
-      - "6379:6379"
-    healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-    networks:
-      - eplatform-network
-
-  # ===================
-  # SÖKNING
-  # ===================
-
-  meilisearch:
-    image: getmeili/meilisearch:v1.11
-    container_name: eplatform-search
-    environment:
-      MEILI_MASTER_KEY: ${MEILI_KEY:-devmasterkey123}
-      MEILI_ENV: development
-    volumes:
-      - meilisearch_data:/meili_data
-    ports:
-      - "7700:7700"
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:7700/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-    networks:
-      - eplatform-network
-
   # ===================
   # FILLAGRING
   # ===================
@@ -99,29 +61,6 @@ services:
       - eplatform-network
 
   # ===================
-  # MEDDELANDEKÖ
-  # ===================
-
-  rabbitmq:
-    image: rabbitmq:3.13-management-alpine
-    container_name: eplatform-mq
-    environment:
-      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER:-guest}
-      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASS:-guest}
-    volumes:
-      - rabbitmq_data:/var/lib/rabbitmq
-    ports:
-      - "5672:5672"
-      - "15672:15672"
-    healthcheck:
-      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-    networks:
-      - eplatform-network
-
-  # ===================
   # BACKEND
   # ===================
 
@@ -136,16 +75,9 @@ services:
       SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/eplatform
       SPRING_DATASOURCE_USERNAME: eplatform
       SPRING_DATASOURCE_PASSWORD: ${DB_PASSWORD:-devpassword}
-      SPRING_DATA_REDIS_HOST: redis
-      SPRING_DATA_REDIS_PORT: 6379
-      MEILISEARCH_HOST: http://meilisearch:7700
-      MEILISEARCH_KEY: ${MEILI_KEY:-devmasterkey123}
       MINIO_ENDPOINT: http://minio:9000
       MINIO_ACCESS_KEY: ${MINIO_USER:-minioadmin}
       MINIO_SECRET_KEY: ${MINIO_PASSWORD:-minioadmin}
-      SPRING_RABBITMQ_HOST: rabbitmq
-      SPRING_RABBITMQ_USERNAME: ${RABBITMQ_USER:-guest}
-      SPRING_RABBITMQ_PASSWORD: ${RABBITMQ_PASS:-guest}
       MAIL_HOST: mailpit
       MAIL_PORT: 1025
       EMAIL_ENABLED: "true"
@@ -162,13 +94,7 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
-      redis:
-        condition: service_healthy
-      meilisearch:
-        condition: service_healthy
       minio:
-        condition: service_healthy
-      rabbitmq:
         condition: service_healthy
       mailpit:
         condition: service_started
@@ -241,10 +167,7 @@ networks:
 
 volumes:
   postgres_data:
-  redis_data:
-  meilisearch_data:
   minio_data:
-  rabbitmq_data:
   prometheus_data:
   grafana_data:
   gradle_cache:

@@ -15,7 +15,7 @@ help:
 	@echo ""
 	@echo "  make backend    - Starta endast backend (utan Docker)"
 	@echo "  make frontend   - Starta endast frontend (utan Docker)"
-	@echo "  make infra      - Starta endast infrastruktur (db, redis, etc.)"
+	@echo "  make infra      - Starta endast infrastruktur (db, minio, mailpit)"
 	@echo ""
 
 # Starta utvecklingsmiljön
@@ -65,7 +65,7 @@ migrate:
 
 # Starta endast infrastruktur
 infra:
-	docker compose up -d postgres redis meilisearch minio rabbitmq
+	docker compose up -d postgres minio mailpit
 
 # Starta backend lokalt (kräver att infra kör)
 backend:
@@ -95,10 +95,6 @@ up-prod:
 psql:
 	docker compose exec postgres psql -U eplatform -d eplatform
 
-# Öppna Redis CLI
-redis-cli:
-	docker compose exec redis redis-cli
-
 # Se status
 status:
 	docker compose ps
@@ -108,5 +104,4 @@ health:
 	@echo "Checking services..."
 	@curl -s http://localhost:8080/actuator/health | jq . || echo "API: Not responding"
 	@curl -s http://localhost:3000 > /dev/null && echo "Frontend: OK" || echo "Frontend: Not responding"
-	@curl -s http://localhost:7700/health | jq . || echo "Meilisearch: Not responding"
 	@curl -s http://localhost:9000/minio/health/live && echo "MinIO: OK" || echo "MinIO: Not responding"

@@ -9,31 +9,12 @@ spring:
       minimum-idle: 5
       connection-timeout: 30000
 
-  # Redis
-  data:
-    redis:
-      host: ${SPRING_DATA_REDIS_HOST}
-      port: ${SPRING_DATA_REDIS_PORT:6379}
-      password: ${SPRING_DATA_REDIS_PASSWORD:}
-
-  # RabbitMQ
-  rabbitmq:
-    host: ${SPRING_RABBITMQ_HOST}
-    port: 5672
-    username: ${SPRING_RABBITMQ_USERNAME}
-    password: ${SPRING_RABBITMQ_PASSWORD}
-
   # JPA
   jpa:
     show-sql: false
     properties:
       hibernate:
         generate_statistics: false
-
-# Meilisearch
-meilisearch:
-  host: ${MEILISEARCH_HOST}
-  api-key: ${MEILISEARCH_KEY}
 
 # MinIO
 minio:

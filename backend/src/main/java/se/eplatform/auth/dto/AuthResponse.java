@@ -12,6 +12,7 @@ public record AuthResponse(
         String firstName,
         String lastName,
         String displayName,
+        String phone,
         Set<String> roles,
         Set<String> permissions
     ) {}

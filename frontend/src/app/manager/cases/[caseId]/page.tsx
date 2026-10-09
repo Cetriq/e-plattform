@@ -6,7 +6,9 @@ import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/context/AuthContext';
 import { getManagerCaseDetail, changeCaseStatus, downloadCasePdf, type ChangeStatusRequest, type ManagerCaseDetail } from '@/lib/api/manager';
-import type { QueryInstance } from '@/lib/api/cases';
+import { api } from '@/lib/api/client';
+import type { Flow } from '@/components/form';
+import { getDisplayValues } from '@/lib/caseValues';
 
 const statusTypeLabels: Record<string, string> = {
   DRAFT: 'Utkast',
@@ -42,6 +44,14 @@ export default function ManagerCaseDetailPage() {
     queryKey: ['manager-case', caseId],
     queryFn: () => getManagerCaseDetail(caseId),
     enabled: isAuthenticated && !!caseId,
+  });
+
+  // The flow gives field order, option labels and field types for displaying answers
+  const { data: flow } = useQuery({
+    queryKey: ['flow', caseData?.flowId],
+    queryFn: () => api.get<Flow>(`/api/v1/flows/${caseData?.flowId}`),
+    enabled: !!caseData?.flowId,
+    retry: false,
   });
 
   const statusMutation = useMutation({
@@ -83,22 +93,6 @@ export default function ManagerCaseDetailPage() {
       hour: '2-digit',
       minute: '2-digit',
     });
-  };
-
-  const formatFieldValue = (value: unknown): string | React.ReactNode => {
-    if (value === null || value === undefined) return '-';
-    if (typeof value === 'boolean') return value ? 'Ja' : 'Nej';
-    if (Array.isArray(value)) {
-      // Check if it's a file array
-      if (value.length > 0 && typeof value[0] === 'object' && 'originalFilename' in (value[0] as object)) {
-        return value.map((file: { originalFilename: string; fileSizeFormatted: string }) =>
-          file.originalFilename
-        ).join(', ');
-      }
-      return value.join(', ');
-    }
-    if (typeof value === 'object') return JSON.stringify(value);
-    return String(value);
   };
 
   if (!isAuthenticated) {
@@ -249,16 +243,12 @@ export default function ManagerCaseDetailPage() {
               <div className="p-6">
                 {caseData.values && caseData.values.length > 0 ? (
                   <dl className="space-y-4">
-                    {(caseData.values as QueryInstance[])
-                      .filter((qi) => qi.state !== 'HIDDEN' && qi.populated)
-                      .map((qi) => (
-                        <div key={qi.id} className="border-b pb-4 last:border-b-0 last:pb-0">
-                          <dt className="text-sm font-medium text-gray-500">{qi.queryName}</dt>
-                          <dd className="mt-1 text-gray-900">
-                            {formatFieldValue(qi.value)}
-                          </dd>
-                        </div>
-                      ))}
+                    {getDisplayValues(caseData.values, flow).map((answer) => (
+                      <div key={answer.id} className="border-b pb-4 last:border-b-0 last:pb-0">
+                        <dt className="text-sm font-medium text-gray-500">{answer.label}</dt>
+                        <dd className="mt-1 text-gray-900 whitespace-pre-wrap">{answer.value}</dd>
+                      </div>
+                    ))}
                   </dl>
                 ) : (
                   <p className="text-gray-500 text-center py-4">

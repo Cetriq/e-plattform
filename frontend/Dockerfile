@@ -1,7 +1,7 @@
 # ===================
 # BASE
 # ===================
-FROM node:20-alpine AS base
+FROM node:22-bookworm-slim AS base
 WORKDIR /app
 
 # ===================
@@ -9,10 +9,8 @@ WORKDIR /app
 # ===================
 FROM base AS deps
 
-# Kopiera package filer
 COPY package.json package-lock.json* ./
 
-# Installera beroenden
 RUN npm ci
 
 # ===================
@@ -20,9 +18,9 @@ RUN npm ci
 # ===================
 FROM base AS development
 
-# Kopiera node_modules från deps
 COPY --from=deps /app/node_modules ./node_modules
-COPY package.json ./
+COPY package.json package-lock.json* ./
+COPY next.config.js ./
 COPY postcss.config.js ./
 COPY tailwind.config.js ./
 COPY tsconfig.json ./
@@ -31,6 +29,7 @@ EXPOSE 3000
 
 ENV NODE_ENV=development
 ENV NEXT_TELEMETRY_DISABLED=1
+ENV HOSTNAME=0.0.0.0
 
 CMD ["npm", "run", "dev"]
 
@@ -49,7 +48,8 @@ RUN npm run build
 # ===================
 # PRODUCTION
 # ===================
-FROM base AS production
+FROM node:22-bookworm-slim AS production
+WORKDIR /app
 
 ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
@@ -58,8 +58,6 @@ RUN addgroup --system --gid 1001 nodejs && \
     adduser --system --uid 1001 nextjs
 
 COPY --from=builder /app/public ./public
-
-# Kopiera standalone build
 COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
 

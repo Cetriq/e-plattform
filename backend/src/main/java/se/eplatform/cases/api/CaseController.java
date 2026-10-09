@@ -12,10 +12,16 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.web.PageableDefault;
 import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
+import se.eplatform.auth.dto.AuthResponse;
 import se.eplatform.cases.api.dto.CaseDTO;
+import se.eplatform.cases.api.dto.CaseEventDTO;
 import se.eplatform.cases.api.dto.ManagerCaseDTO;
 import se.eplatform.cases.domain.Case;
 import se.eplatform.cases.domain.ExternalMessage;
@@ -25,6 +31,7 @@ import se.eplatform.pdf.PdfService;
 
 import java.io.IOException;
 import java.net.URI;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -346,6 +353,117 @@ public class CaseController {
                     }
                 })
                 .orElse(ResponseEntity.notFound().build());
+    }
+
+    @Operation(
+        summary = "Hämta händelsehistorik för ärende",
+        description = """
+            Returnerar kronologisk lista över ärendets händelser (CREATED, SUBMITTED,
+            STATUS_CHANGED, MESSAGE_SENT, m.fl.).
+
+            Medborgare ser endast egna ärenden; handläggare/admin ser alla. För medborgare
+            maskas handläggarnamn till "Handläggare" (dataminimering).
+            """
+    )
+    @ApiResponses({
+        @ApiResponse(responseCode = "200", description = "Händelsehistorik"),
+        @ApiResponse(responseCode = "403", description = "Saknar behörighet"),
+        @ApiResponse(responseCode = "404", description = "Ärendet hittades inte")
+    })
+    @GetMapping("/{id}/events")
+    @Transactional(readOnly = true)
+    public ResponseEntity<List<CaseEventDTO>> getCaseEvents(
+            @Parameter(description = "Ärendets UUID", required = true)
+            @PathVariable UUID id) {
+        return caseService.getCaseForManager(id)
+                .map(caseEntity -> {
+                    AccessLevel access = resolveAccess(caseEntity);
+                    if (access == AccessLevel.DENIED) {
+                        return ResponseEntity.status(HttpStatus.FORBIDDEN).<List<CaseEventDTO>>build();
+                    }
+                    boolean maskStaffNames = (access == AccessLevel.CITIZEN);
+                    List<CaseEventDTO> events = caseEntity.getEvents().stream()
+                            .sorted(Comparator.comparing(
+                                    e -> e.getCreatedAt() != null ? e.getCreatedAt() : java.time.Instant.EPOCH))
+                            .map(e -> maskStaffNames ? CaseEventDTO.forCitizen(e) : CaseEventDTO.forManager(e))
+                            .toList();
+                    return ResponseEntity.ok(events);
+                })
+                .orElse(ResponseEntity.notFound().build());
+    }
+
+    @Operation(
+        summary = "Ladda ned eget ärende som PDF",
+        description = """
+            Medborgarens egen nedladdning av sitt ärende som PDF.
+
+            Till skillnad från `GET /{id}/pdf` (handläggarvyn) kontrolleras här att
+            den inloggade användaren är ärendets ägare.
+            """
+    )
+    @ApiResponses({
+        @ApiResponse(responseCode = "200", description = "PDF-dokument",
+                content = @Content(mediaType = "application/pdf")),
+        @ApiResponse(responseCode = "403", description = "Saknar behörighet"),
+        @ApiResponse(responseCode = "404", description = "Ärendet hittades inte")
+    })
+    @GetMapping("/{id}/pdf/own")
+    @Transactional(readOnly = true)
+    public ResponseEntity<byte[]> generateOwnPdf(
+            @Parameter(description = "Ärendets UUID", required = true)
+            @PathVariable UUID id) {
+        return caseService.getCaseForManager(id)
+                .map(caseEntity -> {
+                    AccessLevel access = resolveAccess(caseEntity);
+                    if (access == AccessLevel.DENIED) {
+                        return ResponseEntity.status(HttpStatus.FORBIDDEN).<byte[]>build();
+                    }
+                    try {
+                        byte[] pdfBytes = pdfService.generateCasePdf(caseEntity, caseEntity.getFlow());
+                        String filename = "arende-" + caseEntity.getReferenceNumber() + ".pdf";
+
+                        return ResponseEntity.ok()
+                                .header(HttpHeaders.CONTENT_DISPOSITION,
+                                        "attachment; filename=\"" + filename + "\"")
+                                .contentType(MediaType.APPLICATION_PDF)
+                                .contentLength(pdfBytes.length)
+                                .body(pdfBytes);
+                    } catch (IOException e) {
+                        throw new RuntimeException("Failed to generate PDF", e);
+                    }
+                })
+                .orElse(ResponseEntity.notFound().build());
+    }
+
+    // --- Authorization helpers ---
+
+    private enum AccessLevel { STAFF, CITIZEN, DENIED }
+
+    private AccessLevel resolveAccess(Case caseEntity) {
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        if (auth == null || !auth.isAuthenticated()
+                || !(auth.getPrincipal() instanceof AuthResponse.UserInfo user)) {
+            // These endpoints expose a user's own case, so a logged-in user is
+            // always required, even when role enforcement is turned off.
+            return AccessLevel.DENIED;
+        }
+
+        if (user.roles().contains("ADMIN") || user.roles().contains("MANAGER")) {
+            return AccessLevel.STAFF;
+        }
+
+        String principalId = user.id();
+        if (principalId == null) {
+            return AccessLevel.DENIED;
+        }
+
+        boolean isOwner = caseEntity.getCreatedBy() != null
+                && principalId.equals(caseEntity.getCreatedBy().getId().toString());
+        if (!isOwner && caseEntity.getOwners() != null) {
+            isOwner = caseEntity.getOwners().stream()
+                    .anyMatch(o -> o.getId() != null && principalId.equals(o.getId().toString()));
+        }
+        return isOwner ? AccessLevel.CITIZEN : AccessLevel.DENIED;
     }
 
     // Request records with Schema annotations

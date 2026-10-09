@@ -1,22 +1,57 @@
 'use client';
 
-import { useParams, useRouter } from 'next/navigation';
-import { useState, useCallback } from 'react';
+import { useParams, useRouter, useSearchParams } from 'next/navigation';
+import { Suspense, useCallback, useMemo, useRef, useState } from 'react';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import Link from 'next/link';
 import { api } from '@/lib/api/client';
-import { createCase, updateCaseValues, submitCase as submitCaseApi, type CaseDetail } from '@/lib/api/cases';
+import {
+  createCase,
+  getCase,
+  updateCaseValues,
+  submitCase as submitCaseApi,
+  type CaseDetail,
+} from '@/lib/api/cases';
 import { Header } from '@/components/layout';
 import { useAuth } from '@/context/AuthContext';
 import { FormRenderer, type Flow, type FormValues } from '@/components/form';
 
 export default function FlowFormPage() {
+  // useSearchParams requires a Suspense boundary for static rendering
+  return (
+    <Suspense fallback={<LoadingForm />}>
+      <FlowForm />
+    </Suspense>
+  );
+}
+
+function LoadingForm() {
+  return (
+    <main className="min-h-screen bg-gray-50">
+      <Header />
+      <div className="container mx-auto px-4 py-8">
+        <div className="flex items-center justify-center py-12">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+          <span className="ml-3 text-gray-600">Laddar formulär...</span>
+        </div>
+      </div>
+    </main>
+  );
+}
+
+function FlowForm() {
   const params = useParams();
+  const searchParams = useSearchParams();
   const router = useRouter();
   const flowId = params.flowId as string;
+  const draftId = searchParams.get('caseId');
   const { isAuthenticated, isLoading: authLoading, user } = useAuth();
-  const [currentCase, setCurrentCase] = useState<CaseDetail | null>(null);
-  const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
+
+  // The case is created lazily on first save. Keeping the in-flight promise in a ref
+  // ensures that overlapping saves share one case instead of creating duplicates.
+  const caseIdRef = useRef<string | null>(draftId);
+  const [caseId, setCaseId] = useState<string | null>(draftId);
+  const createCasePromiseRef = useRef<Promise<string> | null>(null);
 
   const { data: flow, isLoading, error } = useQuery({
     queryKey: ['flow', flowId],
@@ -27,50 +62,44 @@ export default function FlowFormPage() {
     enabled: !!flowId,
   });
 
-  // Create a new case when user starts filling the form
-  const createCaseMutation = useMutation({
-    mutationFn: async () => {
-      if (!user?.id) throw new Error('User not authenticated');
-      return createCase(flowId, user.id);
-    },
-    onSuccess: (data) => {
-      setCurrentCase(data);
-    },
+  // Resume an existing draft when opened with ?caseId=
+  const { data: draft, isLoading: draftLoading, error: draftError } = useQuery({
+    queryKey: ['case', draftId],
+    queryFn: () => getCase(draftId as string),
+    enabled: !!draftId && isAuthenticated,
   });
 
-  // Update case values
-  const updateValuesMutation = useMutation({
-    mutationFn: async (values: FormValues) => {
-      if (!currentCase?.id) throw new Error('No case to update');
-      // Convert string keys to UUID format for backend
-      return updateCaseValues(currentCase.id, values);
-    },
-    onSuccess: (data) => {
-      setCurrentCase(data);
-      setSaveStatus('saved');
-      setTimeout(() => setSaveStatus('idle'), 2000);
-    },
-    onError: () => {
-      setSaveStatus('error');
-    },
-  });
+  const initialValues = useMemo<FormValues>(() => {
+    const result: FormValues = {};
+    draft?.values.forEach((instance) => {
+      if (instance.value !== null && instance.value !== undefined) {
+        result[instance.queryDefinitionId] = instance.value;
+      }
+    });
+    return result;
+  }, [draft]);
+
+  const ensureCase = useCallback(async (): Promise<string> => {
+    if (caseIdRef.current) return caseIdRef.current;
+    if (!user?.id) throw new Error('User not authenticated');
+    if (!createCasePromiseRef.current) {
+      createCasePromiseRef.current = createCase(flowId, user.id).then((created: CaseDetail) => {
+        caseIdRef.current = created.id;
+        setCaseId(created.id);
+        return created.id;
+      });
+      createCasePromiseRef.current.catch(() => {
+        createCasePromiseRef.current = null;
+      });
+    }
+    return createCasePromiseRef.current;
+  }, [flowId, user?.id]);
 
   // Submit the case
   const submitMutation = useMutation({
     mutationFn: async (values: FormValues) => {
-      // First ensure we have a case
-      let caseId = currentCase?.id;
-      if (!caseId) {
-        if (!user?.id) throw new Error('User not authenticated');
-        const newCase = await createCase(flowId, user.id);
-        caseId = newCase.id;
-        setCurrentCase(newCase);
-      }
-
-      // Update values if needed
+      const caseId = await ensureCase();
       await updateCaseValues(caseId, values);
-
-      // Submit the case
       return submitCaseApi(caseId);
     },
     onSuccess: (data) => {
@@ -84,44 +113,21 @@ export default function FlowFormPage() {
 
   const handleSaveDraft = useCallback(async (values: FormValues) => {
     if (!isAuthenticated || !user?.id) return;
-
-    setSaveStatus('saving');
-
-    try {
-      // Create case if it doesn't exist
-      if (!currentCase?.id) {
-        const newCase = await createCaseMutation.mutateAsync();
-        await updateCaseValues(newCase.id, values);
-        setCurrentCase(newCase);
-        setSaveStatus('saved');
-        setTimeout(() => setSaveStatus('idle'), 2000);
-      } else {
-        await updateValuesMutation.mutateAsync(values);
-      }
-    } catch {
-      setSaveStatus('error');
-    }
-  }, [isAuthenticated, user?.id, currentCase?.id, createCaseMutation, updateValuesMutation]);
+    const caseId = await ensureCase();
+    await updateCaseValues(caseId, values);
+  }, [isAuthenticated, user?.id, ensureCase]);
 
   const handleCancel = () => {
     router.push('/citizen/services');
   };
 
-  if (isLoading) {
-    return (
-      <main className="min-h-screen bg-gray-50">
-        <Header />
-        <div className="container mx-auto px-4 py-8">
-          <div className="flex items-center justify-center py-12">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-            <span className="ml-3 text-gray-600">Laddar formulär...</span>
-          </div>
-        </div>
-      </main>
-    );
+  if (isLoading || (draftId && (authLoading || draftLoading))) {
+    return <LoadingForm />;
   }
 
-  if (error || !flow) {
+  const draftUnusable = !!draftId && (!!draftError || (draft && (!draft.isDraft || draft.flowId !== flowId)));
+
+  if (error || !flow || draftUnusable) {
     return (
       <main className="min-h-screen bg-gray-50">
         <Header />
@@ -144,7 +150,9 @@ export default function FlowFormPage() {
               Kunde inte ladda formuläret
             </h3>
             <p className="text-red-700 mb-4">
-              Tjänsten kunde inte hittas eller är inte tillgänglig.
+              {draftUnusable
+                ? 'Utkastet kunde inte öppnas. Det kan redan vara inskickat eller borttaget.'
+                : 'Tjänsten kunde inte hittas eller är inte tillgänglig.'}
             </p>
             <Link
               href="/citizen/services"
@@ -246,11 +254,12 @@ export default function FlowFormPage() {
         {flow.steps && flow.steps.length > 0 ? (
           <FormRenderer
             flow={flow}
+            initialValues={initialValues}
             onSubmit={handleSubmit}
             onSaveDraft={isAuthenticated ? handleSaveDraft : undefined}
             onCancel={handleCancel}
             userId={user?.id}
-            caseId={currentCase?.id}
+            caseId={caseId ?? undefined}
           />
         ) : (
           <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-8 text-center">

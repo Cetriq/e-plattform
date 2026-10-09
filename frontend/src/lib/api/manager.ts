@@ -1,4 +1,5 @@
 import { api } from './client';
+import { API_BASE_URL } from '@/lib/config';
 import type { CaseSummary, CaseDetail, QueryInstance } from './cases';
 
 /**
@@ -149,7 +150,6 @@ export async function addExternalMessage(
  * Download case as PDF.
  */
 export async function downloadCasePdf(caseId: string): Promise<void> {
-  const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080';
   const response = await fetch(`${API_BASE_URL}/api/v1/cases/${caseId}/pdf`, {
     headers: {
       // Don't set Content-Type for downloads

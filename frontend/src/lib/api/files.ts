@@ -1,4 +1,6 @@
 import { api } from './client';
+import { API_BASE_URL } from '@/lib/config';
+import { getStoredToken } from '@/lib/auth';
 
 /**
  * File upload/download API.
@@ -66,7 +68,14 @@ export async function uploadFile(
       if (xhr.status >= 200 && xhr.status < 300) {
         resolve(JSON.parse(xhr.responseText));
       } else {
-        reject(new Error(`Upload failed: ${xhr.statusText}`));
+        let message = xhr.statusText || 'Uppladdning misslyckades';
+        try {
+          const body = JSON.parse(xhr.responseText);
+          message = body.message || body.error || message;
+        } catch {
+          // Ignore non-JSON error bodies
+        }
+        reject(new Error(message));
       }
     });
 
@@ -74,7 +83,11 @@ export async function uploadFile(
       reject(new Error('Upload failed'));
     });
 
-    xhr.open('POST', `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080'}/api/v1/files`);
+    xhr.open('POST', `${API_BASE_URL}/api/v1/files`);
+    const token = getStoredToken();
+    if (token) {
+      xhr.setRequestHeader('Authorization', `Bearer ${token}`);
+    }
     xhr.send(formData);
   });
 }
@@ -90,7 +103,7 @@ export async function getAttachment(attachmentId: string): Promise<Attachment> {
  * Get download URL for an attachment.
  */
 export function getDownloadUrl(attachmentId: string): string {
-  return `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080'}/api/v1/files/${attachmentId}/download`;
+  return `${API_BASE_URL}/api/v1/files/${attachmentId}/download`;
 }
 
 /**

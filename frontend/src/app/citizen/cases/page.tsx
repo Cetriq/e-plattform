@@ -5,6 +5,7 @@ import { useQuery } from '@tanstack/react-query';
 import { Header } from '@/components/layout';
 import { useAuth } from '@/context/AuthContext';
 import { getCasesForUser, type CaseSummary } from '@/lib/api/cases';
+import { MobileCard, MobileCardList } from '@/components/ui/MobileCard';
 
 const statusColors: Record<string, { bg: string; text: string; label: string }> = {
   DRAFT: { bg: 'bg-gray-100', text: 'text-gray-700', label: 'Utkast' },
@@ -13,6 +14,16 @@ const statusColors: Record<string, { bg: string; text: string; label: string }> 
   WAITING_FOR_COMPLETION: { bg: 'bg-orange-100', text: 'text-orange-700', label: 'Komplettering begärd' },
   COMPLETED: { bg: 'bg-green-100', text: 'text-green-700', label: 'Avslutad' },
   REJECTED: { bg: 'bg-red-100', text: 'text-red-700', label: 'Avslagen' },
+};
+
+// Map status to colors for MobileCard
+const statusToColors: Record<string, { color: string; bgColor: string }> = {
+  DRAFT: { color: '#374151', bgColor: '#F3F4F6' },
+  SUBMITTED: { color: '#1D4ED8', bgColor: '#DBEAFE' },
+  IN_PROGRESS: { color: '#A16207', bgColor: '#FEF3C7' },
+  WAITING_FOR_COMPLETION: { color: '#C2410C', bgColor: '#FFEDD5' },
+  COMPLETED: { color: '#15803D', bgColor: '#DCFCE7' },
+  REJECTED: { color: '#DC2626', bgColor: '#FEE2E2' },
 };
 
 export default function CasesPage() {
@@ -36,6 +47,19 @@ export default function CasesPage() {
       month: 'short',
       day: 'numeric',
     });
+  };
+
+  const getStatusInfo = (c: CaseSummary) => {
+    const statusKey = c.isDraft ? 'DRAFT' : (c.isCompleted ? 'COMPLETED' : 'IN_PROGRESS');
+    const status = statusColors[statusKey] || statusColors.DRAFT;
+    const colors = statusToColors[statusKey] || statusToColors.DRAFT;
+    const statusLabel = c.statusName || status.label;
+    return {
+      label: statusLabel,
+      color: c.statusColor || colors.color,
+      bgColor: c.statusColor ? `${c.statusColor}20` : colors.bgColor,
+      status,
+    };
   };
 
   return (
@@ -86,7 +110,7 @@ export default function CasesPage() {
         )}
 
         {isAuthenticated && error && (
-          <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-8">
+          <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-8" role="alert">
             <p className="text-red-800">
               Kunde inte ladda dina ärenden. Försök igen senare.
             </p>
@@ -124,67 +148,109 @@ export default function CasesPage() {
         )}
 
         {isAuthenticated && cases && cases.length > 0 && (
-          <div className="bg-white rounded-lg border overflow-hidden">
-            <table className="w-full">
-              <thead className="bg-gray-50 border-b">
-                <tr>
-                  <th className="text-left px-6 py-3 text-sm font-medium text-gray-500">
-                    Ärende
-                  </th>
-                  <th className="text-left px-6 py-3 text-sm font-medium text-gray-500">
-                    Status
-                  </th>
-                  <th className="text-left px-6 py-3 text-sm font-medium text-gray-500">
-                    Steg
-                  </th>
-                  <th className="text-left px-6 py-3 text-sm font-medium text-gray-500">
-                    Senast uppdaterad
-                  </th>
-                  <th className="px-6 py-3"></th>
-                </tr>
-              </thead>
-              <tbody className="divide-y">
+          <>
+            {/* Mobile view - Cards */}
+            <div className="md:hidden">
+              <MobileCardList>
                 {cases.map((c: CaseSummary) => {
-                  const statusKey = c.isDraft ? 'DRAFT' : (c.isCompleted ? 'COMPLETED' : 'IN_PROGRESS');
-                  const status = statusColors[statusKey] || statusColors.DRAFT;
-                  // Use custom status name if available
-                  const statusLabel = c.statusName || status.label;
+                  const statusInfo = getStatusInfo(c);
                   return (
-                    <tr key={c.id} className="hover:bg-gray-50">
-                      <td className="px-6 py-4">
-                        <div>
-                          <p className="font-medium text-gray-900">{c.flowName}</p>
-                          <p className="text-sm text-gray-500">{c.referenceNumber}</p>
-                        </div>
-                      </td>
-                      <td className="px-6 py-4">
-                        <span
-                          className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${status.bg} ${status.text}`}
-                          style={c.statusColor ? { backgroundColor: `${c.statusColor}20`, color: c.statusColor } : {}}
-                        >
-                          {statusLabel}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4 text-sm text-gray-600">
-                        Steg {c.currentStepIndex + 1} av {c.totalSteps}
-                      </td>
-                      <td className="px-6 py-4 text-sm text-gray-600">
-                        {formatDate(c.updatedAt)}
-                      </td>
-                      <td className="px-6 py-4 text-right">
-                        <Link
-                          href={c.isDraft ? `/citizen/services/${c.flowId}?caseId=${c.id}` : `/citizen/cases/${c.id}`}
-                          className="text-blue-600 hover:text-blue-800 font-medium text-sm"
-                        >
-                          {c.isDraft ? 'Fortsätt' : 'Visa'}
-                        </Link>
-                      </td>
-                    </tr>
+                    <MobileCard
+                      key={c.id}
+                      title={c.flowName}
+                      subtitle={c.referenceNumber}
+                      status={{
+                        label: statusInfo.label,
+                        color: statusInfo.color,
+                        bgColor: statusInfo.bgColor,
+                      }}
+                      fields={[
+                        {
+                          label: 'Steg',
+                          value: `${c.currentStepIndex + 1} av ${c.totalSteps}`,
+                        },
+                        {
+                          label: 'Uppdaterad',
+                          value: formatDate(c.updatedAt),
+                        },
+                      ]}
+                      actions={[
+                        {
+                          label: c.isDraft ? 'Fortsätt' : 'Visa',
+                          href: c.isDraft
+                            ? `/citizen/services/${c.flowId}?caseId=${c.id}`
+                            : `/citizen/cases/${c.id}`,
+                          variant: 'primary',
+                        },
+                      ]}
+                    />
                   );
                 })}
-              </tbody>
-            </table>
-          </div>
+              </MobileCardList>
+            </div>
+
+            {/* Desktop view - Table */}
+            <div className="hidden md:block bg-white rounded-lg border overflow-hidden">
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <thead className="bg-gray-50 border-b sticky top-0">
+                    <tr>
+                      <th className="text-left px-6 py-3 text-sm font-medium text-gray-500">
+                        Ärende
+                      </th>
+                      <th className="text-left px-6 py-3 text-sm font-medium text-gray-500">
+                        Status
+                      </th>
+                      <th className="text-left px-6 py-3 text-sm font-medium text-gray-500">
+                        Steg
+                      </th>
+                      <th className="text-left px-6 py-3 text-sm font-medium text-gray-500">
+                        Senast uppdaterad
+                      </th>
+                      <th className="px-6 py-3"></th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y">
+                    {cases.map((c: CaseSummary) => {
+                      const statusInfo = getStatusInfo(c);
+                      return (
+                        <tr key={c.id} className="hover:bg-gray-50 transition-colors">
+                          <td className="px-6 py-4">
+                            <div>
+                              <p className="font-medium text-gray-900">{c.flowName}</p>
+                              <p className="text-sm text-gray-500">{c.referenceNumber}</p>
+                            </div>
+                          </td>
+                          <td className="px-6 py-4">
+                            <span
+                              className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${statusInfo.status.bg} ${statusInfo.status.text}`}
+                              style={c.statusColor ? { backgroundColor: `${c.statusColor}20`, color: c.statusColor } : {}}
+                            >
+                              {statusInfo.label}
+                            </span>
+                          </td>
+                          <td className="px-6 py-4 text-sm text-gray-600">
+                            Steg {c.currentStepIndex + 1} av {c.totalSteps}
+                          </td>
+                          <td className="px-6 py-4 text-sm text-gray-600">
+                            {formatDate(c.updatedAt)}
+                          </td>
+                          <td className="px-6 py-4 text-right">
+                            <Link
+                              href={c.isDraft ? `/citizen/services/${c.flowId}?caseId=${c.id}` : `/citizen/cases/${c.id}`}
+                              className="text-blue-600 hover:text-blue-800 font-medium text-sm"
+                            >
+                              {c.isDraft ? 'Fortsätt' : 'Visa'}
+                            </Link>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </>
         )}
       </div>
     </main>

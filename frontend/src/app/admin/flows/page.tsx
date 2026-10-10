@@ -11,6 +11,7 @@ import {
   duplicateFlow,
   type FlowSummary,
 } from '@/lib/api/admin';
+import { Modal } from '@/components/ui/Modal';
 
 const statusLabels: Record<string, { label: string; bg: string; text: string }> = {
   DRAFT: { label: 'Utkast', bg: 'bg-gray-100', text: 'text-gray-700' },
@@ -106,13 +107,13 @@ export default function FlowsListPage() {
               className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-500"
             />
           </div>
-          <select className="px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-500">
+          <select aria-label="Filtrera på status" className="px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-500">
             <option value="">Alla statusar</option>
             <option value="DRAFT">Utkast</option>
             <option value="PUBLISHED">Publicerad</option>
             <option value="ARCHIVED">Arkiverad</option>
           </select>
-          <select className="px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-500">
+          <select aria-label="Filtrera på kategori" className="px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-500">
             <option value="">Alla kategorier</option>
           </select>
         </div>
@@ -133,7 +134,7 @@ export default function FlowsListPage() {
       ) : flowsResponse?.content?.length === 0 ? (
         <div className="card p-8 text-center">
           <svg
-            className="w-12 h-12 text-gray-400 mx-auto mb-4"
+            className="w-12 h-12 text-gray-500 mx-auto mb-4"
             fill="none"
             stroke="currentColor"
             viewBox="0 0 24 24"
@@ -201,7 +202,7 @@ export default function FlowsListPage() {
                               {flow.shortDescription}
                             </p>
                           )}
-                          <p className="text-xs text-gray-400 mt-1">
+                          <p className="text-xs text-gray-500 mt-1">
                             Version {flow.version}
                           </p>
                         </div>
@@ -213,7 +214,7 @@ export default function FlowsListPage() {
                           {status.label}
                         </span>
                         {!flow.enabled && flow.status === 'PUBLISHED' && (
-                          <span className="ml-2 text-xs text-orange-600">(Inaktiverad)</span>
+                          <span className="ml-2 text-xs text-orange-700">(Inaktiverad)</span>
                         )}
                       </td>
                       <td className="px-6 py-4 text-sm text-gray-600">
@@ -231,12 +232,12 @@ export default function FlowsListPage() {
                             Redigera
                           </Link>
                           <div className="relative group">
-                            <button className="p-1 text-gray-400 hover:text-gray-600 rounded">
+                            <button type="button" aria-label={`Fler åtgärder för ${flow.name}`} aria-haspopup="true" className="p-1 text-gray-500 hover:text-gray-700 rounded">
                               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z" />
                               </svg>
                             </button>
-                            <div className="hidden group-hover:block absolute right-0 top-full mt-1 bg-white border rounded-lg shadow-lg py-1 min-w-[160px] z-10">
+                            <div className="hidden group-hover:block group-focus-within:block absolute right-0 top-full mt-1 bg-white border rounded-lg shadow-lg py-1 min-w-[160px] z-10">
                               {flow.status === 'DRAFT' && (
                                 <button
                                   onClick={() => publishMutation.mutate(flow.id)}
@@ -271,7 +272,7 @@ export default function FlowsListPage() {
                                     setActionFlow(flow);
                                     setShowDeleteConfirm(true);
                                   }}
-                                  className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50"
+                                  className="w-full text-left px-4 py-2 text-sm text-red-700 hover:bg-red-50"
                                 >
                                   Ta bort
                                 </button>
@@ -321,8 +322,10 @@ export default function FlowsListPage() {
 
       {/* Delete confirmation modal */}
       {showDeleteConfirm && actionFlow && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg shadow-xl max-w-md w-full mx-4 p-6">
+        <Modal onClose={() => {
+                  setShowDeleteConfirm(false);
+                  setActionFlow(null);
+                }} className="max-w-md p-6">
             <h3 className="text-lg font-bold text-gray-900 mb-2">Ta bort e-tjänst</h3>
             <p className="text-gray-600 mb-4">
               Är du säker på att du vill ta bort &quot;{actionFlow.name}&quot;? Denna åtgärd går inte att
@@ -346,8 +349,8 @@ export default function FlowsListPage() {
                 {deleteMutation.isPending ? 'Tar bort...' : 'Ta bort'}
               </button>
             </div>
-          </div>
-        </div>
+          </Modal>
+        
       )}
     </div>
   );

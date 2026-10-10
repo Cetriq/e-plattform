@@ -148,7 +148,7 @@ export default function CitizenProfilePage() {
                 htmlFor="firstName"
                 className="block text-sm font-medium text-gray-700 mb-1"
               >
-                Förnamn <span className="text-red-600">*</span>
+                Förnamn <span className="text-red-700">*</span>
               </label>
               <input
                 id="firstName"
@@ -160,7 +160,7 @@ export default function CitizenProfilePage() {
                 {...register('firstName')}
               />
               {errors.firstName && (
-                <p id="firstName-error" className="mt-1 text-sm text-red-600">
+                <p id="firstName-error" className="mt-1 text-sm text-red-700">
                   {errors.firstName.message}
                 </p>
               )}
@@ -171,7 +171,7 @@ export default function CitizenProfilePage() {
                 htmlFor="lastName"
                 className="block text-sm font-medium text-gray-700 mb-1"
               >
-                Efternamn <span className="text-red-600">*</span>
+                Efternamn <span className="text-red-700">*</span>
               </label>
               <input
                 id="lastName"
@@ -183,7 +183,7 @@ export default function CitizenProfilePage() {
                 {...register('lastName')}
               />
               {errors.lastName && (
-                <p id="lastName-error" className="mt-1 text-sm text-red-600">
+                <p id="lastName-error" className="mt-1 text-sm text-red-700">
                   {errors.lastName.message}
                 </p>
               )}
@@ -209,7 +209,7 @@ export default function CitizenProfilePage() {
               {...register('phone')}
             />
             {errors.phone ? (
-              <p id="phone-error" className="mt-1 text-sm text-red-600">
+              <p id="phone-error" className="mt-1 text-sm text-red-700">
                 {errors.phone.message}
               </p>
             ) : (

@@ -59,6 +59,24 @@ export async function getCurrentUser(token: string): Promise<User> {
   return response.json();
 }
 
+/**
+ * Exchange a still valid token for a fresh one (extends the session).
+ */
+export async function refreshSession(token: string): Promise<AuthResponse> {
+  const response = await fetch(`${API_BASE_URL}/api/v1/public/auth/refresh`, {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${token}`,
+    },
+  });
+
+  if (!response.ok) {
+    throw new Error('Failed to refresh session');
+  }
+
+  return response.json();
+}
+
 export interface UpdateProfileRequest {
   firstName?: string;
   lastName?: string;

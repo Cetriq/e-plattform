@@ -11,7 +11,9 @@ interface SignatureFieldProps {
 
 /**
  * Signature field component - allows user to draw a signature.
- * Uses a canvas element for drawing.
+ * Uses a canvas element for drawing. People who can't draw with a mouse or
+ * finger type their name instead; it is rendered onto the same canvas, so the
+ * stored value is the same kind of image either way (WCAG 2.1.1).
  */
 export function SignatureField({ query }: SignatureFieldProps) {
   const { values, setValue, getFieldState } = useFormContext();
@@ -19,6 +21,8 @@ export function SignatureField({ query }: SignatureFieldProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [isDrawing, setIsDrawing] = useState(false);
   const [hasSignature, setHasSignature] = useState(false);
+  const [typedName, setTypedName] = useState('');
+  const typedId = `${query.id}-typed`;
 
   const value = values[query.id] as string | undefined;
   const isDisabled = state === 'DISABLED';
@@ -65,6 +69,7 @@ export function SignatureField({ query }: SignatureFieldProps) {
 
     setIsDrawing(true);
     setHasSignature(true);
+    setTypedName('');
 
     const rect = canvas.getBoundingClientRect();
     const x = 'touches' in e ? e.touches[0].clientX - rect.left : e.clientX - rect.left;
@@ -103,6 +108,26 @@ export function SignatureField({ query }: SignatureFieldProps) {
     }
   };
 
+  const typeSignature = (name: string) => {
+    setTypedName(name);
+    const canvas = canvasRef.current;
+    const ctx = canvas?.getContext('2d');
+    if (!canvas || !ctx) return;
+
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    if (!name.trim()) {
+      setHasSignature(false);
+      setValue(query.id, undefined);
+      return;
+    }
+    ctx.fillStyle = '#000';
+    ctx.font = 'italic 32px "Brush Script MT", "Segoe Script", cursive';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(name, 16, canvas.height / 2, canvas.width - 32);
+    setHasSignature(true);
+    setValue(query.id, canvas.toDataURL('image/png'));
+  };
+
   const clearSignature = () => {
     if (isDisabled || isReadonly) return;
 
@@ -114,6 +139,7 @@ export function SignatureField({ query }: SignatureFieldProps) {
 
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     setHasSignature(false);
+    setTypedName('');
     setValue(query.id, undefined);
   };
 
@@ -124,6 +150,8 @@ export function SignatureField({ query }: SignatureFieldProps) {
         <div className={`relative border-2 rounded-lg ${isDisabled ? 'bg-gray-100' : 'bg-white'} ${!hasSignature ? 'border-dashed border-gray-300' : 'border-gray-200'}`}>
           <canvas
             ref={canvasRef}
+            role="img"
+            aria-label={hasSignature ? 'Din signatur' : 'Signaturyta, tom'}
             className={`w-full h-32 touch-none ${isDisabled || isReadonly ? 'cursor-not-allowed' : 'cursor-crosshair'}`}
             onMouseDown={startDrawing}
             onMouseMove={draw}
@@ -135,7 +163,7 @@ export function SignatureField({ query }: SignatureFieldProps) {
           />
           {!hasSignature && (
             <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-              <p className="text-gray-400 text-sm">Rita din signatur här</p>
+              <p className="text-gray-500 text-sm" aria-hidden="true">Rita din signatur här</p>
             </div>
           )}
         </div>
@@ -145,7 +173,7 @@ export function SignatureField({ query }: SignatureFieldProps) {
           <button
             type="button"
             onClick={clearSignature}
-            className="text-sm text-red-600 hover:text-red-800"
+            className="text-sm text-red-700 hover:text-red-800"
           >
             Rensa signatur
           </button>
@@ -153,8 +181,24 @@ export function SignatureField({ query }: SignatureFieldProps) {
 
         {/* Help text */}
         <p className="text-xs text-gray-500">
-          Använd musen eller fingret för att rita din signatur ovan.
+          Rita din signatur med musen eller fingret, eller skriv ditt namn nedan.
         </p>
+
+        {!isDisabled && !isReadonly && (
+          <div>
+            <label htmlFor={typedId} className="block text-sm font-medium text-gray-700 mb-1">
+              Skriv ditt namn som signatur
+            </label>
+            <input
+              id={typedId}
+              type="text"
+              autoComplete="name"
+              value={typedName}
+              onChange={(e) => typeSignature(e.target.value)}
+              className="input"
+            />
+          </div>
+        )}
       </div>
     </FieldWrapper>
   );

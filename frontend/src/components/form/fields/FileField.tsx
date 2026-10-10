@@ -187,7 +187,7 @@ export function FileField({ query, userId, caseId, ensureCaseId }: FileFieldProp
         >
           <div className="text-center">
             <svg
-              className={`mx-auto h-10 w-10 ${dragOver ? 'text-brand-500' : 'text-gray-400'}`}
+              className={`mx-auto h-10 w-10 ${dragOver ? 'text-brand-600' : 'text-gray-500'}`}
               fill="none"
               stroke="currentColor"
               viewBox="0 0 24 24"
@@ -206,15 +206,15 @@ export function FileField({ query, userId, caseId, ensureCaseId }: FileFieldProp
               }
             </p>
             {isImageOnly ? (
-              <p className="mt-1 text-xs text-gray-400">
+              <p className="mt-1 text-xs text-gray-500">
                 Tillåtna format: JPG, PNG, GIF, WebP
               </p>
             ) : query.config.accept ? (
-              <p className="mt-1 text-xs text-gray-400">
+              <p className="mt-1 text-xs text-gray-500">
                 Tillåtna format: {query.config.accept}
               </p>
             ) : (
-              <p className="mt-1 text-xs text-gray-400">
+              <p className="mt-1 text-xs text-gray-500">
                 PDF, bilder, Word, Excel, text (max 50 MB)
               </p>
             )}
@@ -247,7 +247,7 @@ export function FileField({ query, userId, caseId, ensureCaseId }: FileFieldProp
                     {upload.file.name}
                   </p>
                   {upload.error ? (
-                    <p className="text-xs text-red-600">{upload.error}</p>
+                    <p className="text-xs text-red-700">{upload.error}</p>
                   ) : (
                     <div className="mt-1 flex items-center gap-2">
                       <div className="flex-1 h-1.5 bg-brand-200 rounded-full overflow-hidden">
@@ -265,7 +265,7 @@ export function FileField({ query, userId, caseId, ensureCaseId }: FileFieldProp
                 <button
                   type="button"
                   onClick={() => cancelUpload(upload.file)}
-                  className="text-gray-400 hover:text-gray-600 p-1"
+                  className="text-gray-500 hover:text-gray-600 p-1"
                 >
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -298,7 +298,7 @@ export function FileField({ query, userId, caseId, ensureCaseId }: FileFieldProp
                     <p className="text-sm font-medium text-gray-700 truncate">
                       {attachment.originalFilename}
                     </p>
-                    <p className="text-xs text-gray-400">
+                    <p className="text-xs text-gray-500">
                       {attachment.fileSizeFormatted || formatFileSize(attachment.fileSize)}
                     </p>
                   </div>
@@ -307,7 +307,7 @@ export function FileField({ query, userId, caseId, ensureCaseId }: FileFieldProp
                   <button
                     type="button"
                     onClick={() => downloadAttachment(attachment).catch(() => undefined)}
-                    className="text-brand-500 hover:text-brand-700 p-1"
+                    className="text-brand-600 hover:text-brand-700 p-1"
                     title="Ladda ner"
                     aria-label={`Ladda ner ${attachment.originalFilename}`}
                   >
@@ -319,7 +319,7 @@ export function FileField({ query, userId, caseId, ensureCaseId }: FileFieldProp
                     <button
                       type="button"
                       onClick={() => handleRemove(attachment)}
-                      className="text-red-500 hover:text-red-700 p-1"
+                      className="text-red-700 hover:text-red-700 p-1"
                       title="Ta bort"
                     >
                       <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">

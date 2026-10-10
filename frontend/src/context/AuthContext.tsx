@@ -10,6 +10,7 @@ import {
   createDemoCitizen,
   logout as apiLogout,
   getCurrentUser,
+  refreshSession,
   getStoredToken,
   setStoredToken,
   setStoredUser,
@@ -21,6 +22,8 @@ interface AuthContextType extends AuthState {
   loginAsDemoCitizen: (accessCode?: string) => Promise<void>;
   logout: () => Promise<void>;
   updateUser: (user: User) => void;
+  /** Swap the token for a fresh one; false if the session already ended. */
+  extendSession: () => Promise<boolean>;
   hasRole: (role: string) => boolean;
   hasPermission: (permission: string) => boolean;
 }
@@ -122,6 +125,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setState(prev => ({ ...prev, user }));
   }, []);
 
+  const extendSession = useCallback(async () => {
+    const token = getStoredToken();
+    if (!token) return false;
+    try {
+      const response = await refreshSession(token);
+      setStoredToken(response.token);
+      setStoredUser(response.user);
+      setState(prev => ({ ...prev, token: response.token, user: response.user }));
+      return true;
+    } catch {
+      return false;
+    }
+  }, []);
+
   const hasRole = useCallback((role: string) => {
     return state.user?.roles.includes(role) ?? false;
   }, [state.user]);
@@ -144,6 +161,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         loginAsDemoCitizen,
         logout,
         updateUser,
+        extendSession,
         hasRole,
         hasPermission,
       }}

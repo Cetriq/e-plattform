@@ -50,7 +50,7 @@ export function StepIndicator({
                     text-sm font-semibold transition-colors
                     ${
                       isCompleted
-                        ? 'bg-green-600 text-white'
+                        ? 'bg-green-700 text-white'
                         : isCurrent
                         ? 'bg-brand-600 text-white ring-4 ring-brand-100'
                         : 'bg-gray-200 text-gray-500'
@@ -77,10 +77,10 @@ export function StepIndicator({
                       isCurrent
                         ? 'text-brand-600'
                         : isCompleted
-                        ? 'text-green-600'
+                        ? 'text-green-700'
                         : 'text-gray-500'
                     }
-                    ${isClickable && !isCurrent ? 'group-hover:text-brand-500' : ''}
+                    ${isClickable && !isCurrent ? 'group-hover:text-brand-600' : ''}
                   `}
                 >
                   {step.name}

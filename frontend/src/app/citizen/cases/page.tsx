@@ -6,6 +6,7 @@ import { Header } from '@/components/layout';
 import { useAuth } from '@/context/AuthContext';
 import { getCasesForUser, type CaseSummary } from '@/lib/api/cases';
 import { MobileCard, MobileCardList } from '@/components/ui/MobileCard';
+import { statusBadgeStyle } from '@/lib/statusColor';
 
 const statusColors: Record<string, { bg: string; text: string; label: string }> = {
   DRAFT: { bg: 'bg-gray-100', text: 'text-gray-700', label: 'Utkast' },
@@ -23,7 +24,7 @@ const statusToColors: Record<string, { color: string; bgColor: string }> = {
   IN_PROGRESS: { color: '#A16207', bgColor: '#FEF3C7' },
   WAITING_FOR_COMPLETION: { color: '#C2410C', bgColor: '#FFEDD5' },
   COMPLETED: { color: '#15803D', bgColor: '#DCFCE7' },
-  REJECTED: { color: '#DC2626', bgColor: '#FEE2E2' },
+  REJECTED: { color: '#B91C1C', bgColor: '#FEE2E2' },
 };
 
 function unreadLabel(count: number) {
@@ -60,8 +61,8 @@ export default function CasesPage() {
     const statusLabel = c.statusName || status.label;
     return {
       label: statusLabel,
-      color: c.statusColor || colors.color,
-      bgColor: c.statusColor ? `${c.statusColor}20` : colors.bgColor,
+      color: c.statusColor ? String(statusBadgeStyle(c.statusColor).color) : colors.color,
+      bgColor: c.statusColor ? String(statusBadgeStyle(c.statusColor).backgroundColor) : colors.bgColor,
       status,
     };
   };
@@ -79,7 +80,7 @@ export default function CasesPage() {
         {!authLoading && !isAuthenticated && (
           <div className="bg-brand-50 border border-brand-200 rounded-lg p-8 text-center mb-8">
             <svg
-              className="w-12 h-12 text-brand-500 mx-auto mb-4"
+              className="w-12 h-12 text-brand-600 mx-auto mb-4"
               fill="none"
               stroke="currentColor"
               viewBox="0 0 24 24"
@@ -124,7 +125,7 @@ export default function CasesPage() {
         {isAuthenticated && !isLoading && !error && cases?.length === 0 && (
           <div className="bg-white border rounded-lg p-8 text-center">
             <svg
-              className="w-12 h-12 text-gray-400 mx-auto mb-4"
+              className="w-12 h-12 text-gray-500 mx-auto mb-4"
               fill="none"
               stroke="currentColor"
               viewBox="0 0 24 24"
@@ -237,7 +238,7 @@ export default function CasesPage() {
                           <td className="px-6 py-4">
                             <span
                               className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${statusInfo.status.bg} ${statusInfo.status.text}`}
-                              style={c.statusColor ? { backgroundColor: `${c.statusColor}20`, color: c.statusColor } : {}}
+                              style={c.statusColor ? statusBadgeStyle(c.statusColor) : {}}
                             >
                               {statusInfo.label}
                             </span>

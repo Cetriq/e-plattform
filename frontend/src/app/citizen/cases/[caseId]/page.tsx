@@ -22,6 +22,7 @@ import { getDisplayValues } from '@/lib/caseValues';
 import { CaseTimeline } from '@/components/cases/CaseTimeline';
 import { MessageThread } from '@/components/cases/MessageThread';
 import { toast } from '@/hooks/useToast';
+import { statusBadgeStyle } from '@/lib/statusColor';
 
 function StatusBadge({ caseDetail }: { caseDetail: CaseDetail }) {
   const label = caseDetail.statusName
@@ -30,7 +31,7 @@ function StatusBadge({ caseDetail }: { caseDetail: CaseDetail }) {
   return (
     <span
       className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium"
-      style={{ backgroundColor: `${color}20`, color }}
+      style={statusBadgeStyle(color)}
     >
       {label}
     </span>

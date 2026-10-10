@@ -177,7 +177,7 @@ export default function AdminUsersPage() {
                     <td className="px-4 py-3 whitespace-nowrap">
                       <div className="flex flex-wrap gap-1">
                         {u.roles.length === 0 ? (
-                          <span className="text-xs text-gray-400">Ingen roll</span>
+                          <span className="text-xs text-gray-500">Ingen roll</span>
                         ) : (
                           u.roles.map((r) => (
                             <span

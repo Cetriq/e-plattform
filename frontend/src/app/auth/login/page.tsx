@@ -51,6 +51,11 @@ export default function LoginPage() {
   const [selected, setSelected] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [timedOut, setTimedOut] = useState(false);
+
+  useEffect(() => {
+    setTimedOut(new URLSearchParams(window.location.search).has('utloggad'));
+  }, []);
   // "Byt användare" links here with ?switch=1 while still logged in
   const switchingUserRef = useRef(false);
 
@@ -145,6 +150,12 @@ export default function LoginPage() {
               </p>
             </div>
 
+            {timedOut && !error && (
+              <div className="mb-6 p-4 bg-brand-50 border border-brand-200 rounded-lg text-brand-900" role="status">
+                Du har loggats ut eftersom inloggningen löpte ut. Det du hade fyllt i är sparat.
+              </div>
+            )}
+
             {error && (
               <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg text-red-800" role="alert">
                 {error}
@@ -206,7 +217,7 @@ export default function LoginPage() {
                         <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-orange-600"></div>
                       ) : (
                         <svg
-                          className="w-4 h-4 text-gray-400"
+                          className="w-4 h-4 text-gray-500"
                           fill="none"
                           stroke="currentColor"
                           viewBox="0 0 24 24"
@@ -226,7 +237,7 @@ export default function LoginPage() {
 
                 <div className="flex items-center gap-2 mt-4 mb-4">
                   <div className="flex-1 h-px bg-gray-200"></div>
-                  <span className="text-xs text-gray-400">eller</span>
+                  <span className="text-xs text-gray-500">eller</span>
                   <div className="flex-1 h-px bg-gray-200"></div>
                 </div>
               </div>
@@ -250,7 +261,7 @@ export default function LoginPage() {
                     <p className="text-sm text-gray-500">Mobilt eller på fil</p>
                   </div>
                 </div>
-                <span className="text-xs text-gray-400 bg-gray-100 px-2 py-1 rounded">
+                <span className="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded">
                   Kommer snart
                 </span>
               </button>
@@ -271,7 +282,7 @@ export default function LoginPage() {
                     <p className="text-sm text-gray-500">Kostnadsfri e-legitimation</p>
                   </div>
                 </div>
-                <span className="text-xs text-gray-400 bg-gray-100 px-2 py-1 rounded">
+                <span className="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded">
                   Kommer snart
                 </span>
               </button>

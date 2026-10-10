@@ -1,6 +1,8 @@
 package se.eplatform.cases;
 
 import com.fasterxml.jackson.databind.JsonNode;
+import org.apache.pdfbox.pdmodel.PDDocument;
+import org.apache.pdfbox.text.PDFTextStripper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -215,5 +217,30 @@ class CaseHandlingTest extends IntegrationTest {
         return as(manager, put("/api/v1/cases/" + caseId + "/status"))
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(json.writeValueAsString(body));
+    }
+
+    @Test
+    void casePdfIsTaggedAndInSwedish() throws Exception {
+        byte[] pdf = mvc.perform(as(manager, get("/api/v1/cases/" + caseId + "/pdf")))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsByteArray();
+
+        try (PDDocument doc = PDDocument.load(pdf)) {
+            var catalog = doc.getDocumentCatalog();
+            // Tagged PDF with a structure tree (PDF/UA)
+            assertThat(catalog.getMarkInfo()).isNotNull();
+            assertThat(catalog.getMarkInfo().isMarked()).isTrue();
+            assertThat(catalog.getStructureTreeRoot()).isNotNull();
+            assertThat(catalog.getLanguage()).isEqualTo("sv");
+            assertThat(doc.getDocumentInformation().getTitle()).contains("Ansökan om bygglov");
+            // Every font is embedded
+            for (var page : doc.getPages()) {
+                for (var name : page.getResources().getFontNames()) {
+                    assertThat(page.getResources().getFont(name).isEmbedded()).isTrue();
+                }
+            }
+            String text = new PDFTextStripper().getText(doc);
+            assertThat(text).contains("Ärendenummer").contains("Skapat").doesNotContain("Reference");
+        }
     }
 }

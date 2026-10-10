@@ -38,7 +38,7 @@ export function MapField({ query }: MapFieldProps) {
         {/* Map placeholder */}
         <div className="bg-gray-100 border-2 border-dashed border-gray-300 rounded-lg p-8 text-center">
           <svg
-            className="w-12 h-12 text-gray-400 mx-auto mb-3"
+            className="w-12 h-12 text-gray-500 mx-auto mb-3"
             fill="none"
             stroke="currentColor"
             viewBox="0 0 24 24"
@@ -51,7 +51,7 @@ export function MapField({ query }: MapFieldProps) {
             />
           </svg>
           <p className="text-gray-500 mb-2">Kartvisning kommer snart</p>
-          <p className="text-sm text-gray-400">
+          <p className="text-sm text-gray-500">
             Klicka nedan för att ange koordinater manuellt
           </p>
         </div>
@@ -69,10 +69,10 @@ export function MapField({ query }: MapFieldProps) {
         {manualEntry && (
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Latitud {query.required && <span className="text-red-500">*</span>}
+              <label htmlFor={`${query.id}-1`} className="block text-sm font-medium text-gray-700 mb-1">
+                Latitud {query.required && <span className="text-red-700">*</span>}
               </label>
-              <input
+              <input id={`${query.id}-1`}
                 type="number"
                 step="0.000001"
                 value={value.lat || ''}
@@ -87,10 +87,10 @@ export function MapField({ query }: MapFieldProps) {
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Longitud {query.required && <span className="text-red-500">*</span>}
+              <label htmlFor={`${query.id}-2`} className="block text-sm font-medium text-gray-700 mb-1">
+                Longitud {query.required && <span className="text-red-700">*</span>}
               </label>
-              <input
+              <input id={`${query.id}-2`}
                 type="number"
                 step="0.000001"
                 value={value.lng || ''}
@@ -109,10 +109,10 @@ export function MapField({ query }: MapFieldProps) {
 
         {/* Address description */}
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
+          <label htmlFor={`${query.id}-3`} className="block text-sm font-medium text-gray-700 mb-1">
             Platsbeskrivning
           </label>
-          <input
+          <input id={`${query.id}-3`}
             type="text"
             value={value.address || ''}
             onChange={(e) => updateValue('address', e.target.value)}

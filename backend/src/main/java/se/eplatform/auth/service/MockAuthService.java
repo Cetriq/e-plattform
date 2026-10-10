@@ -139,6 +139,17 @@ public class MockAuthService {
     }
 
     /**
+     * Extend a session: a new token for the user owning a still valid one.
+     */
+    @Transactional(readOnly = true)
+    public Optional<AuthResponse> refresh(String token) {
+        return tokenService.verify(token)
+            .flatMap(userRepository::findById)
+            .filter(User::isActive)
+            .map(user -> new AuthResponse(tokenService.issue(user.getId()), toUserInfo(user)));
+    }
+
+    /**
      * Update profile for the user owning this token. Email cannot be changed.
      */
     @Transactional

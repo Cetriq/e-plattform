@@ -251,6 +251,32 @@ public class AuthController {
     }
 
     @Operation(
+        summary = "Förläng inloggningen",
+        description = """
+            Byter en giltig token mot en ny med full giltighetstid. Används när
+            användaren väljer att fortsätta vara inloggad i varningen som visas
+            innan sessionen löper ut (WCAG 2.2.1).
+            """
+    )
+    @ApiResponses({
+        @ApiResponse(responseCode = "200", description = "Ny token",
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = AuthResponse.class))),
+        @ApiResponse(responseCode = "401", description = "Ogiltig eller utgången token")
+    })
+    @PostMapping("/refresh")
+    public ResponseEntity<?> refresh(
+            @RequestHeader(value = "Authorization", required = false) String authHeader) {
+        if (authHeader == null || !authHeader.startsWith("Bearer ")) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                .body(Map.of("error", "No valid token provided"));
+        }
+        return authService.refresh(authHeader.substring(7))
+            .<ResponseEntity<?>>map(ResponseEntity::ok)
+            .orElseGet(() -> ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                .body(Map.of("error", "Invalid or expired token")));
+    }
+
+    @Operation(
         summary = "Logga ut",
         description = """
             Tokens är tillståndslösa och går ut av sig själva, så klienten loggar ut

@@ -13,10 +13,12 @@ import se.eplatform.flow.repository.FlowTypeRepository;
 import java.net.URI;
 import java.util.List;
 import java.util.UUID;
+import io.swagger.v3.oas.annotations.tags.Tag;
 
 /**
  * Admin API for managing categories and flow types.
  */
+@Tag(name = "Admin - Kategorier", description = "Kategorier och tjänstetyper för e-tjänster")
 @RestController
 @RequestMapping("/api/v1/admin")
 @Transactional(readOnly = true)

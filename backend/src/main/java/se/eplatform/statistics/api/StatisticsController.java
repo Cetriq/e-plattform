@@ -6,7 +6,9 @@ import se.eplatform.statistics.service.StatisticsService;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Map;
+import io.swagger.v3.oas.annotations.tags.Tag;
 
+@Tag(name = "Admin - Statistik", description = "Statistik över e-tjänster och ärenden")
 @RestController
 @RequestMapping("/api/v1/admin/statistics")
 public class StatisticsController {

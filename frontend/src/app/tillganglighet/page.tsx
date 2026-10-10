@@ -114,6 +114,8 @@ export default function AccessibilityPage() {
           formulärets alla steg, felmeddelanden och dialogrutor. Vi har också
           kontrollerat tangentbordsnavigering, fokushantering, sidtitlar och
           visning i 320 pixlars bredd. Testerna gav inga kvarvarande avvikelser.
+          De automatiska testerna körs vid varje ändring av koden, så att nya
+          brister upptäcks innan de når webbplatsen.
           Test med skärmläsare (NVDA, VoiceOver) och en extern granskning återstår.
         </p>
         <p>Redogörelsen uppdaterades senast den 10 oktober 2026.</p>

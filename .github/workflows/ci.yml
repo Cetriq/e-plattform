@@ -57,3 +57,94 @@ jobs:
         run: npm run build
         env:
           NEXT_TELEMETRY_DISABLED: '1'
+
+  accessibility:
+    name: Tillgänglighet (axe, WCAG 2.1 AA)
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: eplatform
+          POSTGRES_USER: eplatform
+          POSTGRES_PASSWORD: eplatform
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U eplatform"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      NEXT_TELEMETRY_DISABLED: '1'
+      API_URL: http://localhost:8080
+      WEB_URL: http://localhost:3000
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.6'
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      # Backend with the seeded demo data; file storage and e-mail are not
+      # needed for the pages under test, and the scan would trip the rate limit
+      - name: Start backend
+        working-directory: backend
+        run: |
+          gradle bootJar -x test --no-daemon -q
+          nohup java -jar build/libs/*-SNAPSHOT.jar > "$RUNNER_TEMP/api.log" 2>&1 &
+        env:
+          SPRING_PROFILES_ACTIVE: dev
+          SPRING_DATASOURCE_URL: jdbc:postgresql://localhost:5432/eplatform
+          SPRING_DATASOURCE_USERNAME: eplatform
+          SPRING_DATASOURCE_PASSWORD: eplatform
+          EMAIL_ENABLED: 'false'
+          EPLATFORM_SECURITY_RATELIMIT_ENABLED: 'false'
+
+      - name: Build and start frontend
+        working-directory: frontend
+        run: |
+          npm ci
+          npm run build
+          nohup npx next start -p 3000 > "$RUNNER_TEMP/web.log" 2>&1 &
+        env:
+          NEXT_PUBLIC_API_URL: http://localhost:8080
+
+      - name: Install browser
+        working-directory: frontend
+        run: npx playwright install --with-deps chromium
+
+      - name: Wait for the stack
+        run: |
+          for i in $(seq 1 60); do
+            curl -sf "$API_URL/api/v1/public/auth/config" > /dev/null && curl -sf "$WEB_URL" > /dev/null && exit 0
+            sleep 3
+          done
+          echo "Stack did not start"; tail -50 "$RUNNER_TEMP/api.log"; exit 1
+
+      - name: Accessibility tests
+        working-directory: frontend
+        run: npm run test:a11y
+
+      - name: Upload report
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: accessibility-report
+          path: |
+            frontend/playwright-report/
+            frontend/test-results/
+            ${{ runner.temp }}/api.log
+            ${{ runner.temp }}/web.log
+          retention-days: 7

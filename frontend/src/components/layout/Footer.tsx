@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { API_BASE_URL } from '@/lib/config';
 
 export function Footer() {
   return (
@@ -33,6 +34,12 @@ export function Footer() {
                 <Link href="/tillganglighet" className="hover:text-gray-900">
                   Tillgänglighetsredogörelse
                 </Link>
+              </li>
+              <li>
+                {/* Served by the backend, so a plain link rather than client navigation */}
+                <a href={`${API_BASE_URL}/swagger-ui/index.html`} className="hover:text-gray-900">
+                  API-dokumentation
+                </a>
               </li>
             </ul>
           </div>

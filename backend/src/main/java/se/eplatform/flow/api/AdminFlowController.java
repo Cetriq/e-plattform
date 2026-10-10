@@ -18,10 +18,12 @@ import java.net.URI;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import io.swagger.v3.oas.annotations.tags.Tag;
 
 /**
  * Admin API for managing flows (e-services).
  */
+@Tag(name = "Admin - E-tjänster", description = "Skapa och redigera e-tjänster, steg, fält och villkor")
 @RestController
 @RequestMapping("/api/v1/admin/flows")
 public class AdminFlowController {

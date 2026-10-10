@@ -43,20 +43,27 @@ public class OpenApiConfig {
 
                                 För att få en token, använd `/api/v1/public/auth/login` endpoint.
 
-                                ### Testanvändare (utvecklingsmiljö)
+                                ### Logga in i demon
 
-                                | Email | Roll | Behörigheter |
-                                |-------|------|--------------|
-                                | admin@example.com | Admin | Alla behörigheter |
-                                | handlaggare@example.com | Handläggare | Ärendehantering |
-                                | medborgare@example.com | Medborgare | Skapa ärenden |
+                                Anropa `POST /api/v1/public/auth/login` med e-post och demons
+                                åtkomstkod, och klicka sedan på **Authorize** och klistra in
+                                `token` från svaret.
 
-                                ### Rate Limiting
+                                ```json
+                                { "email": "handlaggare@example.com", "accessCode": "<åtkomstkod>" }
+                                ```
 
-                                API:et har rate limiting:
-                                - Generellt: 100 requests/minut
-                                - Auth endpoints: 10 requests/minut
-                                - Filuppladdning: 20 requests/minut
+                                | E-post | Roll |
+                                |--------|------|
+                                | medborgare@example.com | Medborgare |
+                                | handlaggare@example.com | Handläggare |
+                                | admin@example.com | Administratör och e-tjänstredaktör |
+                                | informationssakerhet@example.com | Informationssäkerhet & dataskydd |
+                                | it-drift@example.com | IT & drift |
+
+                                ### Begränsningar
+
+                                Per IP-adress och minut: 100 anrop, 10 inloggningar och 20 filuppladdningar.
 
                                 ### Felhantering
 
@@ -79,21 +86,21 @@ public class OpenApiConfig {
                                 .name("AGPL-3.0")
                                 .url("https://www.gnu.org/licenses/agpl-3.0.html")))
                 .servers(List.of(
+                        // Relative: requests go to the site the documentation is served from
                         new Server()
-                                .url("http://localhost:8080")
-                                .description("Lokal utvecklingsmiljö"),
-                        new Server()
-                                .url("https://api.eplatform.se")
-                                .description("Produktionsmiljö")))
+                                .url("/")
+                                .description("Den här miljön")))
                 .tags(List.of(
-                        new Tag().name("Auth").description("Autentisering och användarhantering"),
-                        new Tag().name("Flows").description("E-tjänster och formulär"),
-                        new Tag().name("Cases").description("Ärenden och ansökningar"),
-                        new Tag().name("Files").description("Filhantering och uppladdning"),
-                        new Tag().name("Categories").description("Kategorier för e-tjänster"),
-                        new Tag().name("Flow Types").description("Typer av e-tjänster"),
-                        new Tag().name("Statistics").description("Statistik och rapporter (admin)"),
-                        new Tag().name("Manager").description("Handläggarfunktioner")))
+                        new Tag().name("Auth").description("Inloggning, profil och sessioner"),
+                        new Tag().name("Flows").description("Publicerade e-tjänster och formulär"),
+                        new Tag().name("Cases").description("Ärenden, meddelanden och handläggning"),
+                        new Tag().name("Filer").description("Uppladdning och nedladdning av bilagor"),
+                        new Tag().name("Admin - E-tjänster").description("Skapa och redigera e-tjänster"),
+                        new Tag().name("Admin - Kategorier").description("Kategorier och tjänstetyper"),
+                        new Tag().name("Admin - Statistik").description("Statistik över e-tjänster och ärenden"),
+                        new Tag().name("Admin - Användare").description("Användare och roller"),
+                        new Tag().name("Informationssäkerhet & dataskydd").description("Spårbarhetslogg, registerutdrag, radering och gallring"),
+                        new Tag().name("IT & drift").description("Driftstatus och systemlogg")))
                 .components(new Components()
                         .addSecuritySchemes("bearerAuth", new SecurityScheme()
                                 .type(SecurityScheme.Type.HTTP)

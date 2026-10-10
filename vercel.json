@@ -22,6 +22,9 @@
   },
   "rewrites": [
     { "source": "/api/v1/(.*)", "destination": { "service": "backend" } },
+    { "source": "/swagger-ui.html", "destination": { "service": "backend" } },
+    { "source": "/swagger-ui/(.*)", "destination": { "service": "backend" } },
+    { "source": "/api-docs(.*)", "destination": { "service": "backend" } },
     { "source": "/(.*)", "destination": { "service": "frontend" } }
   ],
   "crons": [

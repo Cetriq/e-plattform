@@ -27,6 +27,7 @@ import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.UUID;
+import io.swagger.v3.oas.annotations.tags.Tag;
 
 /**
  * File uploads and downloads.
@@ -34,6 +35,7 @@ import java.util.UUID;
  * A file can be read by the user who uploaded it, by the owner of the case it
  * belongs to, and by staff. The acting user is always taken from the login.
  */
+@Tag(name = "Filer", description = "Uppladdning och nedladdning av bilagor")
 @RestController
 @RequestMapping("/api/v1/files")
 public class FileController {

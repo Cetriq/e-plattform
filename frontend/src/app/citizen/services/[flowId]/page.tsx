@@ -31,7 +31,7 @@ function LoadingForm() {
       <Header />
       <div className="container mx-auto px-4 py-8">
         <div className="flex items-center justify-center py-12">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-brand-600"></div>
           <span className="ml-3 text-gray-600">Laddar formulär...</span>
         </div>
       </div>
@@ -176,9 +176,9 @@ function FlowForm() {
         <Header />
         <div className="container mx-auto px-4 py-8">
           <div className="max-w-2xl mx-auto">
-            <div className="bg-blue-50 border border-blue-200 rounded-lg p-8 text-center">
+            <div className="bg-brand-50 border border-brand-200 rounded-lg p-8 text-center">
               <svg
-                className="w-12 h-12 text-blue-500 mx-auto mb-4"
+                className="w-12 h-12 text-brand-500 mx-auto mb-4"
                 fill="none"
                 stroke="currentColor"
                 viewBox="0 0 24 24"
@@ -190,15 +190,15 @@ function FlowForm() {
                   d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"
                 />
               </svg>
-              <h3 className="text-lg font-medium text-blue-900 mb-2">
+              <h3 className="text-lg font-medium text-brand-900 mb-2">
                 Inloggning krävs
               </h3>
-              <p className="text-blue-700 mb-4">
+              <p className="text-brand-700 mb-4">
                 Denna tjänst kräver att du loggar in med BankID eller annan e-legitimation.
               </p>
               <Link
                 href={`/auth/login?redirect=/citizen/services/${flowId}`}
-                className="inline-flex items-center justify-center bg-blue-600 text-white px-6 py-3 rounded-lg font-medium hover:bg-blue-700 transition-colors"
+                className="inline-flex items-center justify-center bg-brand-600 text-white px-6 py-3 rounded-lg font-medium hover:bg-brand-700 transition-colors"
               >
                 Logga in
               </Link>
@@ -216,7 +216,7 @@ function FlowForm() {
       <div className="container mx-auto px-4 py-8">
         {/* Breadcrumb */}
         <nav className="flex items-center gap-2 text-sm text-gray-500 mb-6">
-          <Link href="/citizen/services" className="hover:text-blue-600">
+          <Link href="/citizen/services" className="hover:text-brand-600">
             E-tjänster
           </Link>
           <span>/</span>
@@ -227,7 +227,7 @@ function FlowForm() {
         <div className="mb-8">
           <div className="flex items-center gap-3 mb-2">
             {flow.typeName && (
-              <span className="text-xs font-medium text-blue-600 bg-blue-50 px-2 py-1 rounded">
+              <span className="text-xs font-medium text-brand-600 bg-brand-50 px-2 py-1 rounded">
                 {flow.typeName}
               </span>
             )}
@@ -245,8 +245,8 @@ function FlowForm() {
 
         {/* Long description if exists */}
         {flow.longDescription && (
-          <div className="bg-blue-50 border border-blue-100 rounded-lg p-4 mb-8">
-            <p className="text-blue-800 whitespace-pre-wrap">{flow.longDescription}</p>
+          <div className="bg-brand-50 border border-brand-100 rounded-lg p-4 mb-8">
+            <p className="text-brand-800 whitespace-pre-wrap">{flow.longDescription}</p>
           </div>
         )}
 

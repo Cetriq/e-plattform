@@ -29,7 +29,7 @@ export function Header() {
     <header className="border-b bg-white/80 backdrop-blur-sm sticky top-0 z-50">
       <div className="container mx-auto px-4 py-4 flex items-center justify-between">
         <Link href="/" className="flex items-center gap-2">
-          <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
+          <div className="w-8 h-8 bg-brand-600 rounded-lg flex items-center justify-center">
             <span className="text-white font-bold">E</span>
           </div>
           <span className="font-semibold text-xl">e-Plattform</span>
@@ -74,7 +74,7 @@ export function Header() {
                 className="flex items-center gap-2 hover:bg-gray-100 rounded-lg px-3 py-2 transition-colors"
               >
                 <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
-                  <span className="text-blue-600 font-medium text-sm">
+                  <span className="text-brand-600 font-medium text-sm">
                     {user.displayName?.charAt(0) || user.email.charAt(0).toUpperCase()}
                   </span>
                 </div>
@@ -178,7 +178,7 @@ export function Header() {
           ) : (
             <Link
               href="/auth/login"
-              className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
+              className="bg-brand-600 text-white px-4 py-2 rounded-lg hover:bg-brand-700 transition-colors"
             >
               Logga in
             </Link>

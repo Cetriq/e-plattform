@@ -194,7 +194,7 @@ export function ConditionEditor({ source, steps, onAdd, onDelete, onClose }: Con
             ) : (
               <ul className="space-y-2">
                 {source.evaluators!.map((ev) => (
-                  <li key={ev.id} className="flex items-start justify-between gap-3 p-3 bg-purple-50 rounded-lg">
+                  <li key={ev.id} className="flex items-start justify-between gap-3 p-3 bg-brand-50 rounded-lg">
                     <p className="text-sm text-gray-800">
                       <span className="text-gray-500">När svaret </span>
                       {describeCondition(ev, source, allQueries)}
@@ -342,7 +342,7 @@ export function ConditionEditor({ source, steps, onAdd, onDelete, onClose }: Con
               <button
                 type="submit"
                 disabled={saving}
-                className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:opacity-50"
+                className="px-4 py-2 bg-brand-600 text-white rounded-lg hover:bg-brand-700 disabled:opacity-50"
               >
                 {saving ? 'Sparar…' : 'Lägg till villkor'}
               </button>

@@ -203,7 +203,7 @@ export default function FlowEditorPage() {
   if (isLoading) {
     return (
       <div className="flex items-center justify-center py-12">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-600"></div>
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-brand-600"></div>
         <span className="ml-3 text-gray-600">Laddar e-tjänst...</span>
       </div>
     );
@@ -234,7 +234,7 @@ export default function FlowEditorPage() {
             </svg>
           </Link>
           <div>
-            <h1 className="text-2xl font-bold text-gray-900">
+            <h1 className="page-title">
               {flow?.name || 'Ny e-tjänst'}
             </h1>
             <p className="text-sm text-gray-500">
@@ -264,7 +264,7 @@ export default function FlowEditorPage() {
           <button
             onClick={() => updateFlowMutation.mutate(flowForm)}
             disabled={updateFlowMutation.isPending}
-            className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:opacity-50"
+            className="px-4 py-2 bg-brand-600 text-white rounded-lg hover:bg-brand-700 disabled:opacity-50"
           >
             {updateFlowMutation.isPending ? 'Sparar...' : 'Spara'}
           </button>
@@ -278,7 +278,7 @@ export default function FlowEditorPage() {
             onClick={() => setActiveTab('steps')}
             className={`pb-3 text-sm font-medium border-b-2 -mb-px transition-colors ${
               activeTab === 'steps'
-                ? 'border-purple-600 text-purple-600'
+                ? 'border-brand-600 text-brand-600'
                 : 'border-transparent text-gray-500 hover:text-gray-700'
             }`}
           >
@@ -288,7 +288,7 @@ export default function FlowEditorPage() {
             onClick={() => setActiveTab('settings')}
             className={`pb-3 text-sm font-medium border-b-2 -mb-px transition-colors ${
               activeTab === 'settings'
-                ? 'border-purple-600 text-purple-600'
+                ? 'border-brand-600 text-brand-600'
                 : 'border-transparent text-gray-500 hover:text-gray-700'
             }`}
           >
@@ -298,7 +298,7 @@ export default function FlowEditorPage() {
             onClick={() => setActiveTab('preview')}
             className={`pb-3 text-sm font-medium border-b-2 -mb-px transition-colors ${
               activeTab === 'preview'
-                ? 'border-purple-600 text-purple-600'
+                ? 'border-brand-600 text-brand-600'
                 : 'border-transparent text-gray-500 hover:text-gray-700'
             }`}
           >
@@ -321,7 +321,7 @@ export default function FlowEditorPage() {
                       setEditingStep(null);
                       setShowStepModal(true);
                     }}
-                    className="p-1 text-purple-600 hover:bg-purple-50 rounded"
+                    className="p-1 text-brand-600 hover:bg-brand-50 rounded"
                     title="Lägg till steg"
                   >
                     <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -421,7 +421,7 @@ export default function FlowEditorPage() {
                       <p className="text-gray-500 mb-4">Inga fält i detta steg</p>
                       <button
                         onClick={() => setShowAddQueryModal(true)}
-                        className="inline-flex items-center gap-2 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700"
+                        className="inline-flex items-center gap-2 px-4 py-2 bg-brand-600 text-white rounded-lg hover:bg-brand-700"
                       >
                         <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
@@ -447,7 +447,7 @@ export default function FlowEditorPage() {
                       ))}
                       <button
                         onClick={() => setShowAddQueryModal(true)}
-                        className="w-full py-3 border-2 border-dashed border-gray-300 rounded-lg text-gray-500 hover:border-purple-500 hover:text-purple-600 transition-colors flex items-center justify-center gap-2"
+                        className="w-full py-3 border-2 border-dashed border-gray-300 rounded-lg text-gray-500 hover:border-brand-500 hover:text-brand-600 transition-colors flex items-center justify-center gap-2"
                       >
                         <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
@@ -495,7 +495,7 @@ export default function FlowEditorPage() {
                 type="text"
                 value={flowForm.name}
                 onChange={(e) => setFlowForm({ ...flowForm, name: e.target.value })}
-                className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
+                className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-500"
               />
             </div>
 
@@ -507,7 +507,7 @@ export default function FlowEditorPage() {
                 type="text"
                 value={flowForm.shortDescription}
                 onChange={(e) => setFlowForm({ ...flowForm, shortDescription: e.target.value })}
-                className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
+                className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-500"
                 placeholder="Visas i listningen av e-tjänster"
               />
             </div>
@@ -520,7 +520,7 @@ export default function FlowEditorPage() {
                 value={flowForm.longDescription}
                 onChange={(e) => setFlowForm({ ...flowForm, longDescription: e.target.value })}
                 rows={4}
-                className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
+                className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-500"
                 placeholder="Visas på e-tjänstens startsida"
               />
             </div>
@@ -533,7 +533,7 @@ export default function FlowEditorPage() {
                 value={flowForm.submittedMessage}
                 onChange={(e) => setFlowForm({ ...flowForm, submittedMessage: e.target.value })}
                 rows={3}
-                className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
+                className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-500"
                 placeholder="Visas efter inskickat ärende"
               />
             </div>
@@ -556,7 +556,7 @@ export default function FlowEditorPage() {
                         categoryId: undefined // Reset category when type changes
                       });
                     }}
-                    className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 bg-white"
+                    className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-500 bg-white"
                   >
                     <option value="">Ingen tjänstetyp</option>
                     {flowTypes?.map((type) => (
@@ -575,7 +575,7 @@ export default function FlowEditorPage() {
                     value={flowForm.categoryId || ''}
                     onChange={(e) => setFlowForm({ ...flowForm, categoryId: e.target.value || undefined })}
                     disabled={!flowForm.typeId}
-                    className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 bg-white disabled:bg-gray-100 disabled:text-gray-500"
+                    className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-500 bg-white disabled:bg-gray-100 disabled:text-gray-500"
                   >
                     <option value="">Ingen kategori</option>
                     {flowTypes
@@ -601,7 +601,7 @@ export default function FlowEditorPage() {
                     type="checkbox"
                     checked={flowForm.requireAuth}
                     onChange={(e) => setFlowForm({ ...flowForm, requireAuth: e.target.checked })}
-                    className="w-4 h-4 rounded border-gray-300 text-purple-600 focus:ring-purple-500"
+                    className="w-4 h-4 rounded border-gray-300 text-brand-600 focus:ring-brand-500"
                   />
                   <div>
                     <span className="text-sm font-medium text-gray-700">Kräv inloggning</span>
@@ -614,7 +614,7 @@ export default function FlowEditorPage() {
                     type="checkbox"
                     checked={flowForm.requireSigning}
                     onChange={(e) => setFlowForm({ ...flowForm, requireSigning: e.target.checked })}
-                    className="w-4 h-4 rounded border-gray-300 text-purple-600 focus:ring-purple-500"
+                    className="w-4 h-4 rounded border-gray-300 text-brand-600 focus:ring-brand-500"
                   />
                   <div>
                     <span className="text-sm font-medium text-gray-700">Kräv signering</span>
@@ -627,7 +627,7 @@ export default function FlowEditorPage() {
                     type="checkbox"
                     checked={flowForm.allowSaveDraft}
                     onChange={(e) => setFlowForm({ ...flowForm, allowSaveDraft: e.target.checked })}
-                    className="w-4 h-4 rounded border-gray-300 text-purple-600 focus:ring-purple-500"
+                    className="w-4 h-4 rounded border-gray-300 text-brand-600 focus:ring-brand-500"
                   />
                   <div>
                     <span className="text-sm font-medium text-gray-700">Tillåt spara utkast</span>
@@ -640,7 +640,7 @@ export default function FlowEditorPage() {
                     type="checkbox"
                     checked={flowForm.allowMultiple}
                     onChange={(e) => setFlowForm({ ...flowForm, allowMultiple: e.target.checked })}
-                    className="w-4 h-4 rounded border-gray-300 text-purple-600 focus:ring-purple-500"
+                    className="w-4 h-4 rounded border-gray-300 text-brand-600 focus:ring-brand-500"
                   />
                   <div>
                     <span className="text-sm font-medium text-gray-700">Tillåt flera ärenden</span>
@@ -653,7 +653,7 @@ export default function FlowEditorPage() {
                     type="checkbox"
                     checked={flowForm.enabled}
                     onChange={(e) => setFlowForm({ ...flowForm, enabled: e.target.checked })}
-                    className="w-4 h-4 rounded border-gray-300 text-purple-600 focus:ring-purple-500"
+                    className="w-4 h-4 rounded border-gray-300 text-brand-600 focus:ring-brand-500"
                   />
                   <div>
                     <span className="text-sm font-medium text-gray-700">Aktiverad</span>
@@ -675,7 +675,7 @@ export default function FlowEditorPage() {
                 onChange={(e) => setFlowForm({ ...flowForm, retentionMonths: e.target.value })}
                 placeholder="Bevaras"
                 aria-describedby="retention-help"
-                className="w-40 px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
+                className="w-40 px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-500"
               />
               <p id="retention-help" className="text-xs text-gray-500 mt-1">
                 Enligt kommunens gallringsbeslut för ärendetypen. Lämna tomt om ärendena ska bevaras.
@@ -690,7 +690,7 @@ export default function FlowEditorPage() {
           <p className="text-gray-500 text-center py-8">
             Förhandsgranskning kommer snart.
             <br />
-            <Link href={`/citizen/services/${flowId}`} className="text-purple-600 hover:underline">
+            <Link href={`/citizen/services/${flowId}`} className="text-brand-600 hover:underline">
               Öppna i nytt fönster
             </Link>
           </p>
@@ -783,9 +783,9 @@ function QueryCard({
   const typeInfo = queryTypes.find((t) => t.value === query.queryType) || { label: query.queryType, icon: '?' };
 
   return (
-    <div className="border rounded-lg p-4 hover:border-purple-300 transition-colors">
+    <div className="border rounded-lg p-4 hover:border-brand-300 transition-colors">
       <div className="flex items-start gap-3">
-        <div className="w-8 h-8 bg-purple-100 rounded flex items-center justify-center text-purple-600 font-medium text-sm">
+        <div className="w-8 h-8 bg-brand-100 rounded flex items-center justify-center text-brand-600 font-medium text-sm">
           {typeInfo.icon}
         </div>
         <div className="flex-1 min-w-0">
@@ -810,7 +810,7 @@ function QueryCard({
           {conditions.length > 0 && (
             <ul className="mt-2 space-y-1">
               {conditions.map((ev) => (
-                <li key={ev.id} className="text-xs text-purple-700">
+                <li key={ev.id} className="text-xs text-brand-700">
                   När svaret {describeCondition(ev, query, allQueries)}
                 </li>
               ))}
@@ -822,7 +822,7 @@ function QueryCard({
             <button
               type="button"
               onClick={onConditions}
-              className="px-2 py-1 text-xs text-gray-500 hover:text-purple-600 rounded border border-transparent hover:border-purple-200"
+              className="px-2 py-1 text-xs text-gray-500 hover:text-brand-600 rounded border border-transparent hover:border-brand-200"
               title="Villkor"
             >
               Villkor{conditions.length > 0 ? ` (${conditions.length})` : ''}
@@ -830,7 +830,7 @@ function QueryCard({
           )}
           <button
             onClick={onEdit}
-            className="p-1 text-gray-400 hover:text-purple-600 rounded"
+            className="p-1 text-gray-400 hover:text-brand-600 rounded"
             title="Redigera"
           >
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -907,7 +907,7 @@ function StepModal({
               value={name}
               onChange={(e) => setName(e.target.value)}
               required
-              className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
+              className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-500"
               placeholder="t.ex. Uppgifter om sökande"
             />
           </div>
@@ -919,7 +919,7 @@ function StepModal({
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               rows={2}
-              className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
+              className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-500"
               placeholder="Kort beskrivning av steget"
             />
           </div>
@@ -934,7 +934,7 @@ function StepModal({
             <button
               type="submit"
               disabled={isLoading || !name.trim()}
-              className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:opacity-50"
+              className="px-4 py-2 bg-brand-600 text-white rounded-lg hover:bg-brand-700 disabled:opacity-50"
             >
               {isLoading ? 'Sparar...' : step ? 'Spara' : 'Lägg till'}
             </button>
@@ -986,7 +986,7 @@ function AddQueryModal({
               value={name}
               onChange={(e) => setName(e.target.value)}
               required
-              className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
+              className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-500"
               placeholder="t.ex. Förnamn"
             />
           </div>
@@ -1003,7 +1003,7 @@ function AddQueryModal({
                   onClick={() => setQueryType(type.value)}
                   className={`p-3 border rounded-lg text-left transition-colors ${
                     queryType === type.value
-                      ? 'border-purple-500 bg-purple-50 text-purple-700'
+                      ? 'border-brand-500 bg-brand-50 text-brand-700'
                       : 'hover:border-gray-400'
                   }`}
                 >
@@ -1019,7 +1019,7 @@ function AddQueryModal({
               type="checkbox"
               checked={required}
               onChange={(e) => setRequired(e.target.checked)}
-              className="w-4 h-4 rounded border-gray-300 text-purple-600 focus:ring-purple-500"
+              className="w-4 h-4 rounded border-gray-300 text-brand-600 focus:ring-brand-500"
             />
             <span className="text-sm text-gray-700">Obligatoriskt fält</span>
           </label>
@@ -1035,7 +1035,7 @@ function AddQueryModal({
             <button
               type="submit"
               disabled={isLoading || !name.trim()}
-              className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:opacity-50"
+              className="px-4 py-2 bg-brand-600 text-white rounded-lg hover:bg-brand-700 disabled:opacity-50"
             >
               {isLoading ? 'Lägger till...' : 'Lägg till'}
             </button>
@@ -1107,7 +1107,7 @@ function EditQueryModal({
                 setConfig({ ...config, options });
               }}
               rows={4}
-              className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 font-mono text-sm"
+              className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-500 font-mono text-sm"
               placeholder="Alternativ 1&#10;Alternativ 2&#10;Alternativ 3"
             />
           </div>
@@ -1124,7 +1124,7 @@ function EditQueryModal({
                 type="number"
                 value={(config.minLength as number) || ''}
                 onChange={(e) => setConfig({ ...config, minLength: e.target.value ? parseInt(e.target.value) : undefined })}
-                className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
+                className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-500"
                 min={0}
               />
             </div>
@@ -1136,7 +1136,7 @@ function EditQueryModal({
                 type="number"
                 value={(config.maxLength as number) || ''}
                 onChange={(e) => setConfig({ ...config, maxLength: e.target.value ? parseInt(e.target.value) : undefined })}
-                className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
+                className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-500"
                 min={0}
               />
             </div>
@@ -1153,7 +1153,7 @@ function EditQueryModal({
                 type="number"
                 value={(config.min as number) || ''}
                 onChange={(e) => setConfig({ ...config, min: e.target.value ? parseInt(e.target.value) : undefined })}
-                className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
+                className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-500"
               />
             </div>
             <div>
@@ -1164,7 +1164,7 @@ function EditQueryModal({
                 type="number"
                 value={(config.max as number) || ''}
                 onChange={(e) => setConfig({ ...config, max: e.target.value ? parseInt(e.target.value) : undefined })}
-                className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
+                className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-500"
               />
             </div>
           </div>
@@ -1180,7 +1180,7 @@ function EditQueryModal({
                 type="text"
                 value={(config.accept as string) || ''}
                 onChange={(e) => setConfig({ ...config, accept: e.target.value })}
-                className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
+                className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-500"
                 placeholder=".pdf,.jpg,.png"
               />
             </div>
@@ -1192,7 +1192,7 @@ function EditQueryModal({
                 type="number"
                 value={((config.maxSize as number) || 0) / (1024 * 1024) || ''}
                 onChange={(e) => setConfig({ ...config, maxSize: e.target.value ? parseInt(e.target.value) * 1024 * 1024 : undefined })}
-                className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
+                className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-500"
                 min={0}
               />
             </div>
@@ -1217,7 +1217,7 @@ function EditQueryModal({
               value={name}
               onChange={(e) => setName(e.target.value)}
               required
-              className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
+              className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-500"
             />
           </div>
 
@@ -1229,7 +1229,7 @@ function EditQueryModal({
               type="text"
               value={description}
               onChange={(e) => setDescription(e.target.value)}
-              className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
+              className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-500"
               placeholder="Visas under fältnamnet"
             />
           </div>
@@ -1242,7 +1242,7 @@ function EditQueryModal({
               value={helpText}
               onChange={(e) => setHelpText(e.target.value)}
               rows={2}
-              className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
+              className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-500"
               placeholder="Visas vid klick på hjälp-ikonen"
             />
           </div>
@@ -1255,7 +1255,7 @@ function EditQueryModal({
               type="text"
               value={placeholder}
               onChange={(e) => setPlaceholder(e.target.value)}
-              className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
+              className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-500"
               placeholder="Exempeltext i fältet"
             />
           </div>
@@ -1265,7 +1265,7 @@ function EditQueryModal({
               type="checkbox"
               checked={required}
               onChange={(e) => setRequired(e.target.checked)}
-              className="w-4 h-4 rounded border-gray-300 text-purple-600 focus:ring-purple-500"
+              className="w-4 h-4 rounded border-gray-300 text-brand-600 focus:ring-brand-500"
             />
             <span className="text-sm text-gray-700">Obligatoriskt fält</span>
           </label>
@@ -1284,7 +1284,7 @@ function EditQueryModal({
             <button
               type="submit"
               disabled={isLoading || !name.trim()}
-              className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:opacity-50"
+              className="px-4 py-2 bg-brand-600 text-white rounded-lg hover:bg-brand-700 disabled:opacity-50"
             >
               {isLoading ? 'Sparar...' : 'Spara'}
             </button>

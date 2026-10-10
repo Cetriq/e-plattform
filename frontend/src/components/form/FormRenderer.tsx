@@ -312,7 +312,7 @@ function FormBody({ steps, onSubmit, onCancel, onSaveDraft, autoSave }: FormBody
             <button
               type="button"
               onClick={onSaveDraft}
-              className="px-4 py-2 text-blue-600 bg-blue-50 border border-blue-200 rounded-lg
+              className="px-4 py-2 text-brand-600 bg-brand-50 border border-brand-200 rounded-lg
                        hover:bg-blue-100 transition-colors"
             >
               Spara utkast
@@ -365,8 +365,8 @@ function FormBody({ steps, onSubmit, onCancel, onSaveDraft, autoSave }: FormBody
               key="next"
               type="button"
               onClick={handleNext}
-              className="px-6 py-2 bg-blue-600 text-white rounded-lg font-medium
-                       hover:bg-blue-700 transition-colors flex items-center gap-2"
+              className="px-6 py-2 bg-brand-600 text-white rounded-lg font-medium
+                       hover:bg-brand-700 transition-colors flex items-center gap-2"
             >
               Nästa
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">

@@ -85,14 +85,14 @@ export function MessageThread({
                   variant === 'notes'
                     ? 'bg-amber-50 border border-amber-200 text-gray-900'
                     : m.mine
-                      ? 'bg-blue-600 text-white'
+                      ? 'bg-brand-600 text-white'
                       : 'bg-gray-100 text-gray-900'
                 }`}
               >
                 <p className="text-sm whitespace-pre-wrap break-words">{m.message}</p>
                 <p
                   className={`mt-1 text-xs ${
-                    m.mine && variant === 'conversation' ? 'text-blue-100' : 'text-gray-500'
+                    m.mine && variant === 'conversation' ? 'text-brand-100' : 'text-gray-500'
                   }`}
                 >
                   {m.authorName} · {formatTime(m.createdAt)}
@@ -121,7 +121,7 @@ export function MessageThread({
             rows={3}
             maxLength={5000}
             placeholder={placeholder}
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
           />
           {error && (
             <p className="text-sm text-red-600" role="alert">
@@ -132,7 +132,7 @@ export function MessageThread({
             <button
               type="submit"
               disabled={sending || !text.trim()}
-              className="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="px-4 py-2 bg-brand-600 text-white text-sm font-medium rounded-lg hover:bg-brand-700 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {sending ? 'Skickar…' : sendLabel}
             </button>

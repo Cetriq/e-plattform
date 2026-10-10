@@ -27,8 +27,8 @@ export function CheckboxField({ query }: CheckboxFieldProps) {
           onBlur={onBlur}
           disabled={state === 'DISABLED'}
           required={query.required}
-          className="mt-0.5 w-4 h-4 text-blue-600 border-gray-300 rounded
-                     focus:ring-blue-500 disabled:opacity-50"
+          className="mt-0.5 w-4 h-4 text-brand-600 border-gray-300 rounded
+                     focus:ring-brand-500 disabled:opacity-50"
         />
         <span className="text-sm text-gray-700">
           {query.config.content || query.name}

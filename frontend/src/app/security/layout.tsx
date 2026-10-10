@@ -1,20 +1,20 @@
 'use client';
 
 import { RequireRole } from '@/components/auth/RequireRole';
-import { WorkspaceShell } from '@/components/layout/WorkspaceShell';
+import { StaffShell } from '@/components/layout/StaffShell';
 
 const nav = [
-  { name: 'Spårbarhetslogg', href: '/security/audit' },
-  { name: 'Registrerade', href: '/security/people' },
-  { name: 'Gallring', href: '/security/retention' },
+  { name: 'Spårbarhetslogg', href: '/security/audit', icon: 'log' as const },
+  { name: 'Registrerade', href: '/security/people', icon: 'person' as const },
+  { name: 'Gallring', href: '/security/retention', icon: 'archive' as const },
 ];
 
 export default function SecurityLayout({ children }: { children: React.ReactNode }) {
   return (
     <RequireRole roles={['SECURITY_OFFICER']}>
-      <WorkspaceShell title="Informationssäkerhet & dataskydd" headerClass="bg-slate-800" nav={nav}>
+      <StaffShell title="Informationssäkerhet & dataskydd" theme="security" nav={nav}>
         {children}
-      </WorkspaceShell>
+      </StaffShell>
     </RequireRole>
   );
 }

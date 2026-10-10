@@ -49,8 +49,8 @@ function People() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-gray-900">Registrerade</h1>
-        <p className="text-gray-600 mt-1">
+        <h1 className="page-title">Registrerade</h1>
+        <p className="page-lead">
           Registerutdrag och begäran om radering. Allt du gör här loggas i spårbarhetsloggen.
         </p>
       </div>
@@ -68,13 +68,13 @@ function People() {
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           placeholder="Sök på namn eller e-post…"
-          className="flex-1 px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-500"
+          className="input flex-1"
         />
-        <button type="submit" className="px-4 py-2 bg-slate-800 text-white rounded-lg hover:bg-slate-700">Sök</button>
+        <button type="submit" className="btn-primary">Sök</button>
       </form>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="bg-white rounded-lg border">
+        <div className="card">
           {submitted.length < 2 ? (
             <p className="p-4 text-sm text-gray-500">Sök för att hitta en person.</p>
           ) : results.isLoading ? (
@@ -89,7 +89,7 @@ function People() {
                     type="button"
                     onClick={() => setSelectedId(p.id)}
                     aria-current={selectedId === p.id ? 'true' : undefined}
-                    className={`w-full text-left px-4 py-3 hover:bg-gray-50 ${selectedId === p.id ? 'bg-slate-50' : ''}`}
+                    className={`w-full text-left px-4 py-3 hover:bg-gray-50 ${selectedId === p.id ? 'bg-brand-50' : ''}`}
                   >
                     <div className="font-medium text-gray-900">{p.name}</div>
                     <div className="text-sm text-gray-500">{p.email}</div>
@@ -108,7 +108,7 @@ function People() {
           {selectedId ? (
             <PersonDetail userId={selectedId} />
           ) : (
-            <div className="bg-white rounded-lg border p-6 text-sm text-gray-500">Välj en person.</div>
+            <div className="card p-6 text-sm text-gray-500">Välj en person.</div>
           )}
         </div>
       </div>
@@ -126,8 +126,8 @@ function PersonDetail({ userId }: { userId: string }) {
     queryFn: () => getErasurePreview(userId),
   });
 
-  if (isLoading) return <div className="bg-white rounded-lg border p-6 text-gray-500">Laddar…</div>;
-  if (error || !data) return <div className="bg-white rounded-lg border p-6 text-red-700" role="alert">Personen kunde inte hämtas.</div>;
+  if (isLoading) return <div className="card p-6 text-gray-500">Laddar…</div>;
+  if (error || !data) return <div className="card p-6 text-red-700" role="alert">Personen kunde inte hämtas.</div>;
 
   const person: PersonSummary = data.person;
 
@@ -159,7 +159,7 @@ function PersonDetail({ userId }: { userId: string }) {
 
   return (
     <div className="space-y-6">
-      <section className="bg-white rounded-lg border p-6">
+      <section className="card p-6">
         <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
           <div>
             <h2 className="text-lg font-semibold text-gray-900">{person.name}</h2>
@@ -170,10 +170,10 @@ function PersonDetail({ userId }: { userId: string }) {
             </p>
           </div>
           <div className="flex flex-wrap gap-2">
-            <button type="button" onClick={extract} className="px-4 py-2 text-sm bg-slate-800 text-white rounded-lg hover:bg-slate-700">
+            <button type="button" onClick={extract} className="btn-primary">
               Ta fram registerutdrag
             </button>
-            <Link href={`/security/audit?subjectId=${person.id}`} className="px-4 py-2 text-sm bg-white border rounded-lg hover:bg-gray-50">
+            <Link href={`/security/audit?subjectId=${person.id}`} className="btn-secondary">
               Vem har läst uppgifterna?
             </Link>
           </div>
@@ -184,7 +184,7 @@ function PersonDetail({ userId }: { userId: string }) {
         </p>
       </section>
 
-      <section className="bg-white rounded-lg border p-6 space-y-4" aria-labelledby="erasure-heading">
+      <section className="card p-6 space-y-4" aria-labelledby="erasure-heading">
         <h2 id="erasure-heading" className="text-lg font-semibold text-gray-900">Begäran om radering</h2>
 
         {!data.allowed ? (
@@ -229,7 +229,7 @@ function PersonDetail({ userId }: { userId: string }) {
 
             {!confirming ? (
               <button type="button" onClick={() => setConfirming(true)}
-                      className="px-4 py-2 text-sm text-red-700 border border-red-300 rounded-lg hover:bg-red-50">
+                      className="btn-danger-outline">
                 Radera personuppgifter…
               </button>
             ) : (
@@ -239,11 +239,11 @@ function PersonDetail({ userId }: { userId: string }) {
                 </p>
                 <div className="flex gap-2">
                   <button type="button" onClick={erase} disabled={erasing}
-                          className="px-4 py-2 text-sm bg-red-700 text-white rounded-lg hover:bg-red-800 disabled:opacity-50">
+                          className="btn-danger">
                     {erasing ? 'Raderar…' : 'Ja, radera'}
                   </button>
                   <button type="button" onClick={() => setConfirming(false)}
-                          className="px-4 py-2 text-sm bg-white border rounded-lg">
+                          className="btn-secondary">
                     Avbryt
                   </button>
                 </div>

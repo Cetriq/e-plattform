@@ -31,7 +31,7 @@ export function TextareaField({ query }: TextareaFieldProps) {
         minLength={query.config.minLength}
         rows={4}
         className="w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm
-                   focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500
+                   focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-brand-500
                    disabled:bg-gray-100 disabled:cursor-not-allowed
                    read-only:bg-gray-50 resize-y min-h-[100px]"
       />

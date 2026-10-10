@@ -49,7 +49,7 @@ export function LocationField({ query }: LocationFieldProps) {
             required={query.required}
             placeholder="Gatunamn och nummer"
             className="w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm
-                       focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500
+                       focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-brand-500
                        disabled:bg-gray-100 disabled:text-gray-500"
           />
         </div>
@@ -69,7 +69,7 @@ export function LocationField({ query }: LocationFieldProps) {
               required={query.required}
               placeholder="XXX XX"
               className="w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm
-                         focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500
+                         focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-brand-500
                          disabled:bg-gray-100 disabled:text-gray-500"
             />
           </div>
@@ -85,7 +85,7 @@ export function LocationField({ query }: LocationFieldProps) {
               readOnly={isReadonly}
               required={query.required}
               className="w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm
-                         focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500
+                         focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-brand-500
                          disabled:bg-gray-100 disabled:text-gray-500"
             />
           </div>
@@ -103,7 +103,7 @@ export function LocationField({ query }: LocationFieldProps) {
             disabled={isDisabled}
             readOnly={isReadonly}
             className="w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm
-                       focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500
+                       focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-brand-500
                        disabled:bg-gray-100 disabled:text-gray-500"
           />
         </div>

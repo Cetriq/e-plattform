@@ -4,6 +4,8 @@
 
 @layer base {
   :root {
+    --brand-300: 147 197 253;
+    --brand-400: 96 165 250;
     --background: 0 0% 100%;
     --foreground: 222.2 84% 4.9%;
 
@@ -73,4 +75,84 @@
   body {
     @apply bg-background text-foreground;
   }
+}
+
+/*
+ * Accent colour per area. Citizen and caseworker pages use the default;
+ * the staff areas set their own on the shell (StaffShell).
+ */
+@layer base {
+  :root {
+    --brand-50: 239 246 255;
+    --brand-100: 219 234 254;
+    --brand-200: 191 219 254;
+    --brand-500: 59 130 246;
+    --brand-600: 37 99 235;
+    --brand-700: 29 78 216;
+    --brand-800: 30 64 175;
+    --brand-900: 30 58 138;
+  }
+  .theme-admin {
+    --brand-300: 216 180 254;
+    --brand-400: 192 132 252;
+    --brand-50: 250 245 255;
+    --brand-100: 243 232 255;
+    --brand-200: 233 213 255;
+    --brand-500: 168 85 247;
+    --brand-600: 147 51 234;
+    --brand-700: 126 34 206;
+    --brand-800: 107 33 168;
+    --brand-900: 88 28 135;
+  }
+  .theme-security {
+    --brand-300: 203 213 225;
+    --brand-400: 148 163 184;
+    --brand-50: 248 250 252;
+    --brand-100: 241 245 249;
+    --brand-200: 226 232 240;
+    --brand-500: 100 116 139;
+    --brand-600: 71 85 105;
+    --brand-700: 51 65 85;
+    --brand-800: 30 41 59;
+    --brand-900: 15 23 42;
+  }
+  .theme-ops {
+    --brand-300: 94 234 212;
+    --brand-400: 45 212 191;
+    --brand-50: 240 253 250;
+    --brand-100: 204 251 241;
+    --brand-200: 153 246 228;
+    --brand-500: 20 184 166;
+    --brand-600: 13 148 136;
+    --brand-700: 15 118 110;
+    --brand-800: 17 94 89;
+    --brand-900: 19 78 74;
+  }
+}
+
+/* Shared building blocks. Use these instead of repeating utility strings. */
+@layer components {
+  .page-title { @apply text-2xl font-bold text-gray-900; }
+  .page-lead { @apply text-gray-600 mt-1; }
+  .card { @apply bg-white rounded-lg shadow-sm border; }
+
+  .btn {
+    @apply inline-flex items-center justify-center gap-2 px-4 py-2 text-sm font-medium rounded-lg transition-colors
+           focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:ring-offset-2
+           disabled:opacity-50 disabled:cursor-not-allowed;
+  }
+  .btn-primary { @apply btn bg-brand-600 text-white hover:bg-brand-700; }
+  .btn-secondary { @apply btn bg-white text-gray-700 border hover:bg-gray-50; }
+  .btn-danger { @apply btn bg-red-600 text-white hover:bg-red-700; }
+  .btn-danger-outline { @apply btn text-red-700 border border-red-300 hover:bg-red-50; }
+  .btn-sm { @apply px-3 py-1; }
+
+  .input {
+    @apply w-full px-3 py-2 border rounded-lg text-sm bg-white
+           focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-brand-500;
+  }
+  .label { @apply block text-xs font-medium text-gray-600 mb-1; }
+
+  .table-head { @apply bg-gray-50 border-b; }
+  .th { @apply text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider; }
 }

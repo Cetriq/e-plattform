@@ -34,13 +34,13 @@ export default function OpsStatusPage() {
     <div className="space-y-6">
       <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Driftstatus</h1>
-          <p className="text-gray-600 mt-1">
+          <h1 className="page-title">Driftstatus</h1>
+          <p className="page-lead">
             Version {data.version} · uppdateras var 30:e sekund (senast {new Date(dataUpdatedAt).toLocaleTimeString('sv-SE')})
           </p>
         </div>
         <button type="button" onClick={() => refetch()} disabled={isFetching}
-                className="px-4 py-2 text-sm bg-white border rounded-lg hover:bg-gray-50 disabled:opacity-50">
+                className="btn-secondary">
           Uppdatera
         </button>
       </div>
@@ -55,7 +55,7 @@ export default function OpsStatusPage() {
 
       <section className="grid md:grid-cols-3 gap-4" aria-label="Komponenter">
         {data.components.map((c) => (
-          <div key={c.name} className="bg-white rounded-lg border p-4">
+          <div key={c.name} className="card p-4">
             <div className="flex items-center justify-between">
               <h2 className="font-medium text-gray-900">{c.name}</h2>
               <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${STATUS_STYLES[c.status]}`}>
@@ -74,7 +74,7 @@ export default function OpsStatusPage() {
           ['Svarstid: medel sedan start / p95 senaste minuterna', `${Math.round(data.requests.meanMs)} / ${Math.round(data.requests.p95Ms)} ms`],
           ['Minne', `${data.heapUsedMb} av ${data.heapMaxMb} MB`],
         ].map(([label, value]) => (
-          <div key={label} className="bg-white rounded-lg border p-4">
+          <div key={label} className="card p-4">
             <div className="text-sm text-gray-500">{label}</div>
             <div className="text-xl font-semibold text-gray-900 mt-1 tabular-nums">{value}</div>
           </div>
@@ -82,7 +82,7 @@ export default function OpsStatusPage() {
       </section>
 
       <div className="grid md:grid-cols-2 gap-6">
-        <section className="bg-white rounded-lg border" aria-labelledby="instance-heading">
+        <section className="card" aria-labelledby="instance-heading">
           <h2 id="instance-heading" className="px-6 py-4 border-b font-semibold text-gray-900">Instans</h2>
           <dl className="p-6 space-y-2 text-sm">
             <div className="flex justify-between"><dt className="text-gray-500">Startad</dt><dd>{formatTime(data.instanceStartedAt)}</dd></div>
@@ -100,7 +100,7 @@ export default function OpsStatusPage() {
           </ul>
         </section>
 
-        <section className="bg-white rounded-lg border" aria-labelledby="jobs-heading">
+        <section className="card" aria-labelledby="jobs-heading">
           <h2 id="jobs-heading" className="px-6 py-4 border-b font-semibold text-gray-900">Schemalagda jobb</h2>
           {data.lastJobRuns.length === 0 ? (
             <p className="p-6 text-sm text-gray-500">Inga körningar registrerade än.</p>

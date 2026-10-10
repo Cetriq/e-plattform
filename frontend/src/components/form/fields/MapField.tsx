@@ -60,7 +60,7 @@ export function MapField({ query }: MapFieldProps) {
         <button
           type="button"
           onClick={() => setManualEntry(!manualEntry)}
-          className="text-sm text-blue-600 hover:text-blue-800"
+          className="text-sm text-brand-600 hover:text-brand-800"
         >
           {manualEntry ? 'Dölj manuell inmatning' : 'Ange koordinater manuellt'}
         </button>
@@ -82,7 +82,7 @@ export function MapField({ query }: MapFieldProps) {
                 required={query.required}
                 placeholder="59.329323"
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm
-                           focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500
+                           focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-brand-500
                            disabled:bg-gray-100 disabled:text-gray-500"
               />
             </div>
@@ -100,7 +100,7 @@ export function MapField({ query }: MapFieldProps) {
                 required={query.required}
                 placeholder="18.068581"
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm
-                           focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500
+                           focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-brand-500
                            disabled:bg-gray-100 disabled:text-gray-500"
               />
             </div>
@@ -120,7 +120,7 @@ export function MapField({ query }: MapFieldProps) {
             readOnly={isReadonly}
             placeholder="T.ex. Parkering vid ingång B"
             className="w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm
-                       focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500
+                       focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-brand-500
                        disabled:bg-gray-100 disabled:text-gray-500"
           />
         </div>

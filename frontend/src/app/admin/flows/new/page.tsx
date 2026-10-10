@@ -41,7 +41,7 @@ export default function NewFlowPage() {
           </svg>
         </Link>
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Skapa ny e-tjänst</h1>
+          <h1 className="page-title">Skapa ny e-tjänst</h1>
           <p className="text-gray-600">
             Börja med att ge din e-tjänst ett namn och en kort beskrivning.
           </p>
@@ -60,7 +60,7 @@ export default function NewFlowPage() {
             onChange={(e) => setName(e.target.value)}
             required
             autoFocus
-            className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
+            className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-500"
             placeholder="t.ex. Ansökan om bygglov"
           />
         </div>
@@ -73,7 +73,7 @@ export default function NewFlowPage() {
             type="text"
             value={shortDescription}
             onChange={(e) => setShortDescription(e.target.value)}
-            className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
+            className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-500"
             placeholder="Visas i listningen av e-tjänster"
           />
         </div>
@@ -85,7 +85,7 @@ export default function NewFlowPage() {
               type="checkbox"
               checked={requireAuth}
               onChange={(e) => setRequireAuth(e.target.checked)}
-              className="w-4 h-4 rounded border-gray-300 text-purple-600 focus:ring-purple-500"
+              className="w-4 h-4 rounded border-gray-300 text-brand-600 focus:ring-brand-500"
             />
             <div>
               <span className="text-sm font-medium text-gray-700">Kräv inloggning</span>
@@ -112,7 +112,7 @@ export default function NewFlowPage() {
           <button
             type="submit"
             disabled={createMutation.isPending || !name.trim()}
-            className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:opacity-50"
+            className="px-4 py-2 bg-brand-600 text-white rounded-lg hover:bg-brand-700 disabled:opacity-50"
           >
             {createMutation.isPending ? 'Skapar...' : 'Skapa e-tjänst'}
           </button>
@@ -120,23 +120,23 @@ export default function NewFlowPage() {
       </form>
 
       {/* Tips */}
-      <div className="mt-8 bg-purple-50 rounded-lg p-6">
-        <h3 className="font-medium text-purple-900 mb-2">Tips för att komma igång</h3>
-        <ul className="text-sm text-purple-700 space-y-2">
+      <div className="mt-8 bg-brand-50 rounded-lg p-6">
+        <h3 className="font-medium text-brand-900 mb-2">Tips för att komma igång</h3>
+        <ul className="text-sm text-brand-700 space-y-2">
           <li className="flex items-start gap-2">
-            <svg className="w-5 h-5 text-purple-500 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg className="w-5 h-5 text-brand-500 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
             </svg>
             <span>Ge e-tjänsten ett tydligt och beskrivande namn</span>
           </li>
           <li className="flex items-start gap-2">
-            <svg className="w-5 h-5 text-purple-500 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg className="w-5 h-5 text-brand-500 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
             </svg>
             <span>Dela upp formuläret i logiska steg för bättre användarupplevelse</span>
           </li>
           <li className="flex items-start gap-2">
-            <svg className="w-5 h-5 text-purple-500 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg className="w-5 h-5 text-brand-500 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
             </svg>
             <span>Testa formuläret med förhandsgranskning innan publicering</span>

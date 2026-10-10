@@ -24,10 +24,10 @@ const toastStyles: Record<ToastType['type'], { bg: string; border: string; icon:
     iconColor: 'text-yellow-600',
   },
   info: {
-    bg: 'bg-blue-50',
-    border: 'border-blue-200',
+    bg: 'bg-brand-50',
+    border: 'border-brand-200',
     icon: 'M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z',
-    iconColor: 'text-blue-600',
+    iconColor: 'text-brand-600',
   },
 };
 

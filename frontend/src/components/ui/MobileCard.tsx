@@ -30,7 +30,7 @@ interface MobileCardProps {
 }
 
 const actionStyles: Record<string, string> = {
-  primary: 'bg-blue-600 text-white hover:bg-blue-700',
+  primary: 'bg-brand-600 text-white hover:bg-brand-700',
   secondary: 'bg-gray-100 text-gray-700 hover:bg-gray-200',
   danger: 'bg-red-50 text-red-700 hover:bg-red-100',
 };

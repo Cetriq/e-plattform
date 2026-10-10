@@ -16,6 +16,10 @@ module.exports = {
     },
     extend: {
       colors: {
+        // Accent colour of the current area, set by a theme-* class (globals.css)
+        brand: Object.fromEntries(
+          [50, 100, 200, 300, 400, 500, 600, 700, 800, 900].map((n) => [n, `rgb(var(--brand-${n}) / <alpha-value>)`])
+        ),
         border: "hsl(var(--border))",
         input: "hsl(var(--input))",
         ring: "hsl(var(--ring))",

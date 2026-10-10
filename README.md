@@ -1,209 +1,147 @@
 # e-Plattform
 
-> **EXPERIMENTAL PROJECT**
->
-> This project is under active development and is **not ready for production**.
-> APIs, database schema, and functionality may change without notice.
-> Use only for evaluation and development purposes.
->
-> See [EXPERIMENTAL_STATUS.md](docs/EXPERIMENTAL_STATUS.md) for details.
+A modern e-service platform for Swedish public administration: a rewrite of
+[Open-ePlatform](https://github.com/Open-ePlatform) (2016 codebase) on current
+technology and current law (GDPR, the archives act, the DOS act/WCAG 2.1 AA).
 
-Modern e-service platform for public administration, inspired by Open-ePlatform but built with contemporary technology.
+> **Status: demo.** The platform runs as a public demo on Vercel. It is not
+> ready for production: there is no e-legitimation yet and a few gaps remain.
+> See [EXPERIMENTAL_STATUS.md](docs/EXPERIMENTAL_STATUS.md).
 
-## Technology Stack
+**Demo:** <https://e-plattform.vercel.app> — log in by picking a persona and
+entering the demo access code (the `DEMO_ACCESS_CODE` variable in the Vercel
+project). **API documentation:** <https://e-plattform.vercel.app/swagger-ui/index.html>
 
-### Backend
-- **Java 21** with Spring Boot 3.2
-- **PostgreSQL 16** for database
-- **MinIO** for file storage (S3-compatible)
+## What it does
 
-### Frontend
-- **Next.js 15** with React 19
-- **TypeScript** for type safety
-- **Tailwind CSS** for styling
-- **TanStack Query** for server state
-- **React Hook Form** + **Zod** for forms
+| Role | Persona | Can |
+|------|---------|-----|
+| Citizen (`USER`) | `medborgare@example.com` | Find e-services, fill in multi-step forms with conditional fields and attachments, follow their cases and message the case worker |
+| Case worker (`MANAGER`) | `handlaggare@example.com` | Handle incoming cases: assign, change status according to the e-service's rules, message the applicant, write internal notes, export PDF |
+| Administrator (`ADMIN`, `FLOW_EDITOR`) | `admin@example.com` | Build e-services (steps, fields, conditions, statuses, retention period), categories, users, statistics |
+| Information security & data protection (`SECURITY_OFFICER`) | `informationssakerhet@example.com` | Search and export the tamper-evident audit log, register extracts, erasure requests, retention (gallring) |
+| IT & operations (`OPERATIONS`) | `it-drift@example.com` | Component status, response times, cold starts, scheduled jobs and the technical system log (no personal data) |
 
-### DevOps
-- **Docker** & **Docker Compose**
-- **Traefik** as reverse proxy
-- **Prometheus** + **Grafana** for observability
+In the demo each visitor who logs in as a citizen gets an isolated account,
+removed after `DEMO_RETENTION_DAYS` days.
 
-## Getting Started
+## Architecture
 
-### Prerequisites
+```
+Browser ──▶ Vercel (fra1)
+             ├── frontend   Next.js 15, React 19, Tailwind     (service "frontend")
+             └── /api/v1/*  Spring Boot 3.2, Java 21, container (service "backend")
+                               ├── Neon Postgres (fra1)        cases, flows, audit log
+                               └── Vercel Blob, private (fra1)  attachments
+```
 
-- Docker Desktop
-- Java 21 (for local development without Docker)
-- Node.js 20 (for local development without Docker)
+- One Vercel project with two [services](https://vercel.com/docs/services)
+  (`vercel.json`). `/api/v1/*`, `/swagger-ui` and `/api-docs` go to the
+  backend, everything else to the frontend.
+- The backend is a container (`backend/Dockerfile.vercel`) with a Class Data
+  Sharing archive for faster cold starts. It scales to zero after 5 minutes
+  without traffic; the first request after that takes about 13 seconds. An
+  open tab keeps it warm.
+- Database migrations (Flyway, `backend/src/main/resources/db/migration`) run
+  when an instance starts.
+- Files are uploaded from the browser straight to private Blob storage through
+  Next.js routes that check the case first.
+- Nightly Vercel cron jobs remove expired demo accounts and run retention.
 
-### Quick Start with Docker
+Locally the same code runs against Postgres and MinIO in Docker Compose.
+
+## Getting started locally
+
+Requirements: Docker Desktop, Node.js 22, and Java 21 if you run the backend
+outside Docker.
 
 ```bash
-# Clone and navigate to project folder
-cd Open-E_Plattform
-
-# Create .env file
 cp .env.example .env
-
-# Start all services
-make dev
+make dev                 # Postgres, MinIO, Mailpit, API, frontend, Prometheus, Grafana
 ```
 
-Then open:
-- **Frontend**: http://localhost:3000
-- **API**: http://localhost:8080
-- **API Documentation (Swagger)**: http://localhost:8080/swagger-ui.html
-- **MinIO Console**: http://localhost:9001
-- **Mailpit (Email)**: http://localhost:8025
-- **Grafana**: http://localhost:3001
-- **Prometheus**: http://localhost:9090
+| | |
+|---|---|
+| Frontend | <http://localhost:3000> |
+| API | <http://localhost:8080> |
+| API documentation | <http://localhost:8080/swagger-ui/index.html> |
+| MinIO console | <http://localhost:9001> |
+| Mailpit (e-mail) | <http://localhost:8025> |
+| Grafana | <http://localhost:3001> |
 
-### Local Development
+Without Docker for the application itself:
 
 ```bash
-# Start infrastructure (database, cache, etc.)
-make infra
-
-# In one terminal - start backend
-make backend
-
-# In another terminal - start frontend
-make frontend-install
-make frontend
+make infra               # Postgres, MinIO and Mailpit only
+make backend             # Spring Boot on :8080 (needs JDK 21)
+make frontend-install && make frontend   # Next.js on :3000
 ```
 
-## Project Structure
+Locally no access code is required and all personas are shared accounts.
 
-```
-Open-E_Plattform/
-├── backend/                    # Java Spring Boot backend
-│   ├── src/main/java/se/eplatform/
-│   │   ├── common/            # Shared code (config, exceptions)
-│   │   ├── flow/              # Forms/flows
-│   │   ├── cases/             # Cases
-│   │   ├── user/              # Users
-│   │   └── ...
-│   └── src/main/resources/
-│       ├── db/migration/      # Flyway SQL migrations
-│       └── application*.yml   # Configuration
-│
-├── frontend/                   # Next.js frontend
-│   └── src/
-│       ├── app/               # App Router pages
-│       ├── components/        # React components
-│       ├── lib/               # Utilities
-│       └── types/             # TypeScript types
-│
-├── docker/                     # Docker configuration
-│   ├── postgres/
-│   ├── grafana/
-│   └── prometheus/
-│
-├── docs/                       # Documentation
-│   ├── architecture/          # Architecture documentation
-│   ├── EXPERIMENTAL_STATUS.md # Current status report
-│   └── DEVELOPER_GUIDE.md     # Developer guide
-│
-├── docker-compose.yml         # Development environment
-├── docker-compose.prod.yml    # Production environment
-└── Makefile                   # Shortcuts
-```
+## Tests
 
-## API
+| What | How | In CI |
+|------|-----|-------|
+| Backend (49 integration tests with Testcontainers: access control, case handling, audit chain, register extract, erasure, retention, tagged PDF, sessions …) | `cd backend && gradle test` | ✅ |
+| Frontend lint, types and build | `cd frontend && npm run lint && npm run type-check && npm run build` | ✅ |
+| Accessibility, WCAG 2.1 AA (31 Playwright + axe-core tests: all page types per role, every form step, dialogs, keyboard, page titles, reflow) | start the stack, then `cd frontend && npm run test:a11y` | ✅ |
 
-### API Documentation
-
-Full API documentation is available via Swagger UI:
-- **Swagger UI**: http://localhost:8080/swagger-ui.html
-- **OpenAPI JSON**: http://localhost:8080/api-docs
-
-The documentation includes:
-- All available endpoints with Swedish descriptions
-- Request/response schemas with examples
-- Authentication information (JWT Bearer tokens)
-- Rate limiting details
-- Test user credentials
-
-### REST API Examples
-
-```
-GET  /api/v1/flows              # List published flows
-GET  /api/v1/flows/{id}         # Get a flow with all details
-GET  /api/v1/flows/search?q=    # Search flows
-
-POST /api/v1/cases              # Create new case
-GET  /api/v1/cases/{id}         # Get case
-PUT  /api/v1/cases/{id}/values  # Update case values
-POST /api/v1/cases/{id}/submit  # Submit case
-PUT  /api/v1/cases/{id}/status  # Change status
-```
-
-## Database
-
-Schema is managed with Flyway. Migrations are in `backend/src/main/resources/db/migration/`.
+Gradle 8.6 does not run on JDK 22 or later. With a newer local JDK, run the
+backend tests in Docker:
 
 ```bash
-# Run migrations
-make migrate
-
-# Open psql
-make psql
+cd backend
+docker run --rm -v "$PWD":/app -w /app -v /var/run/docker.sock:/var/run/docker.sock \
+  -e TESTCONTAINERS_HOST_OVERRIDE=host.docker.internal gradle:8.6-jdk21 gradle test
 ```
 
-## Test Data
+CI (`.github/workflows/ci.yml`) runs all three jobs on every pull request and
+on `main`.
 
-Test data is created automatically on startup:
+## Deployment
 
-**Users (demo personas, picked on the login page without a password):**
-- admin@example.com (Admin)
-- handlaggare@example.com (Manager)
-- medborgare@example.com (Citizen)
+Pushing to `main` deploys production; every pull request gets a preview
+deployment. Preview deployments use the same Neon database as production.
 
-## Login and access control
-
-There is no e-legitimation yet. Visitors log in by picking a persona, and the
-API issues a signed JWT (`JWT_SECRET`, valid for 8 hours by default).
-
-Access rules are always enforced by the API:
-- Citizens see and change only their own cases and files
-- Managers (`MANAGER`) and administrators (`ADMIN`) see all cases and handle them
-- `/api/v1/admin/**` requires `ADMIN` or `FLOW_EDITOR`
-
-For a public demo, set:
+Environment variables in the Vercel project:
 
 | Variable | Purpose |
 |----------|---------|
-| `JWT_SECRET` | Token signing key, at least 32 characters (required outside local dev) |
-| `DEMO_ACCESS_CODE` | Shared code visitors must enter before logging in |
-| `DEMO_ISOLATED_CITIZENS=true` | Each citizen visitor gets a new, isolated account instead of the shared persona |
-| `DEMO_RETENTION_DAYS` | Demo citizens and their cases are removed after this many days (default 7) |
+| `PG*` (from the Neon integration) | Database connection |
+| `BLOB_READ_WRITE_TOKEN` / `BLOB_STORE_ID` (from the Blob integration) | File storage |
+| `JWT_SECRET` | Token signing key, at least 32 characters |
+| `CRON_SECRET` | Authorises the nightly cron jobs |
+| `DEMO_ACCESS_CODE` | Code visitors enter before logging in |
+| `DEMO_ISOLATED_CITIZENS` | `true`: every citizen visitor gets their own account |
+| `DEMO_RETENTION_DAYS` | Days before demo accounts are removed (default 7) |
+| `EMAIL_ENABLED` | E-mail notifications; off in the demo |
 
-**Flows:**
-- Building Permit Application (with steps and questions)
+## Compliance in brief
 
-## Commands
-
-```bash
-make dev           # Start development environment
-make up            # Start in background
-make down          # Stop services
-make logs          # Show logs
-make clean         # Clean everything
-make test          # Run tests
-make health        # Health check
-make psql          # Open database CLI
-make redis-cli     # Open Redis CLI
-```
+- **Traceability:** every read and change of personal data is logged with who,
+  what, whose data and the outcome (including denied access). The log is
+  hash-chained and append-only, enforced by a database trigger, and can be
+  verified and exported by the security role.
+- **Data subject rights:** register extract (GDPR art. 15/20) and erasure
+  (art. 17). Submitted cases are allmänna handlingar: they are kept and removed
+  by retention per e-service, as the archives act requires.
+- **Retention (gallring):** per e-service retention period after a case is
+  closed; drafts after 90 days, audit log after 24 months.
+- **Accessibility:** WCAG 2.1 AA, tested automatically on every change. See
+  the [accessibility statement](https://e-plattform.vercel.app/tillganglighet).
 
 ## Documentation
 
-- [Architecture](docs/architecture/ARCHITECTURE.md) - Detailed architecture documentation
-- [Experimental Status](docs/EXPERIMENTAL_STATUS.md) - Current implementation status
-- [Developer Guide](docs/DEVELOPER_GUIDE.md) - Development guide and code structure
+- [Experimental status](docs/EXPERIMENTAL_STATUS.md): what works, known gaps,
+  what production needs
+- [Gap analysis](docs/GAP_ANALYSIS.md): comparison with Open-ePlatform
+- [Developer guide](docs/DEVELOPER_GUIDE.md): code structure and conventions
+- [Architecture](docs/architecture/ARCHITECTURE.md): original design document
 
 ## License
 
-AGPL-3.0 (same as Open-ePlatform)
+AGPL-3.0, like Open-ePlatform.
 
-**DISCLAIMER:** This software is experimental and provided "AS IS" without warranty of any kind. It is not suitable for production use.
+**Disclaimer:** provided "as is" without warranty of any kind. Not ready for
+production use.

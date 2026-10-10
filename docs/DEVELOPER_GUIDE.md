@@ -1,434 +1,207 @@
 # e-Plattform Developer Guide
 
-This guide provides an overview of the e-Plattform architecture, code structure, and development practices.
+How the code is organised and the conventions to follow. For getting started,
+tests and deployment, see the [README](../README.md).
 
----
+## Contents
 
-## Table of Contents
+1. [Architecture](#architecture)
+2. [Backend](#backend)
+3. [Frontend](#frontend)
+4. [Form system](#form-system)
+5. [Access control](#access-control)
+6. [Audit logging](#audit-logging)
+7. [Accessibility](#accessibility)
+8. [Database changes](#database-changes)
+9. [Working on the code](#working-on-the-code)
 
-1. [Architecture Overview](#architecture-overview)
-2. [Backend Structure](#backend-structure)
-3. [Frontend Structure](#frontend-structure)
-4. [Domain Models](#domain-models)
-5. [API Design](#api-design)
-6. [Form System](#form-system)
-7. [Local Development](#local-development)
-8. [Contributing](#contributing)
-
----
-
-## Architecture Overview
-
-e-Plattform follows a modern microservices-ready architecture with clear separation between frontend and backend.
-
-### Backend
-
-- **Framework:** Spring Boot 3.2 with Java 21
-- **Architecture:** Domain-Driven Design (DDD) with bounded contexts
-- **Database:** PostgreSQL 16 with Flyway migrations
-- **Cache:** Redis 7
-- **File Storage:** MinIO (S3-compatible)
-- **Message Queue:** RabbitMQ
-
-### Frontend
-
-- **Framework:** Next.js 14 with React 18
-- **Language:** TypeScript
-- **State Management:** TanStack Query (server state) + React Context (form state)
-- **Styling:** Tailwind CSS
-- **Forms:** React Hook Form + Zod validation
-
-### Communication
+## Architecture
 
 ```
-Frontend (Next.js)
-      |
-      | REST API (JSON)
-      v
-Backend (Spring Boot)
-      |
-      +-- PostgreSQL (primary data)
-      +-- Redis (cache, sessions)
-      +-- MinIO (files)
-      +-- RabbitMQ (async events)
+Next.js 15 (React 19, TanStack Query, Tailwind)
+   │  REST/JSON, /api/v1/*, JWT in the Authorization header
+   ▼
+Spring Boot 3.2 (Java 21)
+   ├── PostgreSQL (Flyway)       Neon in the demo, Docker locally
+   └── File storage              Vercel Blob in the demo, MinIO locally
 ```
 
----
+On Vercel both run as services in one project (`vercel.json`): the frontend as
+Next.js, the backend as a container from `backend/Dockerfile.vercel`. The
+browser calls the API on the same origin. Locally the frontend calls
+`NEXT_PUBLIC_API_URL` (default `http://localhost:8080`).
 
-## Backend Structure
+Spring profiles: `dev` (local, Docker Compose), `vercel` (demo) and `prod`
+(starting point for a production setup). Tests run on the default profile
+against Postgres in Testcontainers.
 
-### Package Organization
+## Backend
 
 ```
 se.eplatform/
-├── EplatformApplication.java    # Main entry point
-├── common/                      # Shared code
-│   ├── config/                  # Spring configuration
-│   ├── exception/               # Custom exceptions & handlers
-│   ├── security/                # Authentication & authorization
-│   └── util/                    # Utilities
-├── flow/                        # Flow bounded context
-│   ├── api/                     # REST controllers & DTOs
-│   ├── domain/                  # Entities & value objects
-│   ├── repository/              # Data access
-│   └── service/                 # Business logic
-├── cases/                       # Case bounded context
-│   ├── api/
-│   ├── domain/
-│   ├── repository/
-│   ├── service/
-│   └── evaluator/               # Conditional logic evaluation
-├── user/                        # User bounded context
-│   ├── api/
-│   ├── domain/
-│   ├── repository/
-│   └── service/
-├── file/                        # File handling
-│   ├── api/
-│   └── service/
-└── integration/                 # External integrations
-    ├── bankid/                  # BankID (stubbed)
-    └── payment/                 # Payment (stubbed)
+├── auth/          Login, demo personas, sessions, cron endpoints
+├── cases/         Cases, answers, messages, notes, assignment, status changes
+│   └── evaluator/ Conditions on fields
+├── flow/          E-services: flows, steps, fields, statuses, categories (admin API)
+├── user/          Users and roles
+├── storage/       Attachments (MinIO or Vercel Blob behind one interface)
+├── pdf/           Case PDF (tagged PDF/UA)
+├── notification/  E-mail (Thymeleaf templates)
+├── statistics/    Admin statistics
+├── audit/         Audit log: @Audited, interceptor, hash chain, verification
+├── privacy/       Register extract, erasure, retention; API for the security role
+├── ops/           System events and status for the IT role
+├── common/        Security (JWT, CurrentUser, rate limit), config, errors
+└── integration/   BankID and payment (stubs)
 ```
 
-### Key Patterns
+`search/` and `file/` are empty placeholders.
 
-**Repository Pattern**
-```java
-public interface CaseRepository extends JpaRepository<Case, UUID> {
-    List<Case> findByCreatedByOrderByCreatedAtDesc(UUID userId);
-    Optional<Case> findByIdAndCreatedBy(UUID id, UUID userId);
-}
-```
+Conventions:
 
-**Service Layer**
-```java
-@Service
-@Transactional
-public class CaseService {
-    public Case createCase(UUID flowId, UUID userId) {
-        // Business logic here
-    }
-}
-```
+- Controllers in `api/`, logic in `service/`, entities in `domain/`, Spring Data
+  repositories in `repository/`.
+- DTOs are records.
+- Constructor injection.
+- Null fields are left out of JSON responses.
+- Swedish texts in API descriptions (OpenAPI) and messages shown to users;
+  English in code and comments.
+- Every controller has an OpenAPI `@Tag`. Internal endpoints are `@Hidden`.
 
-**DTO Mapping with Records**
-```java
-public record CaseDTO(
-    UUID id,
-    String referenceNumber,
-    FlowSummaryDTO flow,
-    StatusDTO status,
-    List<QueryInstanceDTO> values
-) {
-    public static CaseDTO from(Case case_) {
-        return new CaseDTO(
-            case_.getId(),
-            case_.getReferenceNumber(),
-            // ...
-        );
-    }
-}
-```
-
----
-
-## Frontend Structure
-
-### Directory Organization
+## Frontend
 
 ```
 src/
-├── app/                         # Next.js App Router
-│   ├── layout.tsx               # Root layout
-│   ├── page.tsx                 # Home page
-│   ├── (public)/                # Public routes (no auth)
-│   │   └── services/            # Service catalog
-│   ├── (auth)/                  # Authenticated routes
-│   │   ├── cases/               # User's cases
-│   │   └── case/[id]/           # Case details
-│   └── (admin)/                 # Admin routes
-│       └── flows/               # Flow management
+├── app/
+│   ├── citizen/          Services, form, my cases, profile
+│   ├── manager/          Dashboard and case handling
+│   ├── admin/            E-services, categories, statistics, users
+│   ├── security/         Audit log, people (extract/erasure), retention
+│   ├── ops/              Status and system log
+│   ├── auth/login/       Persona login
+│   ├── tillganglighet/   Accessibility statement
+│   └── api/blob/         Next.js routes for Blob uploads/downloads
 ├── components/
-│   ├── ui/                      # Base UI components
-│   ├── form/                    # Form system components
-│   │   ├── FormRenderer.tsx     # Main form renderer
-│   │   ├── FormContext.tsx      # Form state management
-│   │   └── fields/              # Field type components
-│   ├── cases/                   # Case-related components
-│   └── layout/                  # Layout components
-├── lib/
-│   ├── api/                     # API client functions
-│   ├── hooks/                   # Custom React hooks
-│   └── utils/                   # Utility functions
-└── types/                       # TypeScript type definitions
+│   ├── form/             FormRenderer, FormContext, QueryRenderer, fields/
+│   ├── layout/           Header, Footer, StaffShell, PageAccessibility, BackendKeepWarm
+│   ├── ui/               Modal, Toast, MobileCard
+│   ├── auth/             RequireRole, SessionTimeout
+│   ├── cases/            MessageThread, CaseTimeline
+│   └── admin/            ConditionEditor
+├── context/AuthContext.tsx
+└── lib/
+    ├── api/              One module per API area (cases, manager, admin, security, ops, files)
+    ├── auth/             Login API and token storage
+    └── statusColor.ts    Readable badge colours for admin-chosen status colours
 ```
 
-### Key Components
+Use these instead of building your own:
 
-**FormRenderer** - Renders forms based on flow definition
-```tsx
-<FormRenderer
-  flow={flowData}
-  initialValues={existingValues}
-  onSubmit={handleSubmit}
-  onSaveDraft={handleSaveDraft}
-/>
+| Need | Use |
+|------|-----|
+| A staff area (header + sidebar) | `StaffShell` with `theme="admin" \| "security" \| "ops"` |
+| A dialog | `Modal`, a native `<dialog>` with focus trap, Escape and focus return; named by its first heading |
+| A role check on a page | `RequireRole` (the API checks too) |
+| Buttons, cards, inputs | `btn-primary`, `btn-secondary`, `btn-danger`, `card`, `input`, `label`, `th`, `page-title` in `globals.css` |
+| The area's accent colour | `brand-50…900` (blue by default, purple admin, slate security, teal ops), not `blue-*` or `purple-*` |
+| A status badge with a colour from the database | `statusBadgeStyle(color)` |
+| Notifications | `toast` from `@/hooks/useToast` |
+
+## Form system
+
+An e-service is `FlowFamily → Flow (version) → Step → QueryDefinition`. A case
+stores one `QueryInstance` per field.
+
+**Field types** (`QueryType`): `TEXT`, `TEXTAREA`, `NUMBER`, `EMAIL`, `PHONE`,
+`URL`, `DATE`, `DATETIME`, `TIME`, `SELECT`, `MULTISELECT`, `RADIO`,
+`CHECKBOX`, `FILE`, `IMAGE`, `MAP`, `LOCATION`, `SIGNATURE`, `ORGANIZATION`,
+`PERSON`, and the layout elements `HEADING`, `PARAGRAPH`, `DIVIDER`. Each has
+a component in `components/form/fields/`, chosen in `QueryRenderer`.
+
+**Conditions** (`EvaluatorDefinition`) set other fields to `VISIBLE`,
+`VISIBLE_REQUIRED` or `HIDDEN` based on an answer. The evaluator types are:
+`VALUE_EQUALS`, `VALUE_NOT_EQUALS`, `VALUE_IN`, `VALUE_NOT_IN`,
+`VALUE_CONTAINS`, `VALUE_NOT_CONTAINS`, `VALUE_GREATER_THAN`,
+`VALUE_LESS_THAN`, `VALUE_BETWEEN`, `REGEX_MATCH`, `IS_EMPTY`,
+`IS_NOT_EMPTY`. They are evaluated in the browser (`useEvaluator`). Required
+fields are currently only enforced there; see the known gaps.
+
+**A new field type** needs:
+
+1. The enum value, plus a migration that adds it to the `chk_query_type`
+   constraint on `query_definitions`.
+2. A component wrapped in `FieldWrapper`. It provides the label (or
+   `fieldset`/`legend` when the field has several inputs), the description,
+   the error message and the ARIA attributes.
+3. An `id`/`htmlFor` on every inner input.
+4. `autocomplete` for personal data.
+
+## Access control
+
+- **The acting user comes from the token.** Use `CurrentUser`, never a user id
+  from the request.
+- **Case access goes through `CaseAccessService`.** A citizen asking for
+  someone else's case gets 404, not 403.
+- **URL roles are set in `SecurityConfig`:**
+  - `/api/v1/admin/**`: `ADMIN`, `FLOW_EDITOR`
+  - `/api/v1/security/**`: `SECURITY_OFFICER`
+  - `/api/v1/ops/**`: `OPERATIONS`
+- **Tests:** add a case to `CaseAuthorizationTest` when you add an endpoint
+  that touches personal data.
+
+## Audit logging
+
+Annotate controller methods that read or change personal data:
+
+```java
+@GetMapping("/{id}")
+@Audited(value = AuditAction.CASE_VIEW, entity = "CASE")
+public ResponseEntity<CaseDTO> getCase(@PathVariable UUID id) { … }
 ```
 
-**FormContext** - Manages form state and field visibility
-```tsx
-const { values, setFieldValue, getFieldState } = useFormContext();
-```
+`AuditInterceptor` writes the entry after the request:
+- **Outcome** comes from the HTTP status (401/403/404 are recorded as denied).
+- **Data subject** is resolved from the entity (`AuditSubjectResolver`).
+- **Extra context:** set it with `AuditContext`, for example the id of a new
+  case or the new status.
 
-**Field Components** - Type-specific field renderers
-```tsx
-// Each QueryType has a corresponding component
-<TextField definition={queryDef} />
-<SelectField definition={queryDef} />
-<FileField definition={queryDef} />
-```
+For events outside a request, use `AuditService.recordSystem`.
 
----
+The log is append-only: a database trigger rejects updates and deletes, and
+every entry carries the hash of the previous one. Never write to
+`audit_events` directly. System events for IT (`SystemEventService`) must not
+contain personal data.
 
-## Domain Models
+## Accessibility
 
-### Flow Context
+The target is WCAG 2.1 AA. `frontend/e2e/` holds Playwright tests with
+axe-core, and CI runs them on every pull request.
 
-The Flow context defines form templates:
+- **A new page** goes into the list in `e2e/pages.a11y.spec.ts`.
+- **Page titles** come from the page's `<h1>` (`DocumentTitle`), so every page
+  needs exactly one `h1`.
+- **Icon-only buttons** need an `aria-label`.
+- **Text colours:** use at least `gray-500` on white and `gray-600` on
+  `gray-100`. Coloured text uses the 700 shade.
+- **Dialogs** use `Modal`.
 
-```
-FlowFamily (groups versions)
-    └── Flow (a form version)
-            ├── name, version, description
-            ├── enabled, requireAuth, requireSigning
-            └── Steps (ordered sections)
-                    └── QueryDefinitions (fields)
-                            ├── name, type, required
-                            ├── config (type-specific JSON)
-                            └── EvaluatorDefinitions
-                                    └── condition, targetQueryIds, targetState
-```
+Run the tests locally with the stack started:
+`cd frontend && npm run test:a11y`.
 
-### Case Context
+## Database changes
 
-The Case context handles form submissions:
+Add a new Flyway migration, `V<n>__description.sql`, and never edit one that
+has been merged; Neon runs them when an instance starts. Hibernate validates
+the schema in the tests (`ddl-auto: validate`).
 
-```
-Case (a submitted form)
-    ├── referenceNumber
-    ├── status (from StatusDefinition)
-    ├── QueryInstances (field values)
-    │       ├── value (JSON)
-    │       └── state (VISIBLE, HIDDEN, etc.)
-    ├── CaseEvents (audit log)
-    ├── Messages (internal/external)
-    └── Attachments (files)
-```
+## Working on the code
 
-### User Context
-
-```
-User
-    ├── email, firstName, lastName
-    ├── Roles (ADMIN, MANAGER, USER)
-    │       └── Permissions
-    └── Groups (organizational units)
-```
-
----
-
-## API Design
-
-### REST Endpoints
-
-**Flows**
-```
-GET  /api/v1/flows              # List published flows
-GET  /api/v1/flows/{id}         # Get flow with full definition
-GET  /api/v1/flows/search?q=    # Search flows
-```
-
-**Cases**
-```
-POST /api/v1/cases              # Create new case
-GET  /api/v1/cases              # List user's cases
-GET  /api/v1/cases/{id}         # Get case details
-PUT  /api/v1/cases/{id}/values  # Update field values
-POST /api/v1/cases/{id}/submit  # Submit case
-PUT  /api/v1/cases/{id}/status  # Change status (managers)
-```
-
-**Files**
-```
-POST /api/v1/files/upload       # Upload file
-GET  /api/v1/files/{id}         # Download file
-```
-
-### Response Format
-
-```json
-{
-  "id": "uuid",
-  "referenceNumber": "2024-00001",
-  "flow": { "id": "uuid", "name": "Building Permit" },
-  "status": { "id": "uuid", "name": "Submitted", "type": "INITIAL" },
-  "values": [
-    {
-      "queryDefinitionId": "uuid",
-      "value": "John Doe",
-      "state": "VISIBLE"
-    }
-  ],
-  "createdAt": "2024-01-15T10:30:00Z"
-}
-```
-
----
-
-## Form System
-
-### Query Types
-
-| Type | Description | Config Options |
-|------|-------------|----------------|
-| TEXT | Single-line text | maxLength, placeholder |
-| TEXTAREA | Multi-line text | maxLength, rows |
-| NUMBER | Numeric input | min, max, step |
-| DATE | Date picker | minDate, maxDate |
-| SELECT | Dropdown | options[], multiple |
-| CHECKBOX | Checkboxes | options[] |
-| RADIO | Radio buttons | options[] |
-| FILE | File upload | accept, maxSize, maxFiles |
-| HIDDEN | Hidden field | - |
-
-### Evaluator System
-
-Evaluators control field visibility based on other field values:
-
-```json
-{
-  "evaluatorType": "VALUE_EQUALS",
-  "condition": {
-    "sourceQueryId": "uuid-of-source-field",
-    "expectedValue": "yes"
-  },
-  "targetQueryIds": ["uuid-of-target-field"],
-  "targetState": "VISIBLE_REQUIRED"
-}
-```
-
-**Evaluator Types:**
-- `VALUE_EQUALS` - Source value equals expected
-- `VALUE_NOT_EQUALS` - Source value does not equal expected
-- `VALUE_IN` - Source value is in a list
-- `VALUE_NOT_EMPTY` - Source has any value
-- `REGEX` - Source matches regex pattern
-
-**Target States:**
-- `VISIBLE` - Field is shown (optional)
-- `VISIBLE_REQUIRED` - Field is shown and required
-- `HIDDEN` - Field is hidden
-
----
-
-## Local Development
-
-### Prerequisites
-
-- Docker Desktop
-- Java 21 (for running backend outside Docker)
-- Node.js 20 (for running frontend outside Docker)
-
-### Quick Start with Docker
-
-```bash
-# Clone repository
-git clone <repo-url>
-cd Open-E_Plattform
-
-# Copy environment file
-cp .env.example .env
-
-# Start all services
-make dev
-```
-
-### Running Without Docker
-
-```bash
-# Start infrastructure only
-make infra
-
-# Terminal 1: Backend
-cd backend
-./gradlew bootRun
-
-# Terminal 2: Frontend
-cd frontend
-npm install
-npm run dev
-```
-
-### Test Users
-
-| Email | Role | Permissions |
-|-------|------|-------------|
-| admin@example.com | Admin | Full access |
-| handlaggare@example.com | Manager | Case management |
-| medborgare@example.com | User | Create/view own cases |
-
-### Useful Commands
-
-```bash
-make dev        # Start development environment
-make logs       # View all logs
-make logs-api   # View backend logs only
-make psql       # Open database CLI
-make redis-cli  # Open Redis CLI
-make clean      # Remove all containers and volumes
-```
-
----
-
-## Contributing
-
-### Code Standards
-
-**Backend (Java)**
-- Follow Google Java Style Guide
-- Use records for DTOs
-- Prefer constructor injection
-- Write meaningful Javadoc for public APIs
-
-**Frontend (TypeScript)**
-- Use functional components with hooks
-- Prefer named exports
-- Use TypeScript strict mode
-- Follow ESLint/Prettier configuration
-
-### Commit Conventions
-
-Use conventional commits:
-```
-feat: add new field type for signatures
-fix: resolve date picker timezone issue
-docs: update API documentation
-refactor: extract form validation logic
-```
-
-### Pull Request Process
-
-1. Create feature branch from `main`
-2. Make changes with tests
-3. Update documentation if needed
-4. Submit PR with clear description
-5. Address review comments
-6. Squash and merge when approved
-
----
-
-## Further Reading
-
-- [Architecture Documentation](./architecture/ARCHITECTURE.md)
-- [Experimental Status Report](./EXPERIMENTAL_STATUS.md)
+- **Branches:** branch from `main` and open a pull request. CI must pass:
+  backend tests, frontend lint/types/build and accessibility.
+- **Previews:** every pull request gets a Vercel preview. It shares the demo
+  database, so be careful with destructive tests.
+- **Commits:** an imperative subject line in English that describes the
+  change, for example "Add retention period to the flow settings". Explain
+  why in the body when it isn't obvious.
+- **Backend tests:** they extend `IntegrationTest`, which uses Testcontainers
+  with Postgres and has helpers to log in as personas.

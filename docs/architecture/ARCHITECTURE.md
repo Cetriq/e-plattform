@@ -1,7 +1,18 @@
 # Modern e-Plattform - Architecture
 
-> **EXPERIMENTAL** - This document describes the target architecture.
-> See [EXPERIMENTAL_STATUS.md](../EXPERIMENTAL_STATUS.md) for current implementation status.
+> **Original design document (2026-04).** It describes the target architecture
+> as first planned. The running system differs:
+>
+> - It runs on Vercel: Next.js and the Spring Boot backend as a container, with
+>   Neon Postgres and Vercel Blob in Frankfurt. Docker Compose with Postgres,
+>   MinIO and Mailpit is used only locally.
+> - Redis, RabbitMQ, Meilisearch, Traefik and GraphQL are not used.
+> - The audit log, data subject rights, retention and the security and IT roles
+>   are not described here.
+>
+> For the current state, see the [README](../../README.md),
+> [EXPERIMENTAL_STATUS.md](../EXPERIMENTAL_STATUS.md) and the
+> [Developer guide](../DEVELOPER_GUIDE.md).
 
 ## 1. Overview
 

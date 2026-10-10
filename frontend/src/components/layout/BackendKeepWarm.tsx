@@ -7,7 +7,10 @@ import { API_BASE_URL } from '@/lib/config';
 const INTERVAL_MS = 4 * 60 * 1000;
 
 function ping() {
-  fetch(`${API_BASE_URL}/api/v1/public/auth/config`, { cache: 'no-store' }).catch(() => {});
+  // Read the (small) body so the request completes and the connection is released
+  fetch(`${API_BASE_URL}/api/v1/public/auth/config`)
+    .then((response) => response.text())
+    .catch(() => {});
 }
 
 /**

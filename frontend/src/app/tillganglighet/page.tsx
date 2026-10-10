@@ -24,30 +24,55 @@ export default function AccessibilityPage() {
 
         <h2>Hur tillgänglig är webbplatsen?</h2>
         <p>
-          Vi arbetar mot kraven i WCAG 2.1 nivå AA. Delar av plattformen är
-          fortfarande under utveckling och vissa funktioner är ännu inte fullt
-          tillgängliga. Kända brister listas nedan.
+          Målet är att e-Plattformen ska uppfylla WCAG 2.1 nivå AA, som är kravet i
+          lagen. Vi har gått igenom hela plattformen, både e-tjänsterna för invånare
+          och verktygen för handläggare och administratörer, och åtgärdat de brister
+          vi hittade. Vi känner i dag inte till några kvarvarande brister mot WCAG 2.1
+          AA. Webbplatsen har dock ännu inte testats med skärmläsare eller granskats av
+          en extern part. Därför redovisar vi den som delvis förenlig tills den
+          granskningen är gjord.
         </p>
 
-        <h2>Kända brister</h2>
+        <h2>Det här har vi gjort</h2>
         <ul>
+          <li>Alla funktioner går att använda med enbart tangentbord, med synlig fokusmarkering.</li>
           <li>
-            Ritad namnteckning (signaturfält) är i dag svår att använda utan mus
-            eller pekskärm. Vi arbetar på ett tangentbordsvänligt alternativ.
+            Formulär har kopplade etiketter. Fält som hör ihop är grupperade, och
+            personuppgiftsfält kan fyllas i automatiskt. Felmeddelanden visas vid
+            fältet och samlat, och fokus flyttas till första felet.
           </li>
           <li>
-            Kartkomponenten i vissa e-tjänster saknar fullständigt
-            tangentbordsstöd.
+            Signaturfältet kan också fyllas i genom att du skriver ditt namn, om du inte
+            kan rita med mus eller finger.
+          </li>
+          <li>Dialogrutor håller kvar fokus, stängs med Esc och lämnar tillbaka fokus.</li>
+          <li>
+            Text och knappar har minst 4,5:1 i kontrast, även statusfärger som
+            administratörer väljer själva.
+          </li>
+          <li>Sidorna fungerar i 320 pixlars bredd utan sidledes rullning, med undantag för datatabeller.</li>
+          <li>
+            Varje sida har en egen titel, och en länk för att hoppa direkt till
+            huvudinnehållet.
           </li>
           <li>
-            Skärmläsarstöd för stegindikatorn i flerstegsformulär kan upplevas
-            repetitivt.
+            Innan inloggningen löper ut får du en varning och kan välja att fortsätta
+            vara inloggad.
+          </li>
+          <li>
+            PDF-utskrifter av ärenden är taggade, har svenska som språk och innehåller
+            inbäddade typsnitt.
           </li>
         </ul>
-        <p>
-          Vår ambition är att alla brister ska vara åtgärdade senast inom 12
-          månader från publiceringsdatum för denna redogörelse.
-        </p>
+
+        <h2>Innehåll som inte omfattas</h2>
+        <ul>
+          <li>
+            Filer som du eller andra laddar upp som bilagor till ett ärende. Hur
+            tillgängliga de är beror på filen.
+          </li>
+          <li>Det kartstöd som är under utveckling. Plats anges i dag med adress eller koordinater.</li>
+        </ul>
 
         <h2>Rapportera brister</h2>
         <p>
@@ -78,21 +103,20 @@ export default function AccessibilityPage() {
         <h2>Teknisk information om webbplatsens tillgänglighet</h2>
         <p>
           Denna webbplats är delvis förenlig med lagen om tillgänglighet till
-          digital offentlig service, på grund av de brister som beskrivs ovan.
+          digital offentlig service, eftersom den ännu inte är granskad med
+          skärmläsare eller av extern part (se ovan).
         </p>
 
         <h2>Hur vi har testat webbplatsen</h2>
         <p>
-          Vi gör löpande interna granskningar med automatiska verktyg (t.ex.
-          axe-core) och manuell testning med skärmläsare. En fullständig extern
-          granskning enligt WCAG 2.2 AA är planerad.
+          Vi har gjort en egen granskning mot WCAG 2.1 AA. Samtliga sidtyper har
+          testats för alla roller med det automatiska verktyget axe-core, även
+          formulärets alla steg, felmeddelanden och dialogrutor. Vi har också
+          kontrollerat tangentbordsnavigering, fokushantering, sidtitlar och
+          visning i 320 pixlars bredd. Testerna gav inga kvarvarande avvikelser.
+          Test med skärmläsare (NVDA, VoiceOver) och en extern granskning återstår.
         </p>
-
-        <p className="text-sm text-gray-500 mt-8">
-          Redogörelsen uppdaterades senast den dag då plattformen driftsattes för
-          utvärdering. För frågor eller mer information, se{' '}
-          <Link href="/">startsidan</Link>.
-        </p>
+        <p>Redogörelsen uppdaterades senast den 10 oktober 2026.</p>
       </main>
     </>
   );

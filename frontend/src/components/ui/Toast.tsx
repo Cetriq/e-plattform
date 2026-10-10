@@ -9,19 +9,19 @@ const toastStyles: Record<ToastType['type'], { bg: string; border: string; icon:
     bg: 'bg-green-50',
     border: 'border-green-200',
     icon: 'M5 13l4 4L19 7',
-    iconColor: 'text-green-600',
+    iconColor: 'text-green-700',
   },
   error: {
     bg: 'bg-red-50',
     border: 'border-red-200',
     icon: 'M6 18L18 6M6 6l12 12',
-    iconColor: 'text-red-600',
+    iconColor: 'text-red-700',
   },
   warning: {
     bg: 'bg-yellow-50',
     border: 'border-yellow-200',
     icon: 'M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z',
-    iconColor: 'text-yellow-600',
+    iconColor: 'text-yellow-700',
   },
   info: {
     bg: 'bg-brand-50',
@@ -91,7 +91,7 @@ function ToastItem({ toast, onClose }: ToastItemProps) {
       </div>
 
       <ToastPrimitives.Close
-        className="flex-shrink-0 text-gray-400 hover:text-gray-600 transition-colors"
+        className="flex-shrink-0 text-gray-500 hover:text-gray-600 transition-colors"
         aria-label="Stäng"
       >
         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">

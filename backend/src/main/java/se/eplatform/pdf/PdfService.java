@@ -1,5 +1,6 @@
 package se.eplatform.pdf;
 
+import com.openhtmltopdf.outputdevice.helper.BaseRendererBuilder;
 import com.openhtmltopdf.pdfboxout.PdfRendererBuilder;
 import org.springframework.stereotype.Service;
 import se.eplatform.cases.domain.Case;
@@ -10,6 +11,7 @@ import se.eplatform.flow.domain.Step;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
@@ -17,10 +19,16 @@ import java.util.Map;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
+/**
+ * Case documents as PDF. The PDF is tagged PDF/UA with an embedded font,
+ * language and title, so it can be read with a screen reader (the DOS law
+ * covers documents as well as web pages).
+ */
 @Service
 public class PdfService {
 
     private static final DateTimeFormatter DATE_FORMAT = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm");
+    private static final String FONT = "DejaVu Sans";
 
     public byte[] generateCasePdf(Case caseEntity, Flow flow) throws IOException {
         String html = buildCaseHtml(caseEntity, flow);
@@ -31,11 +39,18 @@ public class PdfService {
         try (ByteArrayOutputStream os = new ByteArrayOutputStream()) {
             PdfRendererBuilder builder = new PdfRendererBuilder();
             builder.useFastMode();
+            builder.usePdfUaAccessbility(true);
+            builder.useFont(() -> font("DejaVuSans.ttf"), FONT, 400, BaseRendererBuilder.FontStyle.NORMAL, true);
+            builder.useFont(() -> font("DejaVuSans-Bold.ttf"), FONT, 700, BaseRendererBuilder.FontStyle.NORMAL, true);
             builder.withHtmlContent(html, null);
             builder.toStream(os);
             builder.run();
             return os.toByteArray();
         }
+    }
+
+    private static InputStream font(String file) {
+        return PdfService.class.getResourceAsStream("/fonts/" + file);
     }
 
     private String buildCaseHtml(Case caseEntity, Flow flow) {
@@ -50,16 +65,19 @@ public class PdfService {
         StringBuilder html = new StringBuilder();
         html.append("""
             <!DOCTYPE html>
-            <html>
+            <html lang="sv">
             <head>
                 <meta charset="UTF-8"/>
+                <title>%s</title>
+                <meta name="subject" content="%s"/>
+                <meta name="author" content="e-Plattform"/>
                 <style>
                     @page {
                         size: A4;
                         margin: 2cm;
                     }
                     body {
-                        font-family: Arial, Helvetica, sans-serif;
+                        font-family: 'DejaVu Sans', sans-serif;
                         font-size: 11pt;
                         line-height: 1.4;
                         color: #333;
@@ -85,22 +103,24 @@ public class PdfService {
                         border-radius: 4px;
                     }
                     .meta-info table {
-                        width: 100%;
+                        width: 100%%;
                         border-collapse: collapse;
                     }
-                    .meta-info td {
+                    .meta-info td, .meta-info th {
                         padding: 3px 10px 3px 0;
                         font-size: 10pt;
                     }
-                    .meta-info .label {
-                        color: #666;
+                    .meta-info th {
+                        text-align: left;
+                        font-weight: normal;
+                        color: #555;
                         width: 120px;
                     }
                     .step {
                         margin-bottom: 25px;
                         page-break-inside: avoid;
                     }
-                    .step-header {
+                    h2.step-header {
                         background-color: #2563eb;
                         color: white;
                         padding: 8px 12px;
@@ -116,18 +136,19 @@ public class PdfService {
                     .field {
                         margin-bottom: 12px;
                     }
-                    .field-label {
+                    dt.field-label {
                         font-weight: bold;
                         color: #374151;
                         font-size: 10pt;
                         margin-bottom: 3px;
                     }
-                    .field-value {
+                    dd.field-value {
+                        margin: 0;
                         padding: 5px 0;
                         min-height: 1em;
                     }
                     .field-value.empty {
-                        color: #9ca3af;
+                        color: #555;
                         font-style: italic;
                     }
                     .footer {
@@ -150,18 +171,20 @@ public class PdfService {
                 </style>
             </head>
             <body>
-            """);
+            """.formatted(
+                escapeHtml(flow.getName() + " – " + caseEntity.getReferenceNumber()),
+                escapeHtml("Ärende " + caseEntity.getReferenceNumber())));
 
         // Header
         html.append("<div class=\"header\">");
         html.append("<h1>").append(escapeHtml(flow.getName())).append("</h1>");
-        html.append("<div class=\"reference\">Reference: ").append(escapeHtml(caseEntity.getReferenceNumber())).append("</div>");
+        html.append("<p class=\"reference\">Ärendenummer: ").append(escapeHtml(caseEntity.getReferenceNumber())).append("</p>");
         html.append("</div>");
 
         // Meta information
         html.append("<div class=\"meta-info\">");
         html.append("<table>");
-        html.append("<tr><td class=\"label\">Status:</td><td>");
+        html.append("<tr><th scope=\"row\">Status</th><td>");
         if (caseEntity.getStatus() != null) {
             String statusClass = getStatusClass(caseEntity.getStatus().getStatusType().name());
             html.append("<span class=\"status-badge ").append(statusClass).append("\">");
@@ -169,11 +192,11 @@ public class PdfService {
             html.append("</span>");
         }
         html.append("</td></tr>");
-        html.append("<tr><td class=\"label\">Created:</td><td>")
+        html.append("<tr><th scope=\"row\">Skapat</th><td>")
                 .append(formatInstant(caseEntity.getCreatedAt()))
                 .append("</td></tr>");
         if (caseEntity.getSubmittedAt() != null) {
-            html.append("<tr><td class=\"label\">Submitted:</td><td>")
+            html.append("<tr><th scope=\"row\">Inskickat</th><td>")
                     .append(formatInstant(caseEntity.getSubmittedAt()))
                     .append("</td></tr>");
         }
@@ -187,8 +210,8 @@ public class PdfService {
 
         for (Step step : steps) {
             html.append("<div class=\"step\">");
-            html.append("<div class=\"step-header\">").append(escapeHtml(step.getName())).append("</div>");
-            html.append("<div class=\"step-content\">");
+            html.append("<h2 class=\"step-header\">").append(escapeHtml(step.getName())).append("</h2>");
+            html.append("<dl class=\"step-content\">");
 
             List<QueryDefinition> queries = step.getQueryDefinitions().stream()
                     .sorted((a, b) -> a.getSortOrder() - b.getSortOrder())
@@ -204,22 +227,22 @@ public class PdfService {
                 String value = formatValue(instance, query);
 
                 html.append("<div class=\"field\">");
-                html.append("<div class=\"field-label\">").append(escapeHtml(query.getName())).append("</div>");
+                html.append("<dt class=\"field-label\">").append(escapeHtml(query.getName())).append("</dt>");
                 if (value != null && !value.isBlank()) {
-                    html.append("<div class=\"field-value\">").append(escapeHtml(value)).append("</div>");
+                    html.append("<dd class=\"field-value\">").append(escapeHtml(value)).append("</dd>");
                 } else {
-                    html.append("<div class=\"field-value empty\">-</div>");
+                    html.append("<dd class=\"field-value empty\">Inte ifyllt</dd>");
                 }
                 html.append("</div>");
             }
 
-            html.append("</div>");
+            html.append("</dl>");
             html.append("</div>");
         }
 
         // Footer
         html.append("<div class=\"footer\">");
-        html.append("Document generated: ").append(java.time.LocalDateTime.now().format(DATE_FORMAT));
+        html.append("Dokumentet skapat ").append(java.time.LocalDateTime.now().format(DATE_FORMAT));
         html.append(" | e-Plattform");
         html.append("</div>");
 

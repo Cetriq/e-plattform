@@ -6,6 +6,7 @@ import { useQuery } from '@tanstack/react-query';
 import { useAuth } from '@/context/AuthContext';
 import { getSubmittedCases, searchCases, type AssigneeFilter } from '@/lib/api/manager';
 import type { CaseSummary } from '@/lib/api/cases';
+import { statusBadgeStyle } from '@/lib/statusColor';
 
 const statusColors: Record<string, { bg: string; text: string }> = {
   DRAFT: { bg: 'bg-gray-100', text: 'text-gray-700' },
@@ -15,7 +16,7 @@ const statusColors: Record<string, { bg: string; text: string }> = {
   WAITING_FOR_EXTERNAL: { bg: 'bg-purple-100', text: 'text-purple-700' },
   COMPLETED: { bg: 'bg-green-100', text: 'text-green-700' },
   CANCELLED: { bg: 'bg-red-100', text: 'text-red-700' },
-  ARCHIVED: { bg: 'bg-gray-100', text: 'text-gray-500' },
+  ARCHIVED: { bg: 'bg-gray-100', text: 'text-gray-600' },
 };
 
 export default function ManagerDashboardPage() {
@@ -94,10 +95,10 @@ export default function ManagerDashboardPage() {
   // Redirect to login if not authenticated
   if (!authLoading && !isAuthenticated) {
     return (
-      <div className="min-h-screen bg-gray-100 flex items-center justify-center">
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="bg-white p-8 rounded-lg shadow-md text-center max-w-md">
           <svg
-            className="w-12 h-12 text-brand-500 mx-auto mb-4"
+            className="w-12 h-12 text-brand-600 mx-auto mb-4"
             fill="none"
             stroke="currentColor"
             viewBox="0 0 24 24"
@@ -125,7 +126,7 @@ export default function ManagerDashboardPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-100">
+    <div className="min-h-screen bg-gray-50">
       {/* Manager Header */}
       <header className="bg-white border-b shadow-sm">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -153,7 +154,7 @@ export default function ManagerDashboardPage() {
               </nav>
             </div>
             <div className="flex items-center gap-4">
-              <span className="text-sm text-gray-600">{user?.displayName}</span>
+              <span className="hidden sm:inline text-sm text-gray-600">{user?.displayName}</span>
               <Link
                 href="/"
                 className="text-sm text-gray-500 hover:text-gray-700"
@@ -179,7 +180,7 @@ export default function ManagerDashboardPage() {
           {([
             ['all', 'Alla ärenden', counts?.all, 'text-gray-900'],
             ['mine', 'Tilldelade mig', counts?.mine, 'text-brand-600'],
-            ['unassigned', 'Ej tilldelade', counts?.unassigned, 'text-amber-600'],
+            ['unassigned', 'Ej tilldelade', counts?.unassigned, 'text-amber-700'],
           ] as const).map(([filter, label, count, color]) => (
             <button
               key={filter}
@@ -211,7 +212,8 @@ export default function ManagerDashboardPage() {
                 <button
                   type="button"
                   onClick={clearSearch}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                  aria-label="Rensa sökningen"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-600"
                 >
                   <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -246,7 +248,7 @@ export default function ManagerDashboardPage() {
         ) : casesResponse?.content?.length === 0 ? (
           <div className="card p-8 text-center">
             <svg
-              className="w-12 h-12 text-gray-400 mx-auto mb-4"
+              className="w-12 h-12 text-gray-500 mx-auto mb-4"
               fill="none"
               stroke="currentColor"
               viewBox="0 0 24 24"
@@ -291,7 +293,7 @@ export default function ManagerDashboardPage() {
                 <tbody className="divide-y">
                   {casesResponse?.content?.map((c: CaseSummary) => {
                     const statusStyle = c.statusColor
-                      ? { backgroundColor: `${c.statusColor}20`, color: c.statusColor }
+                      ? statusBadgeStyle(c.statusColor)
                       : undefined;
                     const defaultStatus = statusColors['SUBMITTED'];
 
@@ -323,7 +325,7 @@ export default function ManagerDashboardPage() {
                               {c.assignedToId === user?.id ? 'Du' : c.assignedToName}
                             </span>
                           ) : (
-                            <span className="text-amber-600">Ej tilldelad</span>
+                            <span className="text-amber-700">Ej tilldelad</span>
                           )}
                         </td>
                         <td className="px-6 py-4 text-sm text-gray-600">

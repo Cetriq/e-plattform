@@ -34,6 +34,7 @@ export default function NewFlowPage() {
       <div className="flex items-center gap-4 mb-8">
         <Link
           href="/admin/flows"
+          aria-label="Tillbaka till e-tjänster"
           className="text-gray-500 hover:text-gray-700"
         >
           <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -51,10 +52,10 @@ export default function NewFlowPage() {
       {/* Form */}
       <form onSubmit={handleSubmit} className="bg-white rounded-lg border shadow-sm p-6 space-y-6">
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
+          <label htmlFor="newflow-1" className="block text-sm font-medium text-gray-700 mb-1">
             Namn på e-tjänsten *
           </label>
-          <input
+          <input id="newflow-1"
             type="text"
             value={name}
             onChange={(e) => setName(e.target.value)}
@@ -66,10 +67,10 @@ export default function NewFlowPage() {
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
+          <label htmlFor="newflow-2" className="block text-sm font-medium text-gray-700 mb-1">
             Kort beskrivning
           </label>
-          <input
+          <input id="newflow-2"
             type="text"
             value={shortDescription}
             onChange={(e) => setShortDescription(e.target.value)}
@@ -124,19 +125,19 @@ export default function NewFlowPage() {
         <h3 className="font-medium text-brand-900 mb-2">Tips för att komma igång</h3>
         <ul className="text-sm text-brand-700 space-y-2">
           <li className="flex items-start gap-2">
-            <svg className="w-5 h-5 text-brand-500 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg className="w-5 h-5 text-brand-600 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
             </svg>
             <span>Ge e-tjänsten ett tydligt och beskrivande namn</span>
           </li>
           <li className="flex items-start gap-2">
-            <svg className="w-5 h-5 text-brand-500 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg className="w-5 h-5 text-brand-600 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
             </svg>
             <span>Dela upp formuläret i logiska steg för bättre användarupplevelse</span>
           </li>
           <li className="flex items-start gap-2">
-            <svg className="w-5 h-5 text-brand-500 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg className="w-5 h-5 text-brand-600 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
             </svg>
             <span>Testa formuläret med förhandsgranskning innan publicering</span>

@@ -43,40 +43,68 @@ export function FieldWrapper({ query, children }: FieldWrapperProps) {
     .filter(Boolean)
     .join(' ') || undefined;
 
+  // Fields made of several controls (person, address, radio buttons, files…)
+  // are grouped with fieldset/legend instead of a label pointing at one input
+  const onlyChild = React.Children.toArray(children)[0];
+  const isGroup = !(
+    React.isValidElement(onlyChild) &&
+    typeof onlyChild.type === 'string' &&
+    ['input', 'select', 'textarea'].includes(onlyChild.type)
+  );
+  const Container = isGroup ? 'fieldset' : 'div';
+
+  const labelContent = (
+    <>
+      <span>{query.name}</span>
+      {isRequired && (
+        <>
+          <span className="text-red-700" aria-hidden="true">*</span>
+          <span className="sr-only">(obligatoriskt)</span>
+        </>
+      )}
+      {/* Validation indicator */}
+      {touched && validationState !== 'neutral' && (
+        <span
+          className={`inline-flex items-center justify-center w-4 h-4 rounded-full ${
+            validationState === 'valid'
+              ? 'bg-green-100 text-green-700'
+              : 'bg-red-100 text-red-700'
+          }`}
+          aria-hidden="true"
+        >
+          {validationState === 'valid' ? (
+            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+            </svg>
+          ) : (
+            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          )}
+        </span>
+      )}
+    </>
+  );
+
   return (
     <div className={`${widthClasses[query.width] || widthClasses.FULL}`}>
-      <div className="space-y-1">
+      <Container
+        className="space-y-1 min-w-0"
+        {...(isGroup ? { 'aria-describedby': ariaDescribedBy } : {})}
+      >
         {query.name && !isLayoutElement(query.queryType) && (
-          <label
-            htmlFor={query.id}
-            className="flex items-center gap-2 text-sm font-medium text-gray-700"
-          >
-            <span>{query.name}</span>
-            {isRequired && (
-              <span className="text-red-500" aria-label="obligatoriskt fält">*</span>
-            )}
-            {/* Validation indicator */}
-            {touched && validationState !== 'neutral' && (
-              <span
-                className={`inline-flex items-center justify-center w-4 h-4 rounded-full ${
-                  validationState === 'valid'
-                    ? 'bg-green-100 text-green-600'
-                    : 'bg-red-100 text-red-600'
-                }`}
-                aria-hidden="true"
-              >
-                {validationState === 'valid' ? (
-                  <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
-                  </svg>
-                ) : (
-                  <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M6 18L18 6M6 6l12 12" />
-                  </svg>
-                )}
-              </span>
-            )}
-          </label>
+          isGroup ? (
+            <legend className="flex items-center gap-2 text-sm font-medium text-gray-700 mb-1">
+              {labelContent}
+            </legend>
+          ) : (
+            <label
+              htmlFor={query.id}
+              className="flex items-center gap-2 text-sm font-medium text-gray-700"
+            >
+              {labelContent}
+            </label>
+          )
         )}
 
         {query.description && (
@@ -85,9 +113,9 @@ export function FieldWrapper({ query, children }: FieldWrapperProps) {
           </p>
         )}
 
-        {/* Clone children to inject ARIA attributes */}
+        {/* Native controls get the ARIA attributes; composite fields are described by the fieldset */}
         {React.Children.map(children, (child) => {
-          if (React.isValidElement(child)) {
+          if (React.isValidElement(child) && !isGroup) {
             return React.cloneElement(child as React.ReactElement<Record<string, unknown>>, {
               'aria-invalid': showError ? 'true' : undefined,
               'aria-describedby': ariaDescribedBy,
@@ -107,7 +135,7 @@ export function FieldWrapper({ query, children }: FieldWrapperProps) {
         {showError && (
           <div
             id={errorId}
-            className="flex items-center gap-1 text-sm text-red-600"
+            className="flex items-center gap-1 text-sm text-red-700"
             role="alert"
             aria-live="polite"
           >
@@ -128,11 +156,11 @@ export function FieldWrapper({ query, children }: FieldWrapperProps) {
         )}
 
         {query.helpText && (
-          <p id={helpTextId} className="text-xs text-gray-400">
+          <p id={helpTextId} className="text-xs text-gray-500">
             {query.helpText}
           </p>
         )}
-      </div>
+      </Container>
     </div>
   );
 }

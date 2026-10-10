@@ -75,6 +75,13 @@
   body {
     @apply bg-background text-foreground;
   }
+  /* Links in running text need more than colour to stand out (1.4.1) */
+  :where(p, dd) > a:not([class*="btn"]) {
+    @apply underline underline-offset-2;
+  }
+  ::placeholder {
+    @apply text-gray-500 opacity-100;
+  }
 }
 
 /*
@@ -117,16 +124,17 @@
     --brand-900: 15 23 42;
   }
   .theme-ops {
-    --brand-300: 94 234 212;
-    --brand-400: 45 212 191;
+    /* Teal shifted one step darker so text and buttons reach 4.5:1 */
     --brand-50: 240 253 250;
     --brand-100: 204 251 241;
     --brand-200: 153 246 228;
-    --brand-500: 20 184 166;
-    --brand-600: 13 148 136;
-    --brand-700: 15 118 110;
-    --brand-800: 17 94 89;
-    --brand-900: 19 78 74;
+    --brand-300: 45 212 191;
+    --brand-400: 20 184 166;
+    --brand-500: 13 148 136;
+    --brand-600: 15 118 110;
+    --brand-700: 17 94 89;
+    --brand-800: 19 78 74;
+    --brand-900: 4 47 46;
   }
 }
 

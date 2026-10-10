@@ -32,7 +32,7 @@ export function CheckboxField({ query }: CheckboxFieldProps) {
         />
         <span className="text-sm text-gray-700">
           {query.config.content || query.name}
-          {query.required && <span className="text-red-500 ml-1">*</span>}
+          {query.required && <span className="text-red-700 ml-1">*</span>}
         </span>
       </label>
     </FieldWrapper>

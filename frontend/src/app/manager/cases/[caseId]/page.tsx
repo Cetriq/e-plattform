@@ -23,6 +23,8 @@ import { toast } from '@/hooks/useToast';
 import { api } from '@/lib/api/client';
 import type { Flow } from '@/components/form';
 import { getDisplayValues } from '@/lib/caseValues';
+import { Modal } from '@/components/ui/Modal';
+import { statusBadgeStyle } from '@/lib/statusColor';
 
 const statusTypeLabels: Record<string, string> = {
   DRAFT: 'Utkast',
@@ -177,7 +179,7 @@ export default function ManagerCaseDetailPage() {
 
   if (!isAuthenticated) {
     return (
-      <div className="min-h-screen bg-gray-100 flex items-center justify-center">
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="bg-white p-8 rounded-lg shadow-md text-center max-w-md">
           <h2 className="text-xl font-bold mb-2">Inloggning krävs</h2>
           <Link
@@ -193,7 +195,7 @@ export default function ManagerCaseDetailPage() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-gray-100">
+      <div className="min-h-screen bg-gray-50">
         <ManagerHeader userName={user?.displayName} />
         <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           <div className="flex items-center justify-center py-12">
@@ -207,7 +209,7 @@ export default function ManagerCaseDetailPage() {
 
   if (error || !caseData) {
     return (
-      <div className="min-h-screen bg-gray-100">
+      <div className="min-h-screen bg-gray-50">
         <ManagerHeader userName={user?.displayName} />
         <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           <div className="bg-red-50 border border-red-200 rounded-lg p-8 text-center">
@@ -216,7 +218,7 @@ export default function ManagerCaseDetailPage() {
             </h3>
             <Link
               href="/manager/dashboard"
-              className="text-red-600 hover:underline"
+              className="text-red-700 hover:underline"
             >
               Tillbaka till ärendelistan
             </Link>
@@ -229,7 +231,7 @@ export default function ManagerCaseDetailPage() {
   const priority = priorityLabels[(caseData as ManagerCaseDetail & { priority?: string }).priority || 'NORMAL'];
 
   return (
-    <div className="min-h-screen bg-gray-100">
+    <div className="min-h-screen bg-gray-50">
       <ManagerHeader userName={user?.displayName} />
 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -260,14 +262,7 @@ export default function ManagerCaseDetailPage() {
               {caseData.statusName && (
                 <span
                   className="px-3 py-1 text-sm font-medium rounded-full"
-                  style={
-                    caseData.statusColor
-                      ? {
-                          backgroundColor: `${caseData.statusColor}20`,
-                          color: caseData.statusColor,
-                        }
-                      : { backgroundColor: '#dbeafe', color: '#1d4ed8' }
-                  }
+                  style={statusBadgeStyle(caseData.statusColor)}
                 >
                   {caseData.statusName}
                 </span>
@@ -282,7 +277,7 @@ export default function ManagerCaseDetailPage() {
           </div>
 
           {/* Meta info */}
-          <div className="mt-6 grid grid-cols-2 md:grid-cols-4 gap-4 pt-4 border-t">
+          <dl className="mt-6 grid grid-cols-2 md:grid-cols-4 gap-4 pt-4 border-t">
             <div>
               <dt className="text-xs text-gray-500 uppercase tracking-wide">Inkom</dt>
               <dd className="text-sm font-medium text-gray-900 mt-1">
@@ -307,7 +302,7 @@ export default function ManagerCaseDetailPage() {
                 {caseData.currentStepIndex + 1} av {caseData.totalSteps}
               </dd>
             </div>
-          </div>
+          </dl>
         </div>
 
         {/* Content grid */}
@@ -428,7 +423,7 @@ export default function ManagerCaseDetailPage() {
                   onClick={() => setShowStatusModal(true)}
                   className="w-full px-4 py-2 text-left text-sm rounded hover:bg-gray-50 flex items-center gap-2"
                 >
-                  <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <svg className="w-5 h-5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                   </svg>
                   Ändra status
@@ -438,7 +433,7 @@ export default function ManagerCaseDetailPage() {
                   onClick={openMessages}
                   className="w-full px-4 py-2 text-left text-sm rounded hover:bg-gray-50 flex items-center gap-2"
                 >
-                  <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <svg className="w-5 h-5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
                   </svg>
                   Skicka meddelande
@@ -449,12 +444,12 @@ export default function ManagerCaseDetailPage() {
                   className="w-full px-4 py-2 text-left text-sm rounded hover:bg-gray-50 flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {isDownloadingPdf ? (
-                    <svg className="w-5 h-5 text-gray-400 animate-spin" fill="none" viewBox="0 0 24 24">
+                    <svg className="w-5 h-5 text-gray-500 animate-spin" fill="none" viewBox="0 0 24 24">
                       <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                       <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                     </svg>
                   ) : (
-                    <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <svg className="w-5 h-5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                     </svg>
                   )}
@@ -534,13 +529,11 @@ export default function ManagerCaseDetailPage() {
 
       {/* Status change modal */}
       {showStatusModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div
-            className="bg-white rounded-lg shadow-xl max-w-md w-full mx-4"
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="status-dialog-title"
-          >
+        <Modal onClose={() => {
+                  setShowStatusModal(false);
+                  setSelectedStatus('');
+                  setStatusComment('');
+                }} className="max-w-md">
             <div className="px-6 py-4 border-b">
               <h3 id="status-dialog-title" className="text-lg font-semibold text-gray-900">Ändra status</h3>
               <p className="text-sm text-gray-500 mt-1">Nuvarande status: {caseData.statusName}</p>
@@ -585,7 +578,7 @@ export default function ManagerCaseDetailPage() {
                 />
               </div>
               {statusMutation.isError && (
-                <p className="text-sm text-red-600" role="alert">
+                <p className="text-sm text-red-700" role="alert">
                   {(statusMutation.error as { message?: string })?.message || 'Kunde inte ändra status. Försök igen.'}
                 </p>
               )}
@@ -609,8 +602,8 @@ export default function ManagerCaseDetailPage() {
                 {statusMutation.isPending ? 'Sparar...' : 'Spara'}
               </button>
             </div>
-          </div>
-        </div>
+          </Modal>
+        
       )}
     </div>
   );

@@ -16,6 +16,7 @@ import {
   type CreateFlowTypeRequest,
   type CreateCategoryRequest,
 } from '@/lib/api/admin';
+import { Modal } from '@/components/ui/Modal';
 
 export default function CategoriesPage() {
   const queryClient = useQueryClient();
@@ -209,7 +210,8 @@ export default function CategoriesPage() {
                           setIsNewFlowType(false);
                           setEditingFlowType(flowType);
                         }}
-                        className="p-2 text-gray-400 hover:text-brand-600 transition-colors"
+                        aria-label={`Redigera ${flowType.name}`}
+                        className="p-2 text-gray-500 hover:text-brand-600 transition-colors"
                       >
                         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
@@ -222,7 +224,8 @@ export default function CategoriesPage() {
                             deleteFlowTypeMutation.mutate(flowType.id);
                           }
                         }}
-                        className="p-2 text-gray-400 hover:text-red-600 transition-colors"
+                        aria-label={`Ta bort ${flowType.name}`}
+                        className="p-2 text-gray-500 hover:text-red-700 transition-colors"
                       >
                         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
@@ -304,7 +307,8 @@ export default function CategoriesPage() {
                           setIsNewCategory(false);
                           setEditingCategory(category);
                         }}
-                        className="p-2 text-gray-400 hover:text-brand-600 transition-colors"
+                        aria-label={`Redigera ${category.name}`}
+                        className="p-2 text-gray-500 hover:text-brand-600 transition-colors"
                       >
                         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
@@ -316,7 +320,8 @@ export default function CategoriesPage() {
                             deleteCategoryMutation.mutate(category.id);
                           }
                         }}
-                        className="p-2 text-gray-400 hover:text-red-600 transition-colors"
+                        aria-label={`Ta bort ${category.name}`}
+                        className="p-2 text-gray-500 hover:text-red-700 transition-colors"
                       >
                         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
@@ -333,8 +338,10 @@ export default function CategoriesPage() {
 
       {/* Edit Flow Type Modal */}
       {editingFlowType && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-xl shadow-xl max-w-md w-full mx-4">
+        <Modal onClose={() => {
+                    setEditingFlowType(null);
+                    setIsNewFlowType(false);
+                  }} className="max-w-md">
             <form onSubmit={handleSaveFlowType}>
               <div className="p-6 border-b">
                 <h3 className="text-lg font-semibold text-gray-900">
@@ -343,10 +350,10 @@ export default function CategoriesPage() {
               </div>
               <div className="p-6 space-y-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <label htmlFor="cat-1" className="block text-sm font-medium text-gray-700 mb-1">
                     Namn *
                   </label>
-                  <input
+                  <input id="cat-1"
                     name="name"
                     type="text"
                     defaultValue={editingFlowType.name}
@@ -355,10 +362,10 @@ export default function CategoriesPage() {
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <label htmlFor="cat-2" className="block text-sm font-medium text-gray-700 mb-1">
                     Beskrivning
                   </label>
-                  <textarea
+                  <textarea id="cat-2"
                     name="description"
                     defaultValue={editingFlowType.description || ''}
                     rows={2}
@@ -367,10 +374,10 @@ export default function CategoriesPage() {
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                    <label htmlFor="cat-3" className="block text-sm font-medium text-gray-700 mb-1">
                       Färg
                     </label>
-                    <input
+                    <input id="cat-3"
                       name="color"
                       type="color"
                       defaultValue={editingFlowType.color || '#6b7280'}
@@ -378,10 +385,10 @@ export default function CategoriesPage() {
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                    <label htmlFor="cat-4" className="block text-sm font-medium text-gray-700 mb-1">
                       Sortering
                     </label>
-                    <input
+                    <input id="cat-4"
                       name="sortOrder"
                       type="number"
                       defaultValue={editingFlowType.sortOrder}
@@ -390,10 +397,10 @@ export default function CategoriesPage() {
                   </div>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <label htmlFor="cat-5" className="block text-sm font-medium text-gray-700 mb-1">
                     Ikon (CSS-klass)
                   </label>
-                  <input
+                  <input id="cat-5"
                     name="icon"
                     type="text"
                     defaultValue={editingFlowType.icon || ''}
@@ -425,14 +432,16 @@ export default function CategoriesPage() {
                 </button>
               </div>
             </form>
-          </div>
-        </div>
+          </Modal>
+        
       )}
 
       {/* Edit Category Modal */}
       {editingCategory && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-xl shadow-xl max-w-md w-full mx-4">
+        <Modal onClose={() => {
+                    setEditingCategory(null);
+                    setIsNewCategory(false);
+                  }} className="max-w-md">
             <form onSubmit={handleSaveCategory}>
               <div className="p-6 border-b">
                 <h3 className="text-lg font-semibold text-gray-900">
@@ -441,10 +450,10 @@ export default function CategoriesPage() {
               </div>
               <div className="p-6 space-y-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <label htmlFor="cat-6" className="block text-sm font-medium text-gray-700 mb-1">
                     Namn *
                   </label>
-                  <input
+                  <input id="cat-6"
                     name="name"
                     type="text"
                     defaultValue={editingCategory.name}
@@ -453,10 +462,10 @@ export default function CategoriesPage() {
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <label htmlFor="cat-7" className="block text-sm font-medium text-gray-700 mb-1">
                     Beskrivning
                   </label>
-                  <textarea
+                  <textarea id="cat-7"
                     name="description"
                     defaultValue={editingCategory.description || ''}
                     rows={2}
@@ -464,10 +473,10 @@ export default function CategoriesPage() {
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <label htmlFor="cat-8" className="block text-sm font-medium text-gray-700 mb-1">
                     Tjänstetyp
                   </label>
-                  <select
+                  <select id="cat-8"
                     name="flowTypeId"
                     defaultValue={editingCategory.flowTypeId || ''}
                     className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-brand-500 focus:border-brand-500"
@@ -481,10 +490,10 @@ export default function CategoriesPage() {
                   </select>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <label htmlFor="cat-9" className="block text-sm font-medium text-gray-700 mb-1">
                     Sortering
                   </label>
-                  <input
+                  <input id="cat-9"
                     name="sortOrder"
                     type="number"
                     defaultValue={editingCategory.sortOrder}
@@ -515,8 +524,8 @@ export default function CategoriesPage() {
                 </button>
               </div>
             </form>
-          </div>
-        </div>
+          </Modal>
+        
       )}
     </div>
   );

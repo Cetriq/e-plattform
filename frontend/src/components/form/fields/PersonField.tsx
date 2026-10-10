@@ -37,10 +37,10 @@ export function PersonField({ query }: PersonFieldProps) {
       <div className="space-y-4">
         {/* Personal Number */}
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            Personnummer {query.required && <span className="text-red-500">*</span>}
+          <label htmlFor={`${query.id}-1`} className="block text-sm font-medium text-gray-700 mb-1">
+            Personnummer {query.required && <span className="text-red-700">*</span>}
           </label>
-          <input
+          <input autoComplete="off" id={`${query.id}-1`}
             type="text"
             value={value.personalNumber || ''}
             onChange={(e) => updateValue('personalNumber', e.target.value)}
@@ -57,10 +57,10 @@ export function PersonField({ query }: PersonFieldProps) {
         {/* Name row */}
         <div className="grid grid-cols-2 gap-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Förnamn {query.required && <span className="text-red-500">*</span>}
+            <label htmlFor={`${query.id}-2`} className="block text-sm font-medium text-gray-700 mb-1">
+              Förnamn {query.required && <span className="text-red-700">*</span>}
             </label>
-            <input
+            <input autoComplete="given-name" id={`${query.id}-2`}
               type="text"
               value={value.firstName || ''}
               onChange={(e) => updateValue('firstName', e.target.value)}
@@ -73,10 +73,10 @@ export function PersonField({ query }: PersonFieldProps) {
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Efternamn {query.required && <span className="text-red-500">*</span>}
+            <label htmlFor={`${query.id}-3`} className="block text-sm font-medium text-gray-700 mb-1">
+              Efternamn {query.required && <span className="text-red-700">*</span>}
             </label>
-            <input
+            <input autoComplete="family-name" id={`${query.id}-3`}
               type="text"
               value={value.lastName || ''}
               onChange={(e) => updateValue('lastName', e.target.value)}
@@ -93,10 +93,10 @@ export function PersonField({ query }: PersonFieldProps) {
         {/* Contact row */}
         <div className="grid grid-cols-2 gap-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label htmlFor={`${query.id}-4`} className="block text-sm font-medium text-gray-700 mb-1">
               E-post
             </label>
-            <input
+            <input autoComplete="email" id={`${query.id}-4`}
               type="email"
               value={value.email || ''}
               onChange={(e) => updateValue('email', e.target.value)}
@@ -108,10 +108,10 @@ export function PersonField({ query }: PersonFieldProps) {
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label htmlFor={`${query.id}-5`} className="block text-sm font-medium text-gray-700 mb-1">
               Telefon
             </label>
-            <input
+            <input autoComplete="tel" id={`${query.id}-5`}
               type="tel"
               value={value.phone || ''}
               onChange={(e) => updateValue('phone', e.target.value)}

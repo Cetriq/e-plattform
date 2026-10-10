@@ -92,7 +92,7 @@ export function MessageThread({
                 <p className="text-sm whitespace-pre-wrap break-words">{m.message}</p>
                 <p
                   className={`mt-1 text-xs ${
-                    m.mine && variant === 'conversation' ? 'text-brand-100' : 'text-gray-500'
+                    m.mine && variant === 'conversation' ? 'text-white' : 'text-gray-600'
                   }`}
                 >
                   {m.authorName} · {formatTime(m.createdAt)}
@@ -124,7 +124,7 @@ export function MessageThread({
             className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
           />
           {error && (
-            <p className="text-sm text-red-600" role="alert">
+            <p className="text-sm text-red-700" role="alert">
               {error}
             </p>
           )}

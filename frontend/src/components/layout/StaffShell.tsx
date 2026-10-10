@@ -57,7 +57,7 @@ export function StaffShell({ title, theme, nav, links = [], children }: StaffShe
   const { user, logout } = useAuth();
 
   return (
-    <div className={`${THEME_CLASS[theme]} min-h-screen bg-gray-100`}>
+    <div className={`${THEME_CLASS[theme]} min-h-screen bg-gray-50`}>
       <header className="bg-brand-900 text-white">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16 gap-4">

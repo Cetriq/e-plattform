@@ -37,10 +37,10 @@ export function LocationField({ query }: LocationFieldProps) {
       <div className="space-y-4">
         {/* Address */}
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            Gatuadress {query.required && <span className="text-red-500">*</span>}
+          <label htmlFor={`${query.id}-1`} className="block text-sm font-medium text-gray-700 mb-1">
+            Gatuadress {query.required && <span className="text-red-700">*</span>}
           </label>
-          <input
+          <input autoComplete="street-address" id={`${query.id}-1`}
             type="text"
             value={value.address || ''}
             onChange={(e) => updateValue('address', e.target.value)}
@@ -57,10 +57,10 @@ export function LocationField({ query }: LocationFieldProps) {
         {/* Postal row */}
         <div className="grid grid-cols-3 gap-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Postnummer {query.required && <span className="text-red-500">*</span>}
+            <label htmlFor={`${query.id}-2`} className="block text-sm font-medium text-gray-700 mb-1">
+              Postnummer {query.required && <span className="text-red-700">*</span>}
             </label>
-            <input
+            <input autoComplete="postal-code" id={`${query.id}-2`}
               type="text"
               value={value.postalCode || ''}
               onChange={(e) => updateValue('postalCode', e.target.value)}
@@ -74,10 +74,10 @@ export function LocationField({ query }: LocationFieldProps) {
             />
           </div>
           <div className="col-span-2">
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Ort {query.required && <span className="text-red-500">*</span>}
+            <label htmlFor={`${query.id}-3`} className="block text-sm font-medium text-gray-700 mb-1">
+              Ort {query.required && <span className="text-red-700">*</span>}
             </label>
-            <input
+            <input autoComplete="address-level2" id={`${query.id}-3`}
               type="text"
               value={value.city || ''}
               onChange={(e) => updateValue('city', e.target.value)}
@@ -93,10 +93,10 @@ export function LocationField({ query }: LocationFieldProps) {
 
         {/* Municipality (optional) */}
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
+          <label htmlFor={`${query.id}-4`} className="block text-sm font-medium text-gray-700 mb-1">
             Kommun
           </label>
-          <input
+          <input id={`${query.id}-4`}
             type="text"
             value={value.municipality || ''}
             onChange={(e) => updateValue('municipality', e.target.value)}

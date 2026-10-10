@@ -9,6 +9,7 @@ import type {
   StepDetail,
   TargetState,
 } from '@/lib/api/admin';
+import { Modal } from '@/components/ui/Modal';
 
 /** Field types whose answers can't drive a condition in a meaningful way. */
 const NON_SOURCE_TYPES = ['HEADING', 'PARAGRAPH', 'DIVIDER', 'SIGNATURE', 'MAP', 'PERSON', 'ORGANIZATION', 'LOCATION'];
@@ -169,13 +170,7 @@ export function ConditionEditor({ source, steps, onAdd, onDelete, onClose }: Con
     list.includes(item) ? list.filter((x) => x !== item) : [...list, item];
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-      <div
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby={headingId}
-        className="bg-white rounded-lg shadow-xl w-full max-w-2xl max-h-[90vh] flex flex-col"
-      >
+    <Modal onClose={onClose} className="max-w-2xl max-h-[90vh] flex flex-col">
         <div className="px-6 py-4 border-b">
           <h2 id={headingId} className="text-lg font-semibold text-gray-900">
             Villkor för &quot;{source.name}&quot;
@@ -202,7 +197,7 @@ export function ConditionEditor({ source, steps, onAdd, onDelete, onClose }: Con
                     <button
                       type="button"
                       onClick={() => onDelete(ev.id).catch(() => setError('Villkoret kunde inte tas bort.'))}
-                      className="text-sm text-red-600 hover:text-red-800 shrink-0"
+                      className="text-sm text-red-700 hover:text-red-800 shrink-0"
                     >
                       Ta bort
                     </button>
@@ -333,7 +328,7 @@ export function ConditionEditor({ source, steps, onAdd, onDelete, onClose }: Con
             )}
 
             {error && (
-              <p className="text-sm text-red-600" role="alert">
+              <p className="text-sm text-red-700" role="alert">
                 {error}
               </p>
             )}
@@ -355,7 +350,7 @@ export function ConditionEditor({ source, steps, onAdd, onDelete, onClose }: Con
             Stäng
           </button>
         </div>
-      </div>
-    </div>
+      </Modal>
+    
   );
 }

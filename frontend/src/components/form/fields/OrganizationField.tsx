@@ -41,10 +41,10 @@ export function OrganizationField({ query }: OrganizationFieldProps) {
         {/* Organization info row */}
         <div className="grid grid-cols-2 gap-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Organisationsnummer {query.required && <span className="text-red-500">*</span>}
+            <label htmlFor={`${query.id}-1`} className="block text-sm font-medium text-gray-700 mb-1">
+              Organisationsnummer {query.required && <span className="text-red-700">*</span>}
             </label>
-            <input
+            <input autoComplete="off" id={`${query.id}-1`}
               type="text"
               value={value.organizationNumber || ''}
               onChange={(e) => updateValue('organizationNumber', e.target.value)}
@@ -58,10 +58,10 @@ export function OrganizationField({ query }: OrganizationFieldProps) {
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Organisationsnamn {query.required && <span className="text-red-500">*</span>}
+            <label htmlFor={`${query.id}-2`} className="block text-sm font-medium text-gray-700 mb-1">
+              Organisationsnamn {query.required && <span className="text-red-700">*</span>}
             </label>
-            <input
+            <input autoComplete="organization" id={`${query.id}-2`}
               type="text"
               value={value.name || ''}
               onChange={(e) => updateValue('name', e.target.value)}
@@ -77,10 +77,10 @@ export function OrganizationField({ query }: OrganizationFieldProps) {
 
         {/* Contact person */}
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
+          <label htmlFor={`${query.id}-3`} className="block text-sm font-medium text-gray-700 mb-1">
             Kontaktperson
           </label>
-          <input
+          <input autoComplete="name" id={`${query.id}-3`}
             type="text"
             value={value.contactPerson || ''}
             onChange={(e) => updateValue('contactPerson', e.target.value)}
@@ -95,10 +95,10 @@ export function OrganizationField({ query }: OrganizationFieldProps) {
         {/* Contact row */}
         <div className="grid grid-cols-2 gap-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label htmlFor={`${query.id}-4`} className="block text-sm font-medium text-gray-700 mb-1">
               E-post
             </label>
-            <input
+            <input autoComplete="email" id={`${query.id}-4`}
               type="email"
               value={value.email || ''}
               onChange={(e) => updateValue('email', e.target.value)}
@@ -110,10 +110,10 @@ export function OrganizationField({ query }: OrganizationFieldProps) {
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label htmlFor={`${query.id}-5`} className="block text-sm font-medium text-gray-700 mb-1">
               Telefon
             </label>
-            <input
+            <input autoComplete="tel" id={`${query.id}-5`}
               type="tel"
               value={value.phone || ''}
               onChange={(e) => updateValue('phone', e.target.value)}
@@ -128,10 +128,10 @@ export function OrganizationField({ query }: OrganizationFieldProps) {
 
         {/* Address */}
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
+          <label htmlFor={`${query.id}-6`} className="block text-sm font-medium text-gray-700 mb-1">
             Adress
           </label>
-          <input
+          <input autoComplete="street-address" id={`${query.id}-6`}
             type="text"
             value={value.address || ''}
             onChange={(e) => updateValue('address', e.target.value)}
@@ -146,10 +146,10 @@ export function OrganizationField({ query }: OrganizationFieldProps) {
         {/* Postal row */}
         <div className="grid grid-cols-3 gap-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label htmlFor={`${query.id}-7`} className="block text-sm font-medium text-gray-700 mb-1">
               Postnummer
             </label>
-            <input
+            <input autoComplete="postal-code" id={`${query.id}-7`}
               type="text"
               value={value.postalCode || ''}
               onChange={(e) => updateValue('postalCode', e.target.value)}
@@ -162,10 +162,10 @@ export function OrganizationField({ query }: OrganizationFieldProps) {
             />
           </div>
           <div className="col-span-2">
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label htmlFor={`${query.id}-8`} className="block text-sm font-medium text-gray-700 mb-1">
               Ort
             </label>
-            <input
+            <input autoComplete="address-level2" id={`${query.id}-8`}
               type="text"
               value={value.city || ''}
               onChange={(e) => updateValue('city', e.target.value)}

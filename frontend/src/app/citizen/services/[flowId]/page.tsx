@@ -134,7 +134,7 @@ function FlowForm() {
         <div className="container mx-auto px-4 py-8">
           <div className="bg-red-50 border border-red-200 rounded-lg p-8 text-center">
             <svg
-              className="w-12 h-12 text-red-500 mx-auto mb-4"
+              className="w-12 h-12 text-red-700 mx-auto mb-4"
               fill="none"
               stroke="currentColor"
               viewBox="0 0 24 24"
@@ -156,7 +156,7 @@ function FlowForm() {
             </p>
             <Link
               href="/citizen/services"
-              className="inline-flex items-center text-red-600 hover:text-red-800 font-medium"
+              className="inline-flex items-center text-red-700 hover:text-red-800 font-medium"
             >
               <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
@@ -178,7 +178,7 @@ function FlowForm() {
           <div className="max-w-2xl mx-auto">
             <div className="bg-brand-50 border border-brand-200 rounded-lg p-8 text-center">
               <svg
-                className="w-12 h-12 text-brand-500 mx-auto mb-4"
+                className="w-12 h-12 text-brand-600 mx-auto mb-4"
                 fill="none"
                 stroke="currentColor"
                 viewBox="0 0 24 24"

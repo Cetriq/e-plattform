@@ -30,7 +30,7 @@ export function RequireRole({ roles, children }: RequireRoleProps) {
 
   if (isLoading || !isAuthenticated) {
     return (
-      <div className="min-h-screen bg-gray-100 flex items-center justify-center" role="status">
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center" role="status">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-brand-600" aria-hidden="true"></div>
         <span className="sr-only">Laddar…</span>
       </div>
@@ -39,7 +39,7 @@ export function RequireRole({ roles, children }: RequireRoleProps) {
 
   if (!roles.some((role) => user?.roles.includes(role))) {
     return (
-      <div className="min-h-screen bg-gray-100 flex items-center justify-center px-4">
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center px-4">
         <div className="bg-white p-8 rounded-lg shadow-md text-center max-w-md">
           <h1 className="text-xl font-bold mb-2">Saknar behörighet</h1>
           <p className="text-gray-600 mb-6">

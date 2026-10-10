@@ -26,6 +26,7 @@ import {
   type Category,
 } from '@/lib/api/admin';
 import { ConditionEditor, canHaveConditions, describeCondition } from '@/components/admin/ConditionEditor';
+import { Modal } from '@/components/ui/Modal';
 
 // Query types available - grouped by category
 const queryTypes = [
@@ -213,7 +214,7 @@ export default function FlowEditorPage() {
     return (
       <div className="bg-red-50 border border-red-200 rounded-lg p-4">
         <p className="text-red-800">Kunde inte ladda e-tjänsten.</p>
-        <Link href="/admin/flows" className="text-red-600 hover:underline mt-2 inline-block">
+        <Link href="/admin/flows" className="text-red-700 hover:underline mt-2 inline-block">
           Tillbaka till listan
         </Link>
       </div>
@@ -227,6 +228,7 @@ export default function FlowEditorPage() {
         <div className="flex items-center gap-4">
           <Link
             href="/admin/flows"
+            aria-label="Tillbaka till e-tjänster"
             className="text-gray-500 hover:text-gray-700"
           >
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -256,7 +258,7 @@ export default function FlowEditorPage() {
             <button
               onClick={() => publishMutation.mutate()}
               disabled={publishMutation.isPending}
-              className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50"
+              className="px-4 py-2 bg-green-700 text-white rounded-lg hover:bg-green-800 disabled:opacity-50"
             >
               {publishMutation.isPending ? 'Publicerar...' : 'Publicera'}
             </button>
@@ -351,7 +353,7 @@ export default function FlowEditorPage() {
                           {index + 1}
                         </span>
                         <span className="truncate flex-1">{step.name}</span>
-                        <span className="text-xs text-gray-400">
+                        <span className="text-xs text-gray-500">
                           {step.queries.length}
                         </span>
                       </button>
@@ -379,7 +381,7 @@ export default function FlowEditorPage() {
                         setEditingStep(selectedStep);
                         setShowStepModal(true);
                       }}
-                      className="p-1 text-gray-400 hover:text-gray-600 rounded"
+                      className="p-1 text-gray-500 hover:text-gray-600 rounded"
                       title="Redigera steg"
                     >
                       <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -392,7 +394,7 @@ export default function FlowEditorPage() {
                           deleteStepMutation.mutate(selectedStep.id);
                         }
                       }}
-                      className="p-1 text-red-400 hover:text-red-600 rounded"
+                      className="p-1 text-red-700 hover:text-red-700 rounded"
                       title="Ta bort steg"
                     >
                       <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -488,10 +490,10 @@ export default function FlowEditorPage() {
         <div className="max-w-2xl">
           <div className="bg-white rounded-lg border shadow-sm p-6 space-y-6">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label htmlFor="flow-1" className="block text-sm font-medium text-gray-700 mb-1">
                 Namn på e-tjänsten *
               </label>
-              <input
+              <input id="flow-1"
                 type="text"
                 value={flowForm.name}
                 onChange={(e) => setFlowForm({ ...flowForm, name: e.target.value })}
@@ -500,10 +502,10 @@ export default function FlowEditorPage() {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label htmlFor="flow-2" className="block text-sm font-medium text-gray-700 mb-1">
                 Kort beskrivning
               </label>
-              <input
+              <input id="flow-2"
                 type="text"
                 value={flowForm.shortDescription}
                 onChange={(e) => setFlowForm({ ...flowForm, shortDescription: e.target.value })}
@@ -513,10 +515,10 @@ export default function FlowEditorPage() {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label htmlFor="flow-3" className="block text-sm font-medium text-gray-700 mb-1">
                 Lång beskrivning
               </label>
-              <textarea
+              <textarea id="flow-3"
                 value={flowForm.longDescription}
                 onChange={(e) => setFlowForm({ ...flowForm, longDescription: e.target.value })}
                 rows={4}
@@ -526,10 +528,10 @@ export default function FlowEditorPage() {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label htmlFor="flow-4" className="block text-sm font-medium text-gray-700 mb-1">
                 Bekräftelsemeddelande
               </label>
-              <textarea
+              <textarea id="flow-4"
                 value={flowForm.submittedMessage}
                 onChange={(e) => setFlowForm({ ...flowForm, submittedMessage: e.target.value })}
                 rows={3}
@@ -543,10 +545,10 @@ export default function FlowEditorPage() {
               <h3 className="font-medium text-gray-900 mb-4">Kategorisering</h3>
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <label htmlFor="flow-5" className="block text-sm font-medium text-gray-700 mb-1">
                     Tjänstetyp
                   </label>
-                  <select
+                  <select id="flow-5"
                     value={flowForm.typeId || ''}
                     onChange={(e) => {
                       const newTypeId = e.target.value || undefined;
@@ -568,10 +570,10 @@ export default function FlowEditorPage() {
                   <p className="text-xs text-gray-500 mt-1">Huvudkategori för e-tjänsten</p>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <label htmlFor="flow-6" className="block text-sm font-medium text-gray-700 mb-1">
                     Kategori
                   </label>
-                  <select
+                  <select id="flow-6"
                     value={flowForm.categoryId || ''}
                     onChange={(e) => setFlowForm({ ...flowForm, categoryId: e.target.value || undefined })}
                     disabled={!flowForm.typeId}
@@ -792,7 +794,7 @@ function QueryCard({
           <div className="flex items-center gap-2">
             <h4 className="font-medium text-gray-900 truncate">{query.name}</h4>
             {query.required && (
-              <span className="text-xs bg-red-100 text-red-600 px-1.5 py-0.5 rounded">Obligatoriskt</span>
+              <span className="text-xs bg-red-100 text-red-700 px-1.5 py-0.5 rounded">Obligatoriskt</span>
             )}
             {controlledBy.length > 0 && (
               <span
@@ -805,7 +807,7 @@ function QueryCard({
           </div>
           <p className="text-sm text-gray-500">{typeInfo.label}</p>
           {query.description && (
-            <p className="text-sm text-gray-400 mt-1 truncate">{query.description}</p>
+            <p className="text-sm text-gray-500 mt-1 truncate">{query.description}</p>
           )}
           {conditions.length > 0 && (
             <ul className="mt-2 space-y-1">
@@ -830,8 +832,8 @@ function QueryCard({
           )}
           <button
             onClick={onEdit}
-            className="p-1 text-gray-400 hover:text-brand-600 rounded"
-            title="Redigera"
+            className="p-1 text-gray-500 hover:text-brand-600 rounded"
+            aria-label="Redigera fält" title="Redigera"
           >
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
@@ -839,8 +841,8 @@ function QueryCard({
           </button>
           <button
             onClick={onDelete}
-            className="p-1 text-gray-400 hover:text-red-600 rounded"
-            title="Ta bort"
+            className="p-1 text-gray-500 hover:text-red-700 rounded"
+            aria-label="Ta bort fält" title="Ta bort"
           >
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
@@ -892,17 +894,16 @@ function StepModal({
   };
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-      <div className="bg-white rounded-lg shadow-xl max-w-md w-full mx-4 p-6">
+    <Modal onClose={onClose} className="max-w-md p-6">
         <h3 className="text-lg font-bold text-gray-900 mb-4">
           {step ? 'Redigera steg' : 'Nytt steg'}
         </h3>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label htmlFor="flow-7" className="block text-sm font-medium text-gray-700 mb-1">
               Namn *
             </label>
-            <input
+            <input id="flow-7"
               type="text"
               value={name}
               onChange={(e) => setName(e.target.value)}
@@ -912,10 +913,10 @@ function StepModal({
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label htmlFor="flow-8" className="block text-sm font-medium text-gray-700 mb-1">
               Beskrivning
             </label>
-            <textarea
+            <textarea id="flow-8"
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               rows={2}
@@ -940,8 +941,8 @@ function StepModal({
             </button>
           </div>
         </form>
-      </div>
-    </div>
+      </Modal>
+    
   );
 }
 
@@ -973,15 +974,14 @@ function AddQueryModal({
   };
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-      <div className="bg-white rounded-lg shadow-xl max-w-lg w-full mx-4 p-6">
+    <Modal onClose={onClose} className="max-w-lg p-6">
         <h3 className="text-lg font-bold text-gray-900 mb-4">Lägg till fält</h3>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label htmlFor="flow-9" className="block text-sm font-medium text-gray-700 mb-1">
               Fältnamn *
             </label>
-            <input
+            <input id="flow-9"
               type="text"
               value={name}
               onChange={(e) => setName(e.target.value)}
@@ -1041,8 +1041,8 @@ function AddQueryModal({
             </button>
           </div>
         </form>
-      </div>
-    </div>
+      </Modal>
+    
   );
 }
 
@@ -1089,10 +1089,10 @@ function EditQueryModal({
       case 'CHECKBOX':
         return (
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label htmlFor="flow-10" className="block text-sm font-medium text-gray-700 mb-1">
               Alternativ (ett per rad)
             </label>
-            <textarea
+            <textarea id="flow-10"
               value={(config.options as { value: string; label: string }[] || [])
                 .map((o) => o.label)
                 .join('\n')}
@@ -1117,10 +1117,10 @@ function EditQueryModal({
         return (
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label htmlFor="flow-11" className="block text-sm font-medium text-gray-700 mb-1">
                 Min längd
               </label>
-              <input
+              <input id="flow-11"
                 type="number"
                 value={(config.minLength as number) || ''}
                 onChange={(e) => setConfig({ ...config, minLength: e.target.value ? parseInt(e.target.value) : undefined })}
@@ -1129,10 +1129,10 @@ function EditQueryModal({
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label htmlFor="flow-12" className="block text-sm font-medium text-gray-700 mb-1">
                 Max längd
               </label>
-              <input
+              <input id="flow-12"
                 type="number"
                 value={(config.maxLength as number) || ''}
                 onChange={(e) => setConfig({ ...config, maxLength: e.target.value ? parseInt(e.target.value) : undefined })}
@@ -1146,10 +1146,10 @@ function EditQueryModal({
         return (
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label htmlFor="flow-13" className="block text-sm font-medium text-gray-700 mb-1">
                 Min värde
               </label>
-              <input
+              <input id="flow-13"
                 type="number"
                 value={(config.min as number) || ''}
                 onChange={(e) => setConfig({ ...config, min: e.target.value ? parseInt(e.target.value) : undefined })}
@@ -1157,10 +1157,10 @@ function EditQueryModal({
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label htmlFor="flow-14" className="block text-sm font-medium text-gray-700 mb-1">
                 Max värde
               </label>
-              <input
+              <input id="flow-14"
                 type="number"
                 value={(config.max as number) || ''}
                 onChange={(e) => setConfig({ ...config, max: e.target.value ? parseInt(e.target.value) : undefined })}
@@ -1173,10 +1173,10 @@ function EditQueryModal({
         return (
           <div className="space-y-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label htmlFor="flow-15" className="block text-sm font-medium text-gray-700 mb-1">
                 Tillåtna filtyper
               </label>
-              <input
+              <input id="flow-15"
                 type="text"
                 value={(config.accept as string) || ''}
                 onChange={(e) => setConfig({ ...config, accept: e.target.value })}
@@ -1185,10 +1185,10 @@ function EditQueryModal({
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label htmlFor="flow-16" className="block text-sm font-medium text-gray-700 mb-1">
                 Max filstorlek (MB)
               </label>
-              <input
+              <input id="flow-16"
                 type="number"
                 value={((config.maxSize as number) || 0) / (1024 * 1024) || ''}
                 onChange={(e) => setConfig({ ...config, maxSize: e.target.value ? parseInt(e.target.value) * 1024 * 1024 : undefined })}
@@ -1204,15 +1204,14 @@ function EditQueryModal({
   };
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-      <div className="bg-white rounded-lg shadow-xl max-w-lg w-full mx-4 p-6 max-h-[90vh] overflow-y-auto">
+    <Modal onClose={onClose} className="max-w-lg p-6 max-h-[90vh] overflow-y-auto">
         <h3 className="text-lg font-bold text-gray-900 mb-4">Redigera fält</h3>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label htmlFor="flow-17" className="block text-sm font-medium text-gray-700 mb-1">
               Fältnamn *
             </label>
-            <input
+            <input id="flow-17"
               type="text"
               value={name}
               onChange={(e) => setName(e.target.value)}
@@ -1222,10 +1221,10 @@ function EditQueryModal({
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label htmlFor="flow-18" className="block text-sm font-medium text-gray-700 mb-1">
               Beskrivning
             </label>
-            <input
+            <input id="flow-18"
               type="text"
               value={description}
               onChange={(e) => setDescription(e.target.value)}
@@ -1235,10 +1234,10 @@ function EditQueryModal({
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label htmlFor="flow-19" className="block text-sm font-medium text-gray-700 mb-1">
               Hjälptext
             </label>
-            <textarea
+            <textarea id="flow-19"
               value={helpText}
               onChange={(e) => setHelpText(e.target.value)}
               rows={2}
@@ -1248,10 +1247,10 @@ function EditQueryModal({
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label htmlFor="flow-20" className="block text-sm font-medium text-gray-700 mb-1">
               Placeholder
             </label>
-            <input
+            <input id="flow-20"
               type="text"
               value={placeholder}
               onChange={(e) => setPlaceholder(e.target.value)}
@@ -1290,7 +1289,7 @@ function EditQueryModal({
             </button>
           </div>
         </form>
-      </div>
-    </div>
+      </Modal>
+    
   );
 }

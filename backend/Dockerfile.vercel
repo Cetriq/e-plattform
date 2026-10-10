@@ -10,27 +10,46 @@ COPY gradlew build.gradle.kts settings.gradle.kts gradle.properties ./
 RUN chmod +x gradlew && ./gradlew dependencies --no-daemon -q > /dev/null
 
 COPY src src
+# Unpack the boot jar into plain jars: the dependencies, and the application's
+# own classes as application.jar. A plain classpath (no Spring Boot launcher)
+# is what lets the classes go into the CDS archive below.
 RUN ./gradlew bootJar --no-daemon -x test -q \
-    && cp build/libs/*-SNAPSHOT.jar app.jar \
-    && java -Djarmode=layertools -jar app.jar extract --destination layers
+    && mkdir boot && cd boot && jar xf ../build/libs/*-SNAPSHOT.jar \
+    && jar cf /app/application.jar -C BOOT-INF/classes .
 
 FROM eclipse-temurin:21-jre-jammy
 WORKDIR /app
 
 RUN groupadd --system app && useradd --system --gid app app
 
-# Layered jar: dependencies change less often than application code
-COPY --from=builder /app/layers/dependencies/ ./
-COPY --from=builder /app/layers/spring-boot-loader/ ./
-COPY --from=builder /app/layers/snapshot-dependencies/ ./
-COPY --from=builder /app/layers/application/ ./
-
-USER app
+# Dependencies change less often than application code
+COPY --from=builder /app/boot/BOOT-INF/lib/ lib/
+COPY --from=builder /app/application.jar application.jar
 
 ENV SPRING_PROFILES_ACTIVE=vercel
 # Instances start often (scale to zero), so favour fast startup over peak throughput
 ENV JAVA_TOOL_OPTIONS="-XX:MaxRAMPercentage=75 -XX:+UseSerialGC -XX:TieredStopAtLevel=1 -Xss512k"
 
+# Class Data Sharing: a training run starts the Spring context and exits,
+# and the JVM writes the classes it loaded to app.jsa. Every cold start then
+# maps them in instead of loading and verifying them again. The training run
+# needs no database or real secrets: migrations, schema validation and JDBC
+# metadata are switched off for it, and the values below exist only here.
+RUN JWT_SECRET=cds-training-only-not-a-real-secret-0123456789 \
+    CRON_SECRET=cds-training BLOB_READ_WRITE_TOKEN=vercel_blob_rw_cds_training \
+    java -XX:ArchiveClassesAtExit=app.jsa -Xlog:cds=error \
+        -Dspring.context.exit=onRefresh \
+        -Dspring.flyway.enabled=false \
+        -Dspring.jpa.hibernate.ddl-auto=none \
+        -Dspring.jpa.database-platform=org.hibernate.dialect.PostgreSQLDialect \
+        -Dspring.jpa.properties.hibernate.temp.use_jdbc_metadata_defaults=false \
+        -Dspring.datasource.url=jdbc:postgresql://localhost:5432/training \
+        -Dspring.datasource.username=training -Dspring.datasource.password=training \
+        -cp "application.jar:lib/*" se.eplatform.EplatformApplication \
+    && test -s app.jsa
+
+USER app
+
 # Vercel routes traffic to $PORT (set PORT=8080 in the project settings)
 EXPOSE 8080
-ENTRYPOINT ["java", "org.springframework.boot.loader.launch.JarLauncher"]
+ENTRYPOINT ["java", "-XX:SharedArchiveFile=app.jsa", "-Xlog:cds=off", "-Xlog:cds+dynamic=off", "-cp", "application.jar:lib/*", "se.eplatform.EplatformApplication"]

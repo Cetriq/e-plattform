@@ -138,12 +138,13 @@ eplatform:
       auth-requests-per-minute: 10
       upload-requests-per-minute: 20
   retention:
-    # Drafts that were never submitted are removed after this many days
-    draft-days: ${RETENTION_DRAFT_DAYS:90}
-    # The traceability log is kept this many months
-    audit-months: ${RETENTION_AUDIT_MONTHS:24}
-    # The technical system log is kept this many days
-    system-event-days: ${RETENTION_SYSTEM_EVENT_DAYS:90}
+    # The periods are in the table retention_rules (changed by migrations only).
+    # Gallring runs the procedures in the schema "retention" as this role, which
+    # can do nothing else. Without a password gallring refuses to run.
+    datasource:
+      url: ${RETENTION_DB_URL:${spring.datasource.url}}
+      username: ${RETENTION_DB_USER:eplatform_retention}
+      password: ${RETENTION_DB_PASSWORD:}
   demo:
     # Shared code visitors must enter before they can log in. Empty = no code.
     access-code: ${DEMO_ACCESS_CODE:}

@@ -2,10 +2,11 @@ package se.eplatform.privacy.service;
 
 import jakarta.persistence.EntityManager;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.jdbc.datasource.DriverManagerDataSource;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.transaction.support.TransactionTemplate;
 import se.eplatform.audit.domain.AuditAction;
 import se.eplatform.audit.service.AuditService;
 import se.eplatform.ops.service.SystemEventService;
@@ -23,31 +24,30 @@ import java.util.UUID;
  * - Drafts that were never submitted are removed after a number of days.
  * - The traceability log and the system log are kept for a fixed period.
  *
- * Every removal is recorded in the traceability log.
+ * The removal itself happens in the database procedures of the schema
+ * "retention" (V9), called over a separate connection as the role
+ * eplatform_retention. The periods are read from retention_rules by the
+ * procedures; nothing here can shorten them. Every removal is recorded in the
+ * traceability log.
  */
 @Service
 public class RetentionService {
 
     private final EntityManager entityManager;
-    private final TransactionTemplate transactions;
     private final AuditService auditService;
     private final SystemEventService systemEvents;
-    private final int draftDays;
-    private final int auditMonths;
-    private final int systemEventDays;
+    private final JdbcTemplate retention;
 
-    public RetentionService(EntityManager entityManager, TransactionTemplate transactions,
-                            AuditService auditService, SystemEventService systemEvents,
-                            @Value("${eplatform.retention.draft-days:90}") int draftDays,
-                            @Value("${eplatform.retention.audit-months:24}") int auditMonths,
-                            @Value("${eplatform.retention.system-event-days:90}") int systemEventDays) {
+    public RetentionService(EntityManager entityManager, AuditService auditService, SystemEventService systemEvents,
+                            @Value("${eplatform.retention.datasource.url}") String url,
+                            @Value("${eplatform.retention.datasource.username}") String username,
+                            @Value("${eplatform.retention.datasource.password:}") String password) {
         this.entityManager = entityManager;
-        this.transactions = transactions;
         this.auditService = auditService;
         this.systemEvents = systemEvents;
-        this.draftDays = draftDays;
-        this.auditMonths = auditMonths;
-        this.systemEventDays = systemEventDays;
+        // Gallring runs once a night, so a plain connection per run is enough
+        this.retention = password.isBlank() ? null
+                : new JdbcTemplate(new DriverManagerDataSource(url, username, password));
     }
 
     public record Result(int casesPurged, int draftsPurged, int auditEntriesPurged, int systemEventsPurged) {}
@@ -61,18 +61,20 @@ public class RetentionService {
     }
 
     public Result run() {
+        if (retention == null) {
+            systemEvents.error("job:gallring", "Gallringen är inte konfigurerad", Map.of(
+                    "saknas", "eplatform.retention.datasource.password"));
+            throw new IllegalStateException("Retention is not configured (eplatform.retention.datasource.password)");
+        }
         long started = System.currentTimeMillis();
         try {
-            int cases = purgeExpiredCases();
-            int drafts = purgeExpiredDrafts();
-            int audit = transactions.execute(status -> purgeAuditEntries());
-            int events = transactions.execute(status -> entityManager
-                    .createNativeQuery("DELETE FROM system_events WHERE timestamp < NOW() - make_interval(days => :days)")
-                    .setParameter("days", systemEventDays)
-                    .executeUpdate());
-            Result result = new Result(cases, drafts, audit, events);
+            int[] cases = purgeCases();
+            int audit = purgeAuditEntries();
+            Integer events = retention.queryForObject("SELECT retention.purge_system_events()", Integer.class);
+            Result result = new Result(cases[0], cases[1], audit, events == null ? 0 : events);
             systemEvents.info("job:gallring", "Gallring klar", Map.of(
-                    "arenden", cases, "utkast", drafts, "loggposter", audit, "systemhandelser", events,
+                    "arenden", result.casesPurged(), "utkast", result.draftsPurged(), "loggposter", audit,
+                    "systemhandelser", result.systemEventsPurged(),
                     "durationMs", System.currentTimeMillis() - started));
             return result;
         } catch (RuntimeException e) {
@@ -97,48 +99,53 @@ public class RetentionService {
                 (UUID) r[0], (String) r[1], (UUID) r[2], (String) r[3], toInstant(r[4]))).toList();
     }
 
-    private int purgeExpiredCases() {
-        int count = 0;
-        for (DueCase due : dueCases(0)) {
-            transactions.executeWithoutResult(status -> entityManager
-                    .createNativeQuery("DELETE FROM cases WHERE id = :id")
-                    .setParameter("id", due.caseId())
-                    .executeUpdate());
-            auditService.recordSystem(AuditService.Entry.of(AuditAction.CASE_PURGED)
-                    .entity("CASE", due.caseId())
-                    .subject(due.ownerId())
-                    .details("Gallrat enligt gallringsfrist: " + due.referenceNumber()));
-            count++;
-        }
-        return count;
-    }
-
-    @SuppressWarnings("unchecked")
-    private int purgeExpiredDrafts() {
-        List<Object[]> drafts = entityManager.createNativeQuery("""
-                SELECT id, created_by FROM cases
-                WHERE submitted_at IS NULL AND updated_at < NOW() - make_interval(days => :days)
-                """).setParameter("days", draftDays).getResultList();
-        for (Object[] draft : drafts) {
-            transactions.executeWithoutResult(status -> entityManager
-                    .createNativeQuery("DELETE FROM cases WHERE id = :id")
-                    .setParameter("id", draft[0])
-                    .executeUpdate());
-            auditService.recordSystem(AuditService.Entry.of(AuditAction.DRAFT_PURGED)
-                    .entity("CASE", draft[0])
-                    .subject((UUID) draft[1])
-                    .details("Utkast äldre än " + draftDays + " dagar"));
-        }
-        return drafts.size();
+    /** @return closed cases and drafts removed */
+    private int[] purgeCases() {
+        int[] counts = new int[2];
+        retention.query("SELECT case_id, reference_number, owner_id, reason FROM retention.purge_cases()", row -> {
+            UUID caseId = row.getObject("case_id", UUID.class);
+            UUID ownerId = row.getObject("owner_id", UUID.class);
+            if ("CLOSED".equals(row.getString("reason"))) {
+                auditService.recordSystem(AuditService.Entry.of(AuditAction.CASE_PURGED)
+                        .entity("CASE", caseId)
+                        .subject(ownerId)
+                        .details("Gallrat enligt gallringsfrist: " + row.getString("reference_number")));
+                counts[0]++;
+            } else {
+                auditService.recordSystem(AuditService.Entry.of(AuditAction.DRAFT_PURGED)
+                        .entity("CASE", caseId)
+                        .subject(ownerId)
+                        .details("Utkast äldre än " + getDraftDays() + " dagar"));
+                counts[1]++;
+            }
+        });
+        return counts;
     }
 
     private int purgeAuditEntries() {
-        // The log is append-only; this setting lets this transaction remove expired entries
-        entityManager.createNativeQuery("SELECT set_config('eplatform.audit_retention', 'on', true)").getSingleResult();
-        return entityManager.createNativeQuery(
-                        "DELETE FROM audit_events WHERE timestamp < NOW() - make_interval(months => :months)")
-                .setParameter("months", auditMonths)
-                .executeUpdate();
+        Map<String, Object> purged = retention.queryForMap("SELECT anchor_id, removed FROM retention.purge_audit_events()");
+        int removed = ((Number) purged.get("removed")).intValue();
+        if (removed > 0) {
+            auditService.recordSystem(AuditService.Entry.of(AuditAction.RETENTION_RUN)
+                    .entity("AUDIT_ANCHOR", purged.get("anchor_id"))
+                    .details("Gallrade " + removed + " loggposter enligt regeln audit_events"));
+        }
+        return removed;
+    }
+
+    /** Days a draft is kept, from retention_rules. */
+    public int getDraftDays() {
+        return ruleValue("SELECT CAST(EXTRACT(DAY FROM keep_interval) AS int) FROM retention_rules WHERE data_type = 'draft_cases'");
+    }
+
+    /** Months the traceability log is kept, from retention_rules. */
+    public int getAuditMonths() {
+        return ruleValue("SELECT CAST(EXTRACT(YEAR FROM keep_interval) * 12 + EXTRACT(MONTH FROM keep_interval) AS int) " +
+                         "FROM retention_rules WHERE data_type = 'audit_events'");
+    }
+
+    private int ruleValue(String sql) {
+        return ((Number) entityManager.createNativeQuery(sql).getSingleResult()).intValue();
     }
 
     /** Native timestamptz values come back as Instant or OffsetDateTime depending on the driver path. */
@@ -149,7 +156,4 @@ public class RetentionService {
         if (value instanceof java.sql.Timestamp t) return t.toInstant();
         throw new IllegalArgumentException("Unexpected timestamp type " + value.getClass());
     }
-
-    public int getDraftDays() { return draftDays; }
-    public int getAuditMonths() { return auditMonths; }
 }

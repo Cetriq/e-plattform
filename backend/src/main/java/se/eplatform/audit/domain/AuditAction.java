@@ -47,7 +47,8 @@ public enum AuditAction {
     REGISTER_EXTRACT(AuditCategory.PRIVACY),
     USER_ERASED(AuditCategory.PRIVACY),
     CASE_PURGED(AuditCategory.PRIVACY),
-    DRAFT_PURGED(AuditCategory.PRIVACY);
+    DRAFT_PURGED(AuditCategory.PRIVACY),
+    RETENTION_RUN(AuditCategory.PRIVACY);
 
     private final AuditCategory category;
 

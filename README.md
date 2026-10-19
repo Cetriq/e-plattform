@@ -112,6 +112,7 @@ Environment variables in the Vercel project:
 | `BLOB_READ_WRITE_TOKEN` / `BLOB_STORE_ID` (from the Blob integration) | File storage |
 | `JWT_SECRET` | Token signing key, at least 32 characters |
 | `CRON_SECRET` | Authorises the nightly cron jobs |
+| `RETENTION_DB_PASSWORD` | Password of the database role `eplatform_retention`, which can only run the gallring procedures (migration V9). Set it on the role by hand (`ALTER ROLE eplatform_retention LOGIN PASSWORD …`); without it gallring refuses to run |
 | `DEMO_ACCESS_CODE` | Code visitors enter before logging in |
 | `DEMO_ISOLATED_CITIZENS` | `true`: every citizen visitor gets their own account |
 | `DEMO_RETENTION_DAYS` | Days before demo accounts are removed (default 7) |

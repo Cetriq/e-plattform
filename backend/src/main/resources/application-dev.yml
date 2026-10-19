@@ -42,3 +42,7 @@ eplatform:
   security:
     jwt:
       secret: ${JWT_SECRET:dev-only-insecure-jwt-secret-change-me-0123456789}
+  # Matches docker/postgres/init/01-retention-role.sql
+  retention:
+    datasource:
+      password: ${RETENTION_DB_PASSWORD:retention-dev}

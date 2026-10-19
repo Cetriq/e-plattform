@@ -71,6 +71,10 @@ public class User extends BaseEntity {
     )
     private Set<Role> roles = new HashSet<>();
 
+    /** Organisations the user works for, with the roles they have there. */
+    @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
+    private Set<OrganizationMembership> memberships = new HashSet<>();
+
     public User() {}
 
     public User(String email) {
@@ -89,15 +93,22 @@ public class User extends BaseEntity {
         return email;
     }
 
+    /** Global roles plus the roles of every membership. */
+    public java.util.stream.Stream<Role> allRoles() {
+        return java.util.stream.Stream.concat(roles.stream(),
+                memberships.stream().flatMap(m -> m.getRoles().stream()));
+    }
+
     public boolean hasPermission(String permission) {
-        return roles.stream()
+        return allRoles()
                 .flatMap(role -> role.getPermissions().stream())
                 .anyMatch(p -> p.equals("*") || p.equals(permission) ||
                               (p.endsWith(":*") && permission.startsWith(p.replace(":*", ":"))));
     }
 
+    /** True when the user has the role globally or in any organisation. */
     public boolean hasRole(String roleName) {
-        return roles.stream().anyMatch(r -> r.getName().equals(roleName));
+        return allRoles().anyMatch(r -> r.getName().equals(roleName));
     }
 
     public void addRole(Role role) {
@@ -222,8 +233,13 @@ public class User extends BaseEntity {
         this.groups = groups;
     }
 
+    /** Global roles only (USER, OPERATIONS); staff roles are per organisation, see {@link #getMemberships()}. */
     public Set<Role> getRoles() {
         return roles;
+    }
+
+    public Set<OrganizationMembership> getMemberships() {
+        return memberships;
     }
 
     public void setRoles(Set<Role> roles) {

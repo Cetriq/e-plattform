@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { useAuth } from '@/context/AuthContext';
 import { useState, useRef, useEffect } from 'react';
+import { OrganizationSwitcher } from './OrganizationSwitcher';
 
 export function Header() {
   const { user, isAuthenticated, isLoading, logout, hasRole } = useAuth();
@@ -121,6 +122,9 @@ export function Header() {
                   <div className="px-4 py-3 border-b">
                     <p className="font-medium text-gray-900">{user.displayName}</p>
                     <p className="text-sm text-gray-500">{user.email}</p>
+                    <div className="mt-2">
+                      <OrganizationSwitcher />
+                    </div>
                     <div className="flex flex-wrap gap-1 mt-2">
                       {user.roles.map((role) => (
                         <span

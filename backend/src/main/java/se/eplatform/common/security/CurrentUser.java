@@ -37,6 +37,17 @@ public final class CurrentUser {
         return UUID.fromString(require().id());
     }
 
+    /** The organisation the logged-in user is working for, if any (from the verified token). */
+    public static Optional<UUID> activeOrganizationId() {
+        return get().map(UserInfo::activeOrganization).map(org -> UUID.fromString(org.id()));
+    }
+
+    /** The active organisation, or 403 for users without one. */
+    public static UUID requireOrganizationId() {
+        return activeOrganizationId().orElseThrow(() ->
+                new ResponseStatusException(HttpStatus.FORBIDDEN, "Ingen aktiv organisation"));
+    }
+
     /**
      * Case handling staff (handläggare and administrators) can see all cases.
      */

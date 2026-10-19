@@ -1,5 +1,7 @@
 package se.eplatform.flow.domain;
 
+import java.util.UUID;
+
 import jakarta.persistence.*;
 import se.eplatform.common.domain.BaseEntity;
 
@@ -13,6 +15,10 @@ import java.util.stream.Collectors;
 @Entity
 @Table(name = "flows")
 public class Flow extends BaseEntity {
+
+    /** The organisation that owns the e-service. */
+    @Column(name = "organization_id")
+    private UUID organizationId;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "family_id")
@@ -124,6 +130,7 @@ public class Flow extends BaseEntity {
     public Flow createNewVersion() {
         Flow newVersion = new Flow(this.name);
         newVersion.setFamily(this.family);
+        newVersion.setOrganizationId(this.organizationId);
         newVersion.setType(this.type);
         newVersion.setCategory(this.category);
         newVersion.setVersion(this.version + 1);
@@ -374,5 +381,13 @@ public class Flow extends BaseEntity {
 
     public void setRetentionMonths(Integer retentionMonths) {
         this.retentionMonths = retentionMonths;
+    }
+
+    public UUID getOrganizationId() {
+        return organizationId;
+    }
+
+    public void setOrganizationId(UUID organizationId) {
+        this.organizationId = organizationId;
     }
 }

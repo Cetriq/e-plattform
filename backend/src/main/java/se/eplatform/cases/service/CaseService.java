@@ -5,6 +5,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import se.eplatform.cases.domain.*;
+import se.eplatform.common.security.CurrentUser;
 import se.eplatform.cases.repository.CaseRepository;
 import se.eplatform.cases.repository.ExternalMessageRepository;
 import se.eplatform.flow.service.StatusTransitionService;
@@ -438,7 +439,7 @@ public class CaseService {
      */
     @Transactional(readOnly = true)
     public List<User> getAssignableUsers() {
-        return userRepository.findActiveWithAnyRole(STAFF_ROLES);
+        return userRepository.findActiveWithAnyRole(CurrentUser.requireOrganizationId(), STAFF_ROLES);
     }
 
     /**

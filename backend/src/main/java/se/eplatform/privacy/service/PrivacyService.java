@@ -70,7 +70,7 @@ public class PrivacyService {
         long submitted = count("SELECT COUNT(c) FROM Case c WHERE c.createdBy.id = :id AND c.submittedAt IS NOT NULL", user.getId());
         long drafts = count("SELECT COUNT(c) FROM Case c WHERE c.createdBy.id = :id AND c.submittedAt IS NULL", user.getId());
         return new PersonSummary(user.getId(), user.getFullName(), user.getEmail(),
-                user.getRoles().stream().map(Role::getName).sorted().toList(), submitted, drafts, user.isActive());
+                user.allRoles().map(Role::getName).distinct().sorted().toList(), submitted, drafts, user.isActive());
     }
 
     /**
@@ -90,7 +90,7 @@ public class PrivacyService {
         person.put("efternamn", user.getLastName());
         person.put("epost", user.getEmail());
         person.put("telefon", user.getPhone());
-        person.put("roller", user.getRoles().stream().map(Role::getName).sorted().toList());
+        person.put("roller", user.allRoles().map(Role::getName).distinct().sorted().toList());
         person.put("skapad", user.getCreatedAt());
         person.put("senastInloggad", user.getLastLoginAt());
         extract.put("person", person);
@@ -240,6 +240,7 @@ public class PrivacyService {
         user.setSettings(Map.of());
         user.setActive(false);
         user.getRoles().clear();
+        user.getMemberships().clear();
         userRepository.save(user);
 
         return new ErasureResult(drafts, (int) retained);
@@ -247,7 +248,7 @@ public class PrivacyService {
 
     /** Staff accounts are handled through employment, not data subject requests. */
     private static String staffReason(User user) {
-        boolean staff = user.getRoles().stream().anyMatch(r -> !"USER".equals(r.getName()));
+        boolean staff = user.allRoles().anyMatch(r -> !"USER".equals(r.getName()));
         return staff ? "Kontot har en tjänsteroll och hanteras inte som en registrerads begäran" : null;
     }
 

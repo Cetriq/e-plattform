@@ -105,6 +105,7 @@ public class FileStorageService {
                 originalFilename, pathname, contentType, fileSize, VERCEL_BLOB_BUCKET, userId);
         attachment.setQueryDefinitionId(queryDefinitionId);
         attachment.setCaseEntity(caseEntity);
+        attachment.setOrganizationId(caseEntity.getOrganizationId());
         return attachmentRepository.save(attachment);
     }
 
@@ -153,6 +154,7 @@ public class FileStorageService {
                 Case caseEntity = caseRepository.findById(caseId)
                         .orElseThrow(() -> new IllegalArgumentException("Case not found: " + caseId));
                 attachment.setCaseEntity(caseEntity);
+                attachment.setOrganizationId(caseEntity.getOrganizationId());
             }
 
             return attachmentRepository.save(attachment);

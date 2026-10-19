@@ -77,6 +77,27 @@ export async function refreshSession(token: string): Promise<AuthResponse> {
   return response.json();
 }
 
+/**
+ * Work for another organisation the user is a member of. Returns a new token
+ * with the roles the user has there.
+ */
+export async function switchOrganization(token: string, organizationId: string): Promise<AuthResponse> {
+  const response = await fetch(`${API_BASE_URL}/api/v1/public/auth/organization`, {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${token}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ organizationId }),
+  });
+
+  if (!response.ok) {
+    throw new Error('Failed to switch organization');
+  }
+
+  return response.json();
+}
+
 export interface UpdateProfileRequest {
   firstName?: string;
   lastName?: string;

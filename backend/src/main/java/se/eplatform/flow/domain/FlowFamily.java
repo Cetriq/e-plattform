@@ -1,5 +1,7 @@
 package se.eplatform.flow.domain;
 
+import java.util.UUID;
+
 import jakarta.persistence.*;
 import se.eplatform.common.domain.BaseEntity;
 
@@ -12,6 +14,10 @@ import java.util.List;
 @Entity
 @Table(name = "flow_families")
 public class FlowFamily extends BaseEntity {
+
+    /** The organisation that owns the e-service family. */
+    @Column(name = "organization_id")
+    private UUID organizationId;
 
     @Column(nullable = false)
     private String name;
@@ -84,5 +90,13 @@ public class FlowFamily extends BaseEntity {
                 .filter(f -> f.getStatus() == FlowStatus.PUBLISHED)
                 .findFirst()
                 .orElse(null);
+    }
+
+    public UUID getOrganizationId() {
+        return organizationId;
+    }
+
+    public void setOrganizationId(UUID organizationId) {
+        this.organizationId = organizationId;
     }
 }

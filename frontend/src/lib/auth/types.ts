@@ -5,8 +5,19 @@ export interface User {
   lastName: string | null;
   displayName: string;
   phone: string | null;
+  /** Global roles plus the roles in the active organisation. */
   roles: string[];
   permissions: string[];
+  /** The organisation staff are working for; absent for citizens. */
+  activeOrganization?: OrganizationRef | null;
+  /** Organisations the user can switch to. */
+  memberships?: OrganizationRef[];
+}
+
+export interface OrganizationRef {
+  id: string;
+  name: string;
+  slug: string;
 }
 
 export interface AuthState {

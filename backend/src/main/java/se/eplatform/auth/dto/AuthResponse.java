@@ -1,11 +1,17 @@
 package se.eplatform.auth.dto;
 
+import java.util.List;
 import java.util.Set;
 
 public record AuthResponse(
     String token,
     UserInfo user
 ) {
+    /**
+     * @param roles               global roles plus the roles in the active organisation
+     * @param activeOrganization  the organisation staff are working for, or null
+     * @param memberships         organisations the user can switch to
+     */
     public record UserInfo(
         String id,
         String email,
@@ -14,6 +20,10 @@ public record AuthResponse(
         String displayName,
         String phone,
         Set<String> roles,
-        Set<String> permissions
+        Set<String> permissions,
+        OrganizationRef activeOrganization,
+        List<OrganizationRef> memberships
     ) {}
+
+    public record OrganizationRef(String id, String name, String slug) {}
 }

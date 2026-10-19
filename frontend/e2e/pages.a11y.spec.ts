@@ -11,7 +11,7 @@ test.beforeAll(async () => {
 });
 
 const pages: Record<keyof typeof PERSONAS | 'anonymous', (string | [string, () => string])[]> = {
-  anonymous: ['/', '/auth/login', '/tillganglighet'],
+  anonymous: ['/', '/auth/login', '/tillganglighet', '/o/grannkommun'],
   citizen: [
     '/citizen/services',
     `/citizen/services/${BUILDING_PERMIT_FLOW}`,

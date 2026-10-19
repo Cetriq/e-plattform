@@ -1,5 +1,7 @@
 package se.eplatform.cases.domain;
 
+import java.util.UUID;
+
 import jakarta.persistence.*;
 import org.hibernate.annotations.Generated;
 import org.hibernate.annotations.JdbcTypeCode;
@@ -19,6 +21,10 @@ import java.util.*;
 @Entity
 @Table(name = "cases")
 public class Case extends BaseEntity {
+
+    /** The organisation handling the case; taken from the e-service when the case is created and never changed. */
+    @Column(name = "organization_id")
+    private UUID organizationId;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "flow_id", nullable = false)
@@ -99,6 +105,7 @@ public class Case extends BaseEntity {
     public static Case create(Flow flow, User creator) {
         Case newCase = new Case();
         newCase.setFlow(flow);
+        newCase.setOrganizationId(flow.getOrganizationId());
         newCase.setCreatedBy(creator);
         newCase.addOwner(creator);
         newCase.setCurrentStepIndex(0);
@@ -325,5 +332,13 @@ public class Case extends BaseEntity {
 
     public void setOwners(Set<User> owners) {
         this.owners = owners;
+    }
+
+    public UUID getOrganizationId() {
+        return organizationId;
+    }
+
+    public void setOrganizationId(UUID organizationId) {
+        this.organizationId = organizationId;
     }
 }

@@ -17,7 +17,17 @@ class TokenServiceTest {
         TokenService tokens = new TokenService(SECRET, "eplatform", 60);
         UUID userId = UUID.randomUUID();
 
-        assertThat(tokens.verify(tokens.issue(userId))).contains(userId);
+        assertThat(tokens.verify(tokens.issue(userId))).contains(new TokenService.Claims(userId, null));
+    }
+
+    @Test
+    void theActiveOrganisationTravelsInTheToken() {
+        TokenService tokens = new TokenService(SECRET, "eplatform", 60);
+        UUID userId = UUID.randomUUID();
+        UUID organizationId = UUID.randomUUID();
+
+        assertThat(tokens.verify(tokens.issue(userId, organizationId)))
+                .contains(new TokenService.Claims(userId, organizationId));
     }
 
     @Test

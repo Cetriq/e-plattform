@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
+import { OrganizationSwitcher } from './OrganizationSwitcher';
 
 export type StaffIcon =
   | 'document' | 'folder' | 'chart' | 'users'
@@ -69,6 +70,7 @@ export function StaffShell({ title, theme, nav, links = [], children }: StaffShe
             </Link>
             <div className="flex items-center gap-4 text-sm">
               <span className="hidden sm:inline text-white/70">{user?.displayName}</span>
+              <OrganizationSwitcher tone="dark" />
               {links.map((l) => (
                 <Link key={l.href} href={l.href} className="hidden md:inline text-white/70 hover:text-white">
                   {l.name}

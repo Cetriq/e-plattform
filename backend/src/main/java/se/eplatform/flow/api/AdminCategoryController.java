@@ -163,6 +163,7 @@ public class AdminCategoryController {
     @Transactional
     public ResponseEntity<CategoryDTO> createCategory(@RequestBody CategoryRequest request) {
         Category category = new Category(request.name());
+        category.setOrganizationId(se.eplatform.common.security.CurrentUser.requireOrganizationId());
         category.setDescription(request.description());
         category.setSortOrder(request.sortOrder() != null ? request.sortOrder() : 0);
 

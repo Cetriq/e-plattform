@@ -31,10 +31,20 @@ public abstract class IntegrationTest {
     public static final String BUILDING_PERMIT_FLOW = "00000000-0000-0000-0004-000000000001";
 
     // One database for all test classes; started once per JVM
-    static final PostgreSQLContainer<?> POSTGRES = new PostgreSQLContainer<>("postgres:16-alpine");
+    protected static final PostgreSQLContainer<?> POSTGRES = new PostgreSQLContainer<>("postgres:16-alpine");
+
+    /** Gallring logs in as this role; in real environments LOGIN and the password are set outside migrations. */
+    public static final String RETENTION_PASSWORD = "retention-test";
 
     static {
         POSTGRES.start();
+        try (var connection = java.sql.DriverManager.getConnection(
+                POSTGRES.getJdbcUrl(), POSTGRES.getUsername(), POSTGRES.getPassword());
+             var statement = connection.createStatement()) {
+            statement.execute("CREATE ROLE eplatform_retention LOGIN PASSWORD '" + RETENTION_PASSWORD + "'");
+        } catch (java.sql.SQLException e) {
+            throw new IllegalStateException(e);
+        }
     }
 
     @DynamicPropertySource
@@ -42,6 +52,8 @@ public abstract class IntegrationTest {
         registry.add("spring.datasource.url", POSTGRES::getJdbcUrl);
         registry.add("spring.datasource.username", POSTGRES::getUsername);
         registry.add("spring.datasource.password", POSTGRES::getPassword);
+        registry.add("eplatform.retention.datasource.url", POSTGRES::getJdbcUrl);
+        registry.add("eplatform.retention.datasource.password", () -> RETENTION_PASSWORD);
         registry.add("eplatform.security.rate-limit.enabled", () -> "false");
         registry.add("spring.jpa.show-sql", () -> "false");
     }

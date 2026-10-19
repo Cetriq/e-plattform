@@ -39,7 +39,7 @@ public class AuditService {
 
     /** Advisory lock id that serializes writers so the chain stays linear. */
     private static final long CHAIN_LOCK = 0x4155444954L; // "AUDIT"
-    private static final String GENESIS = "0".repeat(64);
+    static final String GENESIS = "0".repeat(64);
 
     private final AuditEventRepository repository;
     private final EntityManager entityManager;

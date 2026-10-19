@@ -61,6 +61,9 @@ export interface ChainResult {
   verified: number;
   intact: boolean;
   firstBrokenSeq?: number;
+  /** Gallring anchors checked; the log starts where the newest one ends. */
+  anchors: number;
+  firstBrokenAnchor?: number;
 }
 
 export async function verifyAudit(): Promise<ChainResult> {

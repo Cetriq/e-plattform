@@ -121,8 +121,11 @@ function AuditLog() {
           }`}
         >
           {chain.intact
-            ? `Loggen är intakt: alla ${chain.verified} poster stämmer mot sina kontrollsummor.`
-            : `Loggen har ändrats! Post nr ${chain.firstBrokenSeq} stämmer inte mot kontrollsumman. ${chain.verified} poster före den är intakta.`}
+            ? `Loggen är intakt: alla ${chain.verified} poster stämmer mot sina kontrollsummor.` +
+              (chain.anchors > 0 ? ` Äldre poster har gallrats vid ${chain.anchors} tillfällen, och kedjan börjar där den senaste gallringen slutade.` : '')
+            : chain.firstBrokenAnchor != null
+              ? `Loggen har ändrats! Gallringsankare nr ${chain.firstBrokenAnchor} stämmer inte mot kontrollsumman.`
+              : `Loggen har ändrats! Post nr ${chain.firstBrokenSeq} stämmer inte mot kontrollsumman. ${chain.verified} poster före den är intakta.`}
         </div>
       )}
 

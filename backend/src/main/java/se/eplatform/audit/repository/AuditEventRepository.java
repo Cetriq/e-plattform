@@ -14,8 +14,15 @@ import java.util.UUID;
 @Repository
 public interface AuditEventRepository extends JpaRepository<AuditEvent, UUID>, JpaSpecificationExecutor<AuditEvent> {
 
-    /** Hash of the newest entry, which the next entry is chained to. */
-    @Query(value = "SELECT hash FROM audit_events ORDER BY seq DESC LIMIT 1", nativeQuery = true)
+    /**
+     * Hash the next entry is chained to: the newest entry, or, when gallring
+     * has removed every entry, the last removed one recorded in the newest anchor.
+     */
+    @Query(value = """
+            SELECT COALESCE(
+                (SELECT hash FROM audit_events ORDER BY seq DESC LIMIT 1),
+                (SELECT last_removed_hash FROM audit_chain_anchors WHERE chain_key = 'global' ORDER BY id DESC LIMIT 1))
+            """, nativeQuery = true)
     Optional<String> findLatestHash();
 
     /** Entries in chain order, for verification. */

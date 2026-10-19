@@ -134,7 +134,8 @@ public class SecurityOfficerController {
     @GetMapping("/audit/verify")
     public AuditChainVerifier.Result verifyAudit() {
         AuditChainVerifier.Result result = chainVerifier.verify();
-        AuditContext.details(result.intact() ? result.verified() + " poster intakta"
+        AuditContext.details(result.intact() ? result.verified() + " poster och " + result.anchors() + " gallringsankare intakta"
+                : result.firstBrokenAnchor() != null ? "Bruten vid gallringsankare " + result.firstBrokenAnchor()
                 : "Bruten vid post " + result.firstBrokenSeq());
         return result;
     }

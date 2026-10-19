@@ -12,6 +12,8 @@ export interface User {
   activeOrganization?: OrganizationRef | null;
   /** Organisations the user can switch to. */
   memberships?: OrganizationRef[];
+  /** Highest confidentiality (NORMAL, RESTRICTED, CONFIDENTIAL) the user may see in the active organisation. */
+  clearance?: string | null;
 }
 
 export interface OrganizationRef {

@@ -131,18 +131,11 @@ public class CaseService {
         return caseRepository.findDraftsByUserId(userId);
     }
 
-    /**
-     * Get all submitted cases.
-     */
-    public Page<Case> getSubmittedCases(Pageable pageable) {
-        return caseRepository.findAllSubmitted(pageable);
-    }
-
-    /**
+        /**
      * Search cases.
      */
-    public Page<Case> searchCases(String query, Pageable pageable) {
-        return caseRepository.search(query, pageable);
+    public Page<Case> searchCases(String query, CaseAccessPolicy.StaffScope scope, Pageable pageable) {
+        return caseRepository.search(query, scope.organizationId(), scope.staffId(), scope.clearance(), pageable);
     }
 
     /**
@@ -414,7 +407,10 @@ public class CaseService {
         if (assigneeId != null) {
             assignee = userRepository.findById(assigneeId)
                     .filter(User::isActive)
-                    .filter(u -> STAFF_ROLES.stream().anyMatch(u::hasRole))
+                    // Staff role in the case's own organisation, not just anywhere
+                    .filter(u -> u.getMemberships().stream().anyMatch(m ->
+                            m.getOrganization().getId().equals(caseEntity.getOrganizationId())
+                            && m.getRoles().stream().anyMatch(r -> STAFF_ROLES.contains(r.getName()))))
                     .orElseThrow(() -> new IllegalArgumentException("Användaren kan inte handlägga ärenden"));
         }
 
@@ -446,8 +442,10 @@ public class CaseService {
      * Submitted cases for the manager list. mine/unassigned narrow the list.
      */
     @Transactional(readOnly = true)
-    public Page<Case> getSubmittedCases(UUID assignedTo, boolean unassignedOnly, Pageable pageable) {
-        return caseRepository.findSubmitted(assignedTo, unassignedOnly, pageable);
+    public Page<Case> getSubmittedCases(UUID assignedTo, boolean unassignedOnly, CaseAccessPolicy.StaffScope scope,
+                                        Pageable pageable) {
+        return caseRepository.findSubmitted(assignedTo, unassignedOnly,
+                scope.organizationId(), scope.staffId(), scope.clearance(), pageable);
     }
 
     /**

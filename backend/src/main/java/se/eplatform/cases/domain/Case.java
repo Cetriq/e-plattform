@@ -22,6 +22,14 @@ import java.util.*;
 @Table(name = "cases")
 public class Case extends BaseEntity {
 
+    /** The group handling the case, for e-services with access scope GROUP. */
+    @Column(name = "handling_group_id")
+    private UUID handlingGroupId;
+
+    /** NORMAL, RESTRICTED or CONFIDENTIAL; staff need at least this clearance. */
+    @Column(nullable = false, length = 20)
+    private String confidentiality = "NORMAL";
+
     /** The organisation handling the case; taken from the e-service when the case is created and never changed. */
     @Column(name = "organization_id")
     private UUID organizationId;
@@ -340,5 +348,21 @@ public class Case extends BaseEntity {
 
     public void setOrganizationId(UUID organizationId) {
         this.organizationId = organizationId;
+    }
+
+    public UUID getHandlingGroupId() {
+        return handlingGroupId;
+    }
+
+    public void setHandlingGroupId(UUID handlingGroupId) {
+        this.handlingGroupId = handlingGroupId;
+    }
+
+    public String getConfidentiality() {
+        return confidentiality;
+    }
+
+    public void setConfidentiality(String confidentiality) {
+        this.confidentiality = confidentiality;
     }
 }

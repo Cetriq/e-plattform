@@ -19,6 +19,26 @@ import java.util.UUID;
 public interface CaseRepository extends JpaRepository<Case, UUID> {
 
     /**
+     * The cases staff may reach (CaseAccessPolicy), as a condition on the alias
+     * "c". Parameters: orgId (the active organisation), staffId (the user) and
+     * clearance (0 NORMAL, 1 RESTRICTED, 2 CONFIDENTIAL). Single reads, lists,
+     * searches and counts all use this condition, so they cannot disagree.
+     * The staff role is checked by CaseAccessPolicy before any of them run.
+     */
+    String STAFF_ACCESS =
+            "c.organizationId = :orgId " +
+            "AND (CASE c.confidentiality WHEN 'NORMAL' THEN 0 WHEN 'RESTRICTED' THEN 1 ELSE 2 END) <= :clearance " +
+            "AND (c.flow.accessScope = 'ORGANIZATION' " +
+            "     OR c.assignedTo.id = :staffId " +
+            "     OR (c.flow.accessScope = 'GROUP' AND c.handlingGroupId IN " +
+            "         (SELECT g.id FROM User u JOIN u.groups g WHERE u.id = :staffId))) ";
+
+    /** Whether staff may reach the case (see {@link #STAFF_ACCESS}). */
+    @Query("SELECT COUNT(c) > 0 FROM Case c WHERE c.id = :caseId AND " + STAFF_ACCESS)
+    boolean isVisibleToStaff(@Param("caseId") UUID caseId, @Param("orgId") UUID orgId,
+                             @Param("staffId") UUID staffId, @Param("clearance") int clearance);
+
+    /**
      * Find case by ID with flow and status eagerly loaded.
      */
     @EntityGraph(attributePaths = {"flow", "flow.steps", "status"})
@@ -76,22 +96,17 @@ public interface CaseRepository extends JpaRepository<Case, UUID> {
     Page<Case> findByPriority(Priority priority, Pageable pageable);
 
     /**
-     * Find submitted cases (not drafts) with flow eagerly loaded.
-     */
-    @EntityGraph(attributePaths = {"flow", "flow.steps", "status"})
-    @Query("SELECT c FROM Case c WHERE c.submittedAt IS NOT NULL")
-    Page<Case> findAllSubmitted(Pageable pageable);
-
-    /**
      * Submitted cases, optionally limited to those assigned to a user
      * (assignedTo set) or to unassigned ones (unassignedOnly).
      */
     @EntityGraph(attributePaths = {"flow", "flow.steps", "status", "assignedTo"})
     @Query("SELECT c FROM Case c LEFT JOIN c.assignedTo a WHERE c.submittedAt IS NOT NULL " +
            "AND (:assignedTo IS NULL OR a.id = :assignedTo) " +
-           "AND (:unassignedOnly = false OR a IS NULL)")
+           "AND (:unassignedOnly = false OR a IS NULL) AND " + STAFF_ACCESS)
     Page<Case> findSubmitted(@Param("assignedTo") UUID assignedTo,
                              @Param("unassignedOnly") boolean unassignedOnly,
+                             @Param("orgId") UUID orgId, @Param("staffId") UUID staffId,
+                             @Param("clearance") int clearance,
                              Pageable pageable);
 
     /**
@@ -111,54 +126,38 @@ public interface CaseRepository extends JpaRepository<Case, UUID> {
      */
     long countByStatusId(UUID statusId);
 
-    /**
-     * Count cases by status name.
-     */
-    @Query("SELECT COUNT(c) FROM Case c WHERE c.status.name = :statusName")
-    long countByStatusName(@Param("statusName") String statusName);
+    // ---------- Statistics for one organisation ----------
+
+    long countByOrganizationId(UUID organizationId);
+
+    @Query("SELECT COUNT(c) FROM Case c WHERE c.organizationId = :orgId AND c.status.name = :statusName")
+    long countByStatusName(@Param("orgId") UUID orgId, @Param("statusName") String statusName);
+
+    long countByOrganizationIdAndCreatedAtAfter(UUID organizationId, Instant timestamp);
+
+    List<Case> findByOrganizationIdAndCreatedAtAfter(UUID organizationId, Instant timestamp);
+
+    @Query("SELECT c FROM Case c WHERE c.organizationId = :orgId AND c.status.name = :statusName")
+    List<Case> findByStatusName(@Param("orgId") UUID orgId, @Param("statusName") String statusName);
+
+    @Query("SELECT c.status.name, COUNT(c) FROM Case c WHERE c.organizationId = :orgId GROUP BY c.status.name")
+    List<Object[]> countGroupByStatus(@Param("orgId") UUID orgId);
+
+    @Query("SELECT c.flow.id, c.flow.name, COUNT(c) FROM Case c WHERE c.organizationId = :orgId " +
+           "GROUP BY c.flow.id, c.flow.name ORDER BY COUNT(c) DESC")
+    List<Object[]> countGroupByFlow(@Param("orgId") UUID orgId);
 
     /**
-     * Count cases created after a certain time.
-     */
-    long countByCreatedAtAfter(Instant timestamp);
-
-    /**
-     * Find cases created after a certain time.
-     */
-    List<Case> findByCreatedAtAfter(Instant timestamp);
-
-    /**
-     * Find cases by status name.
-     */
-    @Query("SELECT c FROM Case c WHERE c.status.name = :statusName")
-    List<Case> findByStatusName(@Param("statusName") String statusName);
-
-    /**
-     * Count cases grouped by status.
-     */
-    @Query("SELECT c.status.name, COUNT(c) FROM Case c GROUP BY c.status.name")
-    List<Object[]> countGroupByStatus();
-
-    /**
-     * Count cases grouped by flow.
-     */
-    @Query("SELECT c.flow.id, c.flow.name, COUNT(c) FROM Case c GROUP BY c.flow.id, c.flow.name ORDER BY COUNT(c) DESC")
-    List<Object[]> countGroupByFlow();
-
-    /**
-     * Find cases submitted within a date range.
-     */
-    @Query("SELECT c FROM Case c WHERE c.submittedAt BETWEEN :start AND :end")
-    List<Case> findSubmittedBetween(@Param("start") Instant start, @Param("end") Instant end);
-
-    /**
-     * Search cases by reference number or description.
+     * Search the cases staff may reach by reference number or description.
      */
     @EntityGraph(attributePaths = {"flow", "flow.steps", "status", "assignedTo"})
-    @Query("SELECT c FROM Case c WHERE " +
+    @Query("SELECT c FROM Case c WHERE (" +
            "LOWER(c.referenceNumber) LIKE LOWER(CONCAT('%', :query, '%')) OR " +
-           "LOWER(c.userDescription) LIKE LOWER(CONCAT('%', :query, '%'))")
-    Page<Case> search(@Param("query") String query, Pageable pageable);
+           "LOWER(c.userDescription) LIKE LOWER(CONCAT('%', :query, '%'))) AND " + STAFF_ACCESS)
+    Page<Case> search(@Param("query") String query,
+                      @Param("orgId") UUID orgId, @Param("staffId") UUID staffId,
+                      @Param("clearance") int clearance,
+                      Pageable pageable);
 
     /**
      * Find case with all related data for manager view.

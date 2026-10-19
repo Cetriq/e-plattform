@@ -222,6 +222,7 @@ public class AdminFlowService {
 
         Flow copy = new Flow(original.getName() + " (kopia)");
         copy.setOrganizationId(original.getOrganizationId());
+        copy.setAccessScope(original.getAccessScope());
         copy.setShortDescription(original.getShortDescription());
         copy.setLongDescription(original.getLongDescription());
         copy.setSubmittedMessage(original.getSubmittedMessage());

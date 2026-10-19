@@ -95,4 +95,8 @@ public interface FlowRepository extends JpaRepository<Flow, UUID> {
            "LEFT JOIN FETCH f.category " +
            "LEFT JOIN FETCH f.family")
     Page<Flow> findAllWithRelations(Pageable pageable);
+
+    long countByOrganizationId(UUID organizationId);
+
+    long countByOrganizationIdAndStatus(UUID organizationId, se.eplatform.flow.domain.FlowStatus status);
 }

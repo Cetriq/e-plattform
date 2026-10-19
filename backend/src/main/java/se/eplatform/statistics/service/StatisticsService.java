@@ -3,6 +3,7 @@ package se.eplatform.statistics.service;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import se.eplatform.cases.domain.Case;
+import se.eplatform.common.security.CurrentUser;
 import se.eplatform.cases.repository.CaseRepository;
 import se.eplatform.flow.repository.FlowRepository;
 import se.eplatform.statistics.api.StatisticsController.*;
@@ -22,34 +23,38 @@ public class StatisticsService {
     private final CaseRepository caseRepository;
     private final FlowRepository flowRepository;
     private final UserRepository userRepository;
+    private final se.eplatform.user.repository.OrganizationMembershipRepository memberships;
 
     public StatisticsService(
             CaseRepository caseRepository,
             FlowRepository flowRepository,
-            UserRepository userRepository) {
+            UserRepository userRepository,
+            se.eplatform.user.repository.OrganizationMembershipRepository memberships) {
         this.caseRepository = caseRepository;
         this.flowRepository = flowRepository;
         this.userRepository = userRepository;
+        this.memberships = memberships;
     }
 
     public OverviewStats getOverviewStats() {
-        long totalCases = caseRepository.count();
-        long pendingCases = caseRepository.countByStatusName("SUBMITTED") +
-                           caseRepository.countByStatusName("IN_PROGRESS");
-        long completedCases = caseRepository.countByStatusName("COMPLETED");
+        UUID org = CurrentUser.requireOrganizationId();
+        long totalCases = caseRepository.countByOrganizationId(org);
+        long pendingCases = caseRepository.countByStatusName(org, "SUBMITTED") +
+                           caseRepository.countByStatusName(org, "IN_PROGRESS");
+        long completedCases = caseRepository.countByStatusName(org, "COMPLETED");
 
-        long totalFlows = flowRepository.count();
-        long publishedFlows = flowRepository.countByStatus(se.eplatform.flow.domain.FlowStatus.PUBLISHED);
+        long totalFlows = flowRepository.countByOrganizationId(org);
+        long publishedFlows = flowRepository.countByOrganizationIdAndStatus(org, se.eplatform.flow.domain.FlowStatus.PUBLISHED);
 
-        long totalUsers = userRepository.count();
+        long totalUsers = memberships.countByOrganizationId(org);
 
         // Cases this month
         LocalDate startOfMonth = LocalDate.now().withDayOfMonth(1);
         Instant monthStart = startOfMonth.atStartOfDay(ZoneId.systemDefault()).toInstant();
-        long casesThisMonth = caseRepository.countByCreatedAtAfter(monthStart);
+        long casesThisMonth = caseRepository.countByOrganizationIdAndCreatedAtAfter(org, monthStart);
 
         // Average processing time (simplified - would need more complex query in production)
-        double avgProcessingDays = calculateAverageProcessingDays();
+        double avgProcessingDays = calculateAverageProcessingDays(org);
 
         return new OverviewStats(
                 totalCases,
@@ -64,14 +69,14 @@ public class StatisticsService {
     }
 
     public List<StatusCount> getCasesByStatus() {
-        List<Object[]> results = caseRepository.countGroupByStatus();
+        List<Object[]> results = caseRepository.countGroupByStatus(CurrentUser.requireOrganizationId());
         return results.stream()
                 .map(row -> new StatusCount((String) row[0], (Long) row[1]))
                 .collect(Collectors.toList());
     }
 
     public List<FlowCount> getCasesByFlow() {
-        List<Object[]> results = caseRepository.countGroupByFlow();
+        List<Object[]> results = caseRepository.countGroupByFlow(CurrentUser.requireOrganizationId());
         return results.stream()
                 .map(row -> new FlowCount(
                         row[0].toString(),
@@ -96,7 +101,7 @@ public class StatisticsService {
 
         // Get submission counts
         Instant startInstant = startDate.atStartOfDay(ZoneId.systemDefault()).toInstant();
-        List<Case> cases = caseRepository.findByCreatedAtAfter(startInstant);
+        List<Case> cases = caseRepository.findByOrganizationIdAndCreatedAtAfter(CurrentUser.requireOrganizationId(), startInstant);
 
         for (Case c : cases) {
             LocalDate createdDate = c.getCreatedAt()
@@ -128,9 +133,9 @@ public class StatisticsService {
         return timeline;
     }
 
-    private double calculateAverageProcessingDays() {
+    private double calculateAverageProcessingDays(UUID org) {
         // Simplified - in production you'd want a proper query
-        List<Case> completedCases = caseRepository.findByStatusName("COMPLETED");
+        List<Case> completedCases = caseRepository.findByStatusName(org, "COMPLETED");
         if (completedCases.isEmpty()) {
             return 0.0;
         }

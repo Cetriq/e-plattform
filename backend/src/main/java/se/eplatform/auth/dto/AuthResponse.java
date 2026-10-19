@@ -11,6 +11,7 @@ public record AuthResponse(
      * @param roles               global roles plus the roles in the active organisation
      * @param activeOrganization  the organisation staff are working for, or null
      * @param memberships         organisations the user can switch to
+     * @param clearance           highest confidentiality the user may see in the active organisation, or null
      */
     public record UserInfo(
         String id,
@@ -22,7 +23,8 @@ public record AuthResponse(
         Set<String> roles,
         Set<String> permissions,
         OrganizationRef activeOrganization,
-        List<OrganizationRef> memberships
+        List<OrganizationRef> memberships,
+        String clearance
     ) {}
 
     public record OrganizationRef(String id, String name, String slug) {}

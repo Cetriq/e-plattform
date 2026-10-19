@@ -15,7 +15,7 @@ import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.server.ResponseStatusException;
 import se.eplatform.audit.domain.AuditAction;
 import se.eplatform.auth.dto.AuthResponse.UserInfo;
-import se.eplatform.cases.service.CaseAccessService;
+import se.eplatform.cases.service.CaseAccessPolicy;
 import se.eplatform.common.security.CurrentUser;
 import se.eplatform.common.validation.FileValidationService;
 import se.eplatform.common.validation.FileValidationService.ValidationResult;
@@ -44,12 +44,12 @@ public class FileController {
 
     private final FileStorageService fileStorageService;
     private final FileValidationService fileValidationService;
-    private final CaseAccessService caseAccess;
+    private final CaseAccessPolicy caseAccess;
 
     public FileController(
             FileStorageService fileStorageService,
             FileValidationService fileValidationService,
-            CaseAccessService caseAccess) {
+            CaseAccessPolicy caseAccess) {
         this.fileStorageService = fileStorageService;
         this.fileValidationService = fileValidationService;
         this.caseAccess = caseAccess;
@@ -263,7 +263,7 @@ public class FileController {
     @GetMapping("/usage/{userId}")
     public ResponseEntity<StorageUsageResponse> getStorageUsage(@PathVariable UUID userId) {
         UserInfo user = CurrentUser.require();
-        if (!CurrentUser.isStaff(user) && !user.id().equals(userId.toString())) {
+        if (!user.id().equals(userId.toString())) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Du kan bara se din egen lagring");
         }
         long bytesUsed = fileStorageService.getStorageUsedByUser(userId);
@@ -278,9 +278,9 @@ public class FileController {
     private Attachment requireReadable(UUID id) {
         UserInfo user = CurrentUser.require();
         return fileStorageService.getAttachment(id)
-                .filter(a -> CurrentUser.isStaff(user)
-                        || a.getUploadedBy().toString().equals(user.id())
-                        || (a.getCaseId() != null && caseAccess.isOwner(a.getCaseId(), user)))
+                // The uploader, or whoever may read the case it belongs to (CaseAccessPolicy)
+                .filter(a -> a.getUploadedBy().toString().equals(user.id())
+                        || (a.getCaseId() != null && caseAccess.canRead(a.getCaseId(), user)))
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Filen hittades inte"));
     }
 

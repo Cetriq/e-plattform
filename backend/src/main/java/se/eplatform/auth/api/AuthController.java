@@ -23,6 +23,7 @@ import se.eplatform.audit.service.AuditService;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.UUID;
 
 /**
@@ -275,6 +276,53 @@ public class AuthController {
             .orElseGet(() -> ResponseEntity.status(HttpStatus.UNAUTHORIZED)
                 .body(Map.of("error", "Invalid or expired token")));
     }
+
+    @Operation(
+        summary = "Byt organisation",
+        description = """
+            Personal arbetar för en organisation i taget. Ger en ny token för den
+            valda organisationen, om användaren är medlem i den. Rollerna i den
+            nya token är de som användaren har i den organisationen.
+            """
+    )
+    @ApiResponses({
+        @ApiResponse(responseCode = "200", description = "Ny token för organisationen",
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = AuthResponse.class))),
+        @ApiResponse(responseCode = "401", description = "Ogiltig token"),
+        @ApiResponse(responseCode = "403", description = "Användaren är inte medlem i organisationen")
+    })
+    @PostMapping("/organization")
+    public ResponseEntity<?> switchOrganization(
+            @RequestHeader(value = "Authorization", required = false) String authHeader,
+            @Valid @RequestBody SwitchOrganizationRequest request) {
+        if (authHeader == null || !authHeader.startsWith("Bearer ")) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                .body(Map.of("error", "No valid token provided"));
+        }
+        String token = authHeader.substring(7);
+        Optional<AuthResponse.UserInfo> current = authService.validateToken(token).map(AuthResponse::user);
+        if (current.isEmpty()) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                .body(Map.of("error", "Invalid or expired token"));
+        }
+        return authService.switchOrganization(token, request.organizationId())
+            .<ResponseEntity<?>>map(auth -> {
+                auditService.recordFor(auth.user(), AuditService.Entry.of(AuditAction.ORGANIZATION_SWITCH)
+                        .entity("ORGANIZATION", request.organizationId())
+                        .details("Arbetar nu för " + auth.user().activeOrganization().name()));
+                return ResponseEntity.ok(auth);
+            })
+            .orElseGet(() -> {
+                auditService.recordFor(current.get(), AuditService.Entry.of(AuditAction.ORGANIZATION_SWITCH)
+                        .entity("ORGANIZATION", request.organizationId())
+                        .details("Inte medlem i organisationen")
+                        .outcome(AuditOutcome.DENIED, 403));
+                return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                    .body(Map.of("error", "Not a member of the organization"));
+            });
+    }
+
+    public record SwitchOrganizationRequest(@jakarta.validation.constraints.NotNull UUID organizationId) {}
 
     @Operation(
         summary = "Logga ut",

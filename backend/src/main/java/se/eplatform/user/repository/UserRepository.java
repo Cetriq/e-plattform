@@ -19,9 +19,12 @@ public interface UserRepository extends JpaRepository<User, UUID> {
 
     Optional<User> findByEmail(String email);
 
-    @Query("SELECT DISTINCT u FROM User u JOIN u.roles r " +
-           "WHERE r.name IN :roleNames AND u.active = true ORDER BY u.firstName, u.lastName")
-    List<User> findActiveWithAnyRole(@Param("roleNames") Collection<String> roleNames);
+    /** Active members of an organisation with any of the roles there. */
+    @Query("SELECT DISTINCT u FROM User u JOIN u.memberships m JOIN m.roles r " +
+           "WHERE m.organization.id = :organizationId AND r.name IN :roleNames AND u.active = true " +
+           "ORDER BY u.firstName, u.lastName")
+    List<User> findActiveWithAnyRole(@Param("organizationId") UUID organizationId,
+                                     @Param("roleNames") Collection<String> roleNames);
 
     /**
      * Ids of the temporary citizen accounts created for demo visitors.
@@ -55,6 +58,7 @@ public interface UserRepository extends JpaRepository<User, UUID> {
            "LOWER(u.firstName) LIKE LOWER(CONCAT('%', :query, '%')) OR " +
            "LOWER(u.lastName) LIKE LOWER(CONCAT('%', :query, '%')) OR " +
            "LOWER(u.email) LIKE LOWER(CONCAT('%', :query, '%'))) AND " +
-           "(:role = '' OR EXISTS (SELECT r FROM u.roles r WHERE r.name = :role))")
+           "(:role = '' OR EXISTS (SELECT r FROM u.roles r WHERE r.name = :role) " +
+           "OR EXISTS (SELECT mr FROM u.memberships m JOIN m.roles mr WHERE mr.name = :role))")
     Page<User> searchWithRole(@Param("query") String query, @Param("role") String role, Pageable pageable);
 }

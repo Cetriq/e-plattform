@@ -23,12 +23,14 @@ import java.util.UUID;
  * Tokens are stateless, so they survive restarts and work across several
  * backend instances. Roles are not stored in the token; the user is loaded
  * from the database on each request so role changes and deactivation apply
- * immediately.
+ * immediately. The claim "org" holds the organisation staff are working for;
+ * membership is checked again on every request.
  */
 @Service
 public class TokenService {
 
     private static final int MIN_SECRET_BYTES = 32;
+    private static final String ORGANIZATION_CLAIM = "org";
 
     private final byte[] secret;
     private final String issuer;
@@ -47,15 +49,25 @@ public class TokenService {
         this.expirationSeconds = expirationSeconds;
     }
 
+    /** The verified contents of a token. organizationId is null for users without an active organisation. */
+    public record Claims(UUID userId, UUID organizationId) {}
+
     public String issue(UUID userId) {
+        return issue(userId, null);
+    }
+
+    public String issue(UUID userId, UUID organizationId) {
         Instant now = Instant.now();
-        JWTClaimsSet claims = new JWTClaimsSet.Builder()
+        JWTClaimsSet.Builder builder = new JWTClaimsSet.Builder()
                 .subject(userId.toString())
                 .issuer(issuer)
                 .issueTime(Date.from(now))
                 .expirationTime(Date.from(now.plusSeconds(expirationSeconds)))
-                .jwtID(UUID.randomUUID().toString())
-                .build();
+                .jwtID(UUID.randomUUID().toString());
+        if (organizationId != null) {
+            builder.claim(ORGANIZATION_CLAIM, organizationId.toString());
+        }
+        JWTClaimsSet claims = builder.build();
         try {
             SignedJWT jwt = new SignedJWT(new JWSHeader(JWSAlgorithm.HS256), claims);
             jwt.sign(new MACSigner(secret));
@@ -66,10 +78,10 @@ public class TokenService {
     }
 
     /**
-     * Returns the user id of a valid token, or empty if the token is malformed,
+     * Returns the claims of a valid token, or empty if the token is malformed,
      * has a bad signature, is from another issuer or has expired.
      */
-    public Optional<UUID> verify(String token) {
+    public Optional<Claims> verify(String token) {
         try {
             SignedJWT jwt = SignedJWT.parse(token);
             if (!JWSAlgorithm.HS256.equals(jwt.getHeader().getAlgorithm())
@@ -83,7 +95,9 @@ public class TokenService {
                     || expiration.toInstant().isBefore(Instant.now())) {
                 return Optional.empty();
             }
-            return Optional.of(UUID.fromString(claims.getSubject()));
+            String organization = claims.getStringClaim(ORGANIZATION_CLAIM);
+            return Optional.of(new Claims(UUID.fromString(claims.getSubject()),
+                    organization == null ? null : UUID.fromString(organization)));
         } catch (ParseException | JOSEException | IllegalArgumentException | NullPointerException e) {
             return Optional.empty();
         }

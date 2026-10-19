@@ -30,7 +30,10 @@ public class FlowController {
 
     private final FlowService flowService;
 
-    public FlowController(FlowService flowService) {
+    private final se.eplatform.user.repository.OrganizationRepository organizations;
+
+    public FlowController(FlowService flowService, se.eplatform.user.repository.OrganizationRepository organizations) {
+        this.organizations = organizations;
         this.flowService = flowService;
     }
 
@@ -55,8 +58,16 @@ public class FlowController {
         )
     )
     @GetMapping
-    public List<FlowDTO> getFlows() {
+    public List<FlowDTO> getFlows(
+            @Parameter(description = "Kortnamn (slug) för en organisation, till exempel exempelkommun. Utan värde: alla organisationer.")
+            @RequestParam(required = false) String organization) {
+        java.util.UUID organizationId = organization == null || organization.isBlank() ? null
+                : organizations.findBySlugAndActiveTrue(organization)
+                        .orElseThrow(() -> new org.springframework.web.server.ResponseStatusException(
+                                org.springframework.http.HttpStatus.NOT_FOUND, "Okänd organisation"))
+                        .getId();
         return flowService.getAccessibleFlows().stream()
+                .filter(flow -> organizationId == null || organizationId.equals(flow.getOrganizationId()))
                 .map(FlowDTO::summary)
                 .toList();
     }

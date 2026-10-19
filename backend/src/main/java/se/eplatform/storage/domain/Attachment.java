@@ -14,6 +14,10 @@ import java.util.UUID;
 @Table(name = "attachments")
 public class Attachment extends BaseEntity {
 
+    /** The organisation of the case the file belongs to. */
+    @Column(name = "organization_id")
+    private UUID organizationId;
+
     @Column(name = "original_filename", nullable = false)
     private String originalFilename;
 
@@ -188,5 +192,13 @@ public class Attachment extends BaseEntity {
 
     public void setDeletedAt(Instant deletedAt) {
         this.deletedAt = deletedAt;
+    }
+
+    public UUID getOrganizationId() {
+        return organizationId;
+    }
+
+    public void setOrganizationId(UUID organizationId) {
+        this.organizationId = organizationId;
     }
 }

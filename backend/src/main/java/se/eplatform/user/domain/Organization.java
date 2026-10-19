@@ -38,6 +38,14 @@ public class Organization extends BaseEntity {
     @Column(nullable = false)
     private boolean active = true;
 
+    /** MUNICIPALITY, REGION, AGENCY, COLLABORATION or PLATFORM. */
+    @Column(nullable = false, length = 20)
+    private String kind = "MUNICIPALITY";
+
+    /** Used in addresses such as /o/{slug}. */
+    @Column(nullable = false, unique = true, length = 60)
+    private String slug;
+
     @OneToMany(mappedBy = "organization")
     private List<User> users = new ArrayList<>();
 
@@ -51,6 +59,22 @@ public class Organization extends BaseEntity {
     }
 
     // Getters and setters
+
+    public String getKind() {
+        return kind;
+    }
+
+    public void setKind(String kind) {
+        this.kind = kind;
+    }
+
+    public String getSlug() {
+        return slug;
+    }
+
+    public void setSlug(String slug) {
+        this.slug = slug;
+    }
 
     public String getName() {
         return name;

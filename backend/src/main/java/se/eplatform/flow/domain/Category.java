@@ -12,6 +12,10 @@ import java.util.UUID;
 @Table(name = "categories")
 public class Category {
 
+    /** The organisation the category belongs to. */
+    @Column(name = "organization_id")
+    private UUID organizationId;
+
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
     private UUID id;
@@ -82,5 +86,13 @@ public class Category {
 
     public Instant getCreatedAt() {
         return createdAt;
+    }
+
+    public UUID getOrganizationId() {
+        return organizationId;
+    }
+
+    public void setOrganizationId(UUID organizationId) {
+        this.organizationId = organizationId;
     }
 }

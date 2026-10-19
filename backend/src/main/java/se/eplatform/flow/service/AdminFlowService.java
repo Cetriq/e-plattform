@@ -4,6 +4,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import se.eplatform.common.security.CurrentUser;
 import se.eplatform.flow.domain.*;
 import se.eplatform.flow.repository.CategoryRepository;
 import se.eplatform.flow.repository.FlowRepository;
@@ -93,6 +94,7 @@ public class AdminFlowService {
             String[] tags) {
 
         Flow flow = new Flow(name);
+        flow.setOrganizationId(CurrentUser.requireOrganizationId());
         flow.setShortDescription(shortDescription);
         flow.setLongDescription(longDescription);
         if (requireAuth != null) flow.setRequireAuth(requireAuth);
@@ -219,6 +221,7 @@ public class AdminFlowService {
                 .orElseThrow(() -> new IllegalArgumentException("Flow not found: " + id));
 
         Flow copy = new Flow(original.getName() + " (kopia)");
+        copy.setOrganizationId(original.getOrganizationId());
         copy.setShortDescription(original.getShortDescription());
         copy.setLongDescription(original.getLongDescription());
         copy.setSubmittedMessage(original.getSubmittedMessage());

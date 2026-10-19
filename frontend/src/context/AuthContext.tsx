@@ -11,6 +11,7 @@ import {
   logout as apiLogout,
   getCurrentUser,
   refreshSession,
+  switchOrganization as switchOrganizationApi,
   getStoredToken,
   setStoredToken,
   setStoredUser,
@@ -24,6 +25,8 @@ interface AuthContextType extends AuthState {
   updateUser: (user: User) => void;
   /** Swap the token for a fresh one; false if the session already ended. */
   extendSession: () => Promise<boolean>;
+  /** Work for another of the user's organisations; false if that failed. */
+  switchOrganization: (organizationId: string) => Promise<boolean>;
   hasRole: (role: string) => boolean;
   hasPermission: (permission: string) => boolean;
 }
@@ -139,6 +142,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }, []);
 
+  const switchOrganization = useCallback(async (organizationId: string) => {
+    const token = getStoredToken();
+    if (!token) return false;
+    try {
+      const response = await switchOrganizationApi(token, organizationId);
+      setStoredToken(response.token);
+      setStoredUser(response.user);
+      setState(prev => ({ ...prev, token: response.token, user: response.user }));
+      return true;
+    } catch {
+      return false;
+    }
+  }, []);
+
   const hasRole = useCallback((role: string) => {
     return state.user?.roles.includes(role) ?? false;
   }, [state.user]);
@@ -162,6 +179,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         logout,
         updateUser,
         extendSession,
+        switchOrganization,
         hasRole,
         hasPermission,
       }}

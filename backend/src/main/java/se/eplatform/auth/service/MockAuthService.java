@@ -4,9 +4,11 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import se.eplatform.auth.dto.AuthResponse;
+import se.eplatform.auth.dto.AuthResponse.OrganizationRef;
 import se.eplatform.auth.dto.AuthResponse.UserInfo;
 import se.eplatform.auth.dto.UpdateProfileRequest;
 import se.eplatform.common.security.TokenService;
+import se.eplatform.user.domain.OrganizationMembership;
 import se.eplatform.user.domain.Role;
 import se.eplatform.user.domain.User;
 import se.eplatform.user.repository.RoleRepository;
@@ -16,11 +18,14 @@ import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.SecureRandom;
 import java.time.Instant;
+import java.util.Comparator;
 import java.util.HexFormat;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
+import java.util.UUID;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 /**
  * Demo authentication without e-legitimation.
@@ -29,6 +34,10 @@ import java.util.stream.Collectors;
  * gated with a shared access code, and citizens can be given a fresh,
  * isolated account per visit so they never see each other's cases.
  * In production this would be replaced with BankID or other e-legitimation.
+ *
+ * Staff work for one organisation at a time. The token names it (claim
+ * "org"); a token naming an organisation the user is no longer a member of
+ * is not accepted. Without the claim the user has only their global roles.
  */
 @Service
 public class MockAuthService {
@@ -44,7 +53,10 @@ public class MockAuthService {
             "handlaggare@example.com",
             "informationssakerhet@example.com",
             "it-drift@example.com",
-            "medborgare@example.com");
+            "medborgare@example.com",
+            "admin.grannkommun@example.com",
+            "handlaggare.grannkommun@example.com",
+            "informationssakerhet.grannkommun@example.com");
 
     private final UserRepository userRepository;
     private final RoleRepository roleRepository;
@@ -100,7 +112,7 @@ public class MockAuthService {
             .map(user -> {
                 user.setLastLoginAt(Instant.now());
                 userRepository.save(user);
-                return new AuthResponse(tokenService.issue(user.getId()), toUserInfo(user));
+                return issue(user, defaultMembership(user));
             });
     }
 
@@ -124,7 +136,7 @@ public class MockAuthService {
         user.addRole(citizenRole);
 
         User saved = userRepository.save(user);
-        return new AuthResponse(tokenService.issue(saved.getId()), toUserInfo(saved));
+        return issue(saved, null);
     }
 
     /**
@@ -132,10 +144,9 @@ public class MockAuthService {
      */
     @Transactional(readOnly = true)
     public Optional<AuthResponse> validateToken(String token) {
-        return tokenService.verify(token)
-            .flatMap(userRepository::findById)
-            .filter(User::isActive)
-            .map(user -> new AuthResponse(token, toUserInfo(user)));
+        return tokenService.verify(token).flatMap(claims -> activeUser(claims.userId())
+            .flatMap(user -> sessionMembership(user, claims.organizationId())
+                .map(membership -> new AuthResponse(token, toUserInfo(user, membership.orElse(null))))));
     }
 
     /**
@@ -143,10 +154,21 @@ public class MockAuthService {
      */
     @Transactional(readOnly = true)
     public Optional<AuthResponse> refresh(String token) {
-        return tokenService.verify(token)
-            .flatMap(userRepository::findById)
-            .filter(User::isActive)
-            .map(user -> new AuthResponse(tokenService.issue(user.getId()), toUserInfo(user)));
+        return tokenService.verify(token).flatMap(claims -> activeUser(claims.userId())
+            .flatMap(user -> sessionMembership(user, claims.organizationId())
+                // Tokens from before organisations existed get the default one
+                .map(membership -> issue(user, membership.orElseGet(() ->
+                        claims.organizationId() == null ? defaultMembership(user) : null)))));
+    }
+
+    /**
+     * Switch the organisation the user is working for. Empty when the token is
+     * invalid or the user is not a member of the organisation.
+     */
+    @Transactional(readOnly = true)
+    public Optional<AuthResponse> switchOrganization(String token, UUID organizationId) {
+        return tokenService.verify(token).flatMap(claims -> activeUser(claims.userId())
+            .flatMap(user -> membership(user, organizationId).map(membership -> issue(user, membership))));
     }
 
     /**
@@ -154,10 +176,8 @@ public class MockAuthService {
      */
     @Transactional
     public Optional<UserInfo> updateProfile(String token, UpdateProfileRequest request) {
-        return tokenService.verify(token)
-            .flatMap(userRepository::findById)
-            .filter(User::isActive)
-            .map(user -> {
+        return tokenService.verify(token).flatMap(claims -> activeUser(claims.userId())
+            .flatMap(user -> sessionMembership(user, claims.organizationId()).map(membership -> {
                 boolean nameChanged = false;
                 if (request.firstName() != null && !request.firstName().isBlank()) {
                     user.setFirstName(request.firstName().trim());
@@ -176,8 +196,8 @@ public class MockAuthService {
                     user.setPhone(trimmed.isEmpty() ? null : trimmed);
                 }
                 User saved = userRepository.save(user);
-                return toUserInfo(saved);
-            });
+                return toUserInfo(saved, membership.orElse(null));
+            })));
     }
 
     /**
@@ -190,22 +210,68 @@ public class MockAuthService {
             .flatMap(Optional::stream)
             .filter(User::isActive)
             .filter(user -> !(isolatedCitizens && isCitizenOnly(user)))
-            .map(this::toUserInfo)
+            .map(user -> toUserInfo(user, defaultMembership(user)))
             .toList();
     }
 
     private boolean isCitizenOnly(User user) {
-        return user.getRoles().stream().allMatch(r -> CITIZEN_ROLE.equals(r.getName()));
+        return user.getMemberships().isEmpty()
+            && user.getRoles().stream().allMatch(r -> CITIZEN_ROLE.equals(r.getName()));
     }
 
-    private UserInfo toUserInfo(User user) {
-        Set<String> roles = user.getRoles().stream()
+    private Optional<User> activeUser(UUID userId) {
+        return userRepository.findById(userId).filter(User::isActive);
+    }
+
+    private AuthResponse issue(User user, OrganizationMembership membership) {
+        UUID organizationId = membership == null ? null : membership.getOrganization().getId();
+        return new AuthResponse(tokenService.issue(user.getId(), organizationId), toUserInfo(user, membership));
+    }
+
+    /**
+     * The membership a token's organisation refers to: present and empty when the
+     * token names no organisation, absent (token rejected) when the user is not a
+     * member of the one it names.
+     */
+    private Optional<Optional<OrganizationMembership>> sessionMembership(User user, UUID organizationId) {
+        if (organizationId == null) {
+            return Optional.of(Optional.empty());
+        }
+        return membership(user, organizationId).map(Optional::of);
+    }
+
+    private Optional<OrganizationMembership> membership(User user, UUID organizationId) {
+        return user.getMemberships().stream()
+            .filter(m -> m.getOrganization().getId().equals(organizationId))
+            .filter(m -> m.getOrganization().isActive())
+            .findFirst();
+    }
+
+    /** The oldest membership, used when nothing else says which organisation to work for. */
+    private OrganizationMembership defaultMembership(User user) {
+        return user.getMemberships().stream()
+            .filter(m -> m.getOrganization().isActive())
+            .min(Comparator.comparing(OrganizationMembership::getCreatedAt))
+            .orElse(null);
+    }
+
+    private UserInfo toUserInfo(User user, OrganizationMembership active) {
+        List<Role> effective = Stream.concat(user.getRoles().stream(),
+                active == null ? Stream.empty() : active.getRoles().stream()).toList();
+
+        Set<String> roles = effective.stream()
             .map(Role::getName)
             .collect(Collectors.toSet());
 
-        Set<String> permissions = user.getRoles().stream()
+        Set<String> permissions = effective.stream()
             .flatMap(r -> r.getPermissions().stream())
             .collect(Collectors.toSet());
+
+        List<OrganizationRef> memberships = user.getMemberships().stream()
+            .filter(m -> m.getOrganization().isActive())
+            .map(m -> ref(m.getOrganization()))
+            .sorted(Comparator.comparing(OrganizationRef::name))
+            .toList();
 
         return new UserInfo(
             user.getId().toString(),
@@ -215,7 +281,13 @@ public class MockAuthService {
             user.getFullName(),
             user.getPhone(),
             roles,
-            permissions
+            permissions,
+            active == null ? null : ref(active.getOrganization()),
+            memberships
         );
+    }
+
+    private static OrganizationRef ref(se.eplatform.user.domain.Organization organization) {
+        return new OrganizationRef(organization.getId().toString(), organization.getName(), organization.getSlug());
     }
 }

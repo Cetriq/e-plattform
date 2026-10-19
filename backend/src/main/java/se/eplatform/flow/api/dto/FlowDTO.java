@@ -30,7 +30,8 @@ public record FlowDTO(
         Instant createdAt,
         Instant updatedAt,
         /** Gallringsfrist in months; null = bevaras. */
-        Integer retentionMonths
+        Integer retentionMonths,
+        UUID organizationId
 ) {
     public static FlowDTO from(Flow flow) {
         return new FlowDTO(
@@ -52,7 +53,8 @@ public record FlowDTO(
                 flow.getStepsSorted().stream().map(StepDTO::from).toList(),
                 flow.getCreatedAt(),
                 flow.getUpdatedAt(),
-                flow.getRetentionMonths()
+                flow.getRetentionMonths(),
+                flow.getOrganizationId()
         );
     }
 
@@ -79,7 +81,8 @@ public record FlowDTO(
                 null,
                 flow.getCreatedAt(),
                 flow.getUpdatedAt(),
-                flow.getRetentionMonths()
+                flow.getRetentionMonths(),
+                flow.getOrganizationId()
         );
     }
 }

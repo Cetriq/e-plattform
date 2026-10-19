@@ -10,6 +10,7 @@ public enum AuditAction {
     DEMO_ACCOUNT_CREATED(AuditCategory.SECURITY),
     ACCESS_DENIED(AuditCategory.SECURITY),
     RATE_LIMIT_EXCEEDED(AuditCategory.SECURITY),
+    ORGANIZATION_SWITCH(AuditCategory.SECURITY),
 
     // Reading personal data
     CASE_VIEW(AuditCategory.DATA_ACCESS),

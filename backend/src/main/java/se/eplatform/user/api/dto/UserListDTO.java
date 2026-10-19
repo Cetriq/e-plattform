@@ -20,8 +20,9 @@ public record UserListDTO(
     Instant createdAt
 ) {
     public static UserListDTO from(User user) {
-        List<String> roles = user.getRoles().stream()
+        List<String> roles = user.allRoles()
             .map(r -> r.getName())
+            .distinct()
             .sorted()
             .collect(Collectors.toList());
 

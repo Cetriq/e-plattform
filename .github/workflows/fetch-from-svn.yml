@@ -11,16 +11,30 @@ on:
 jobs:
   fetch:
     runs-on: ubuntu-latest
+    # Imported code is proposed as a pull request and reviewed before it
+    # reaches main, because every push to main deploys the central demo.
+    permissions:
+      contents: write
+      pull-requests: write
     steps:
       - name: Install subversion
         run: sudo apt-get install subversion
       - name: Checkout current repo
         uses: actions/checkout@v4
       - name: Checkout SVN repo
-        run: svn co svn://svn.nordicpeak.com/openeplatform 
-      - name: Commit changes
-        uses: stefanzweifel/git-auto-commit-action@v5
-        
+        run: svn co svn://svn.nordicpeak.com/openeplatform
+      - name: Open pull request with changes
+        uses: peter-evans/create-pull-request@v7
+        with:
+          branch: svn-sync
+          delete-branch: true
+          commit-message: Import changes from the Open-ePlatform SVN repository
+          title: Import changes from the Open-ePlatform SVN repository
+          body: |
+            Automatic import from svn://svn.nordicpeak.com/openeplatform.
+            Review before merging: merging to main deploys the central demo.
+          labels: svn-import
+
   # Prevents this action from being disabled due to repository inactivity. See: https://docs.github.com/en/actions/administering-github-actions/usage-limits-billing-and-administration#disabling-and-enabling-workflows
   workflow-keepalive:
     if: github.event_name == 'schedule'

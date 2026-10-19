@@ -16,6 +16,10 @@ import java.util.stream.Collectors;
 @Table(name = "flows")
 public class Flow extends BaseEntity {
 
+    /** Who in the organisation may handle its cases: ORGANIZATION, GROUP (the case's handling group) or ASSIGNED. */
+    @Column(name = "access_scope", nullable = false, length = 20)
+    private String accessScope = "ORGANIZATION";
+
     /** The organisation that owns the e-service. */
     @Column(name = "organization_id")
     private UUID organizationId;
@@ -131,6 +135,7 @@ public class Flow extends BaseEntity {
         Flow newVersion = new Flow(this.name);
         newVersion.setFamily(this.family);
         newVersion.setOrganizationId(this.organizationId);
+        newVersion.setAccessScope(this.accessScope);
         newVersion.setType(this.type);
         newVersion.setCategory(this.category);
         newVersion.setVersion(this.version + 1);
@@ -389,5 +394,13 @@ public class Flow extends BaseEntity {
 
     public void setOrganizationId(UUID organizationId) {
         this.organizationId = organizationId;
+    }
+
+    public String getAccessScope() {
+        return accessScope;
+    }
+
+    public void setAccessScope(String accessScope) {
+        this.accessScope = accessScope;
     }
 }

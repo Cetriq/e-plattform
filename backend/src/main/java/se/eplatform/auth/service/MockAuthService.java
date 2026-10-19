@@ -283,7 +283,8 @@ public class MockAuthService {
             roles,
             permissions,
             active == null ? null : ref(active.getOrganization()),
-            memberships
+            memberships,
+            active == null ? null : active.getClearance()
         );
     }
 

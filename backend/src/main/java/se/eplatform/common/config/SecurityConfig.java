@@ -35,8 +35,8 @@ import java.util.List;
  * - Public: health/info, published flows, login endpoints and API docs
  * - Admin endpoints (/api/v1/admin/**): ADMIN or FLOW_EDITOR
  * - Everything else under /api/v1 requires a logged-in user. Which cases and
- *   files a user may see is decided in the controllers (see CaseAccessService):
- *   citizens see their own, staff see all.
+ *   files a user may see is decided by CaseAccessPolicy: citizens see their
+ *   own; staff need organisation, role, scope and clearance.
  */
 @Configuration
 @EnableWebSecurity

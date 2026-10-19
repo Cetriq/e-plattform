@@ -30,7 +30,7 @@ import se.eplatform.cases.api.dto.ManagerCaseDTO;
 import se.eplatform.cases.domain.Case;
 import se.eplatform.cases.domain.ExternalMessage;
 import se.eplatform.cases.domain.InternalMessage;
-import se.eplatform.cases.service.CaseAccessService;
+import se.eplatform.cases.service.CaseAccessPolicy;
 import se.eplatform.cases.service.CaseService;
 import se.eplatform.common.security.CurrentUser;
 import se.eplatform.pdf.PdfService;
@@ -57,10 +57,10 @@ import java.util.UUID;
 public class CaseController {
 
     private final CaseService caseService;
-    private final CaseAccessService caseAccess;
+    private final CaseAccessPolicy caseAccess;
     private final PdfService pdfService;
 
-    public CaseController(CaseService caseService, CaseAccessService caseAccess, PdfService pdfService) {
+    public CaseController(CaseService caseService, CaseAccessPolicy caseAccess, PdfService pdfService) {
         this.caseService = caseService;
         this.caseAccess = caseAccess;
         this.pdfService = pdfService;
@@ -80,10 +80,10 @@ public class CaseController {
     public Page<CaseDTO> getCases(
             @RequestParam(defaultValue = "all") String assignee,
             @PageableDefault(size = 20, sort = "submittedAt", direction = Sort.Direction.DESC) Pageable pageable) {
-        UserInfo staff = CurrentUser.requireStaff();
-        UUID assignedTo = "mine".equals(assignee) ? UUID.fromString(staff.id()) : null;
+        CaseAccessPolicy.StaffScope scope = caseAccess.requireStaffScope();
+        UUID assignedTo = "mine".equals(assignee) ? scope.staffId() : null;
         boolean unassignedOnly = "unassigned".equals(assignee);
-        Page<CaseDTO> page = caseService.getSubmittedCases(assignedTo, unassignedOnly, pageable)
+        Page<CaseDTO> page = caseService.getSubmittedCases(assignedTo, unassignedOnly, scope, pageable)
                 .map(CaseDTO::staffSummary);
         return withUnreadCounts(page, false);
     }
@@ -91,7 +91,7 @@ public class CaseController {
     @Operation(summary = "Handläggare som kan tilldelas ärenden")
     @GetMapping("/assignees")
     public List<AssigneeDTO> getAssignees() {
-        CurrentUser.requireStaff();
+        caseAccess.requireStaffScope();
         return caseService.getAssignableUsers().stream()
                 .map(u -> new AssigneeDTO(u.getId(), u.getFullName()))
                 .toList();
@@ -106,7 +106,7 @@ public class CaseController {
     public ResponseEntity<CaseDTO> assignCase(
             @PathVariable UUID id,
             @RequestBody AssignRequest request) {
-        UserInfo staff = CurrentUser.requireStaff();
+        UserInfo staff = caseAccess.requireStaff(id);
         Case updated = caseService.assign(id, request.userId(), UUID.fromString(staff.id()));
         return ResponseEntity.ok(CaseDTO.staffSummary(updated));
     }
@@ -183,7 +183,7 @@ public class CaseController {
     public ResponseEntity<ManagerCaseDTO> getManagerCase(
             @Parameter(description = "Ärendets UUID", required = true)
             @PathVariable UUID id) {
-        CurrentUser.requireStaff();
+        caseAccess.requireStaff(id);
         return caseService.getCaseForManager(id)
                 .map(c -> ManagerCaseDTO.from(c, caseService.allowedTransitions(c)))
                 .map(ResponseEntity::ok)
@@ -358,7 +358,7 @@ public class CaseController {
             @Parameter(description = "Ärendets UUID", required = true)
             @PathVariable UUID id,
             @RequestBody ChangeStatusRequest request) {
-        UserInfo staff = CurrentUser.requireStaff();
+        UserInfo staff = caseAccess.requireStaff(id);
         Case updated = caseService.changeStatus(id, request.statusId(), UUID.fromString(staff.id()), request.comment());
         AuditContext.details("Ny status: " + updated.getStatus().getName());
         return ResponseEntity.ok(CaseDTO.from(updated));
@@ -375,8 +375,8 @@ public class CaseController {
             @Parameter(description = "Sökfras", required = true, example = "EP-2024")
             @RequestParam String q,
             @PageableDefault(size = 20) Pageable pageable) {
-        CurrentUser.requireStaff();
-        return withUnreadCounts(caseService.searchCases(q, pageable).map(CaseDTO::staffSummary), false);
+        CaseAccessPolicy.StaffScope scope = caseAccess.requireStaffScope();
+        return withUnreadCounts(caseService.searchCases(q, scope, pageable).map(CaseDTO::staffSummary), false);
     }
 
     @Operation(
@@ -411,7 +411,7 @@ public class CaseController {
             @Parameter(description = "Ärendets UUID", required = true)
             @PathVariable UUID id,
             @RequestBody MessageRequest request) {
-        UserInfo staff = CurrentUser.requireStaff();
+        UserInfo staff = caseAccess.requireStaff(id);
         InternalMessage msg = caseService.addInternalMessage(id, UUID.fromString(staff.id()), requireText(request));
         return ResponseEntity.ok(ManagerCaseDTO.InternalMessageDTO.from(msg));
     }
@@ -427,7 +427,7 @@ public class CaseController {
             @Parameter(description = "Ärendets UUID", required = true)
             @PathVariable UUID id,
             @RequestBody MessageRequest request) {
-        UserInfo staff = CurrentUser.requireStaff();
+        UserInfo staff = caseAccess.requireStaff(id);
         ExternalMessage msg = caseService.addExternalMessage(id, UUID.fromString(staff.id()), requireText(request), true);
         return ResponseEntity.ok(ManagerCaseDTO.ExternalMessageDTO.from(msg));
     }
@@ -449,7 +449,7 @@ public class CaseController {
     public ResponseEntity<byte[]> generatePdf(
             @Parameter(description = "Ärendets UUID", required = true)
             @PathVariable UUID id) {
-        CurrentUser.requireStaff();
+        caseAccess.requireStaff(id);
         return caseService.getCaseForManager(id)
                 .map(caseEntity -> {
                     try {
@@ -567,9 +567,10 @@ public class CaseController {
         return page.map(dto -> dto.withUnreadMessages(counts.getOrDefault(dto.id(), 0L)));
     }
 
+    /** Lists of a person's own cases are for that person only; staff search instead. */
     private void requireSelfOrStaff(UUID userId) {
         UserInfo user = CurrentUser.require();
-        if (!CurrentUser.isStaff(user) && !user.id().equals(userId.toString())) {
+        if (!user.id().equals(userId.toString())) {
             throw new ResponseStatusException(
                     HttpStatus.FORBIDDEN, "Du kan bara se dina egna ärenden");
         }

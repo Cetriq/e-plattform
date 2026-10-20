@@ -128,6 +128,12 @@ public class Flow extends BaseEntity {
         this.enabled = false;
     }
 
+    /** A newer version has been published. */
+    public void supersede() {
+        this.status = FlowStatus.SUPERSEDED;
+        this.enabled = false;
+    }
+
     /**
      * Create a new version of this flow.
      */

@@ -95,6 +95,12 @@ test('admin dialogs have no violations', async ({ page }) => {
   await loginAs(page, PERSONAS.admin);
   await page.goto(`/admin/flows/${BUILDING_PERMIT_FLOW}`);
   await settle(page);
+  // The published version is locked; the dialogs belong to a draft version
+  await expect(page.getByRole('status').filter({ hasText: 'kan inte ändras' })).toBeVisible();
+  await expectAccessible(page);
+  await page.getByRole('button', { name: 'Skapa ny version' }).click();
+  await page.waitForURL((url) => !url.pathname.endsWith(BUILDING_PERMIT_FLOW));
+  await settle(page);
   await page.getByRole('button', { name: /Lägg till fält/ }).first().click();
   await expect(page.getByRole('dialog')).toBeVisible();
   await expectAccessible(page);

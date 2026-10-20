@@ -34,13 +34,19 @@ public class AdminFlowService {
     private final QueryDefinitionRepository queryDefinitionRepository;
     private final FlowTypeRepository flowTypeRepository;
     private final CategoryRepository categoryRepository;
+    private final FlowCopier flowCopier;
+    private final jakarta.persistence.EntityManager entityManager;
 
     public AdminFlowService(
             FlowRepository flowRepository,
             StepRepository stepRepository,
             QueryDefinitionRepository queryDefinitionRepository,
             FlowTypeRepository flowTypeRepository,
-            CategoryRepository categoryRepository) {
+            CategoryRepository categoryRepository,
+            FlowCopier flowCopier,
+            jakarta.persistence.EntityManager entityManager) {
+        this.flowCopier = flowCopier;
+        this.entityManager = entityManager;
         this.flowRepository = flowRepository;
         this.stepRepository = stepRepository;
         this.queryDefinitionRepository = queryDefinitionRepository;
@@ -109,6 +115,7 @@ public class AdminFlowService {
 
         Flow flow = new Flow(name);
         flow.setOrganizationId(CurrentUser.requireOrganizationId());
+        flow.setFamily(newFamily(name, flow.getOrganizationId()));
         flow.setShortDescription(shortDescription);
         flow.setLongDescription(longDescription);
         if (requireAuth != null) flow.setRequireAuth(requireAuth);
@@ -143,7 +150,7 @@ public class AdminFlowService {
             String[] tags,
             Integer retentionMonths) {
 
-        Flow flow = ownFlow(id);
+        Flow flow = ownDraft(id);
 
         if (name != null) flow.setName(name);
         if (shortDescription != null) flow.setShortDescription(shortDescription);
@@ -214,8 +221,61 @@ public class AdminFlowService {
     @Transactional
     public Flow publishFlow(UUID id) {
         Flow flow = ownFlow(id);
+        if (flow.getStatus() != FlowStatus.DRAFT) {
+            throw notEditable(flow);
+        }
+        // The version it replaces takes no new cases; its existing cases continue
+        for (Flow other : flowRepository.findByFamilyIdOrderByVersionDesc(flow.getFamily().getId())) {
+            if (other.getStatus() == FlowStatus.PUBLISHED && !other.getId().equals(flow.getId())) {
+                other.supersede();
+                flowRepository.save(other);
+            }
+        }
         flow.publish();
-        return flowRepository.save(flow);
+        flowRepository.save(flow);
+        // With its parts loaded, for the response
+        return getFlowForEdit(id).orElseThrow();
+    }
+
+    /**
+     * Start a new draft version of an e-service, copied from this version. The
+     * versions that are published stay as they are until the draft is published.
+     */
+    @Transactional
+    public Flow createNewVersion(UUID id) {
+        Flow original = getFlowForEdit(id)
+                .orElseThrow(() -> new org.springframework.web.server.ResponseStatusException(
+                        org.springframework.http.HttpStatus.NOT_FOUND, "E-tjänsten hittades inte"));
+        List<Flow> versions = flowRepository.findByFamilyIdOrderByVersionDesc(original.getFamily().getId());
+        versions.stream().filter(v -> v.getStatus() == FlowStatus.DRAFT).findFirst().ifPresent(draft -> {
+            throw new org.springframework.web.server.ResponseStatusException(org.springframework.http.HttpStatus.CONFLICT,
+                    "FLOW_DRAFT_EXISTS: version " + draft.getVersion() + " är redan ett utkast (" + draft.getId() + ")");
+        });
+        int next = versions.stream().mapToInt(Flow::getVersion).max().orElse(0) + 1;
+        Flow copy = flowCopier.copy(original, original.getName(), original.getFamily(), next);
+        return getFlowForEdit(copy.getId()).orElseThrow();
+    }
+
+    /** The flow, if it is the organisation's and still a draft; published versions are not changed. */
+    private Flow ownDraft(UUID flowId) {
+        Flow flow = ownFlow(flowId);
+        if (flow.getStatus() != FlowStatus.DRAFT) {
+            throw notEditable(flow);
+        }
+        return flow;
+    }
+
+    private static org.springframework.web.server.ResponseStatusException notEditable(Flow flow) {
+        return new org.springframework.web.server.ResponseStatusException(org.springframework.http.HttpStatus.CONFLICT,
+                "FLOW_NOT_EDITABLE: version " + flow.getVersion() + " är " + flow.getStatus()
+                + " och kan inte ändras. Skapa en ny version.");
+    }
+
+    private FlowFamily newFamily(String name, UUID organizationId) {
+        FlowFamily family = new FlowFamily(name);
+        family.setOrganizationId(organizationId);
+        entityManager.persist(family);
+        return family;
     }
 
     /**
@@ -225,7 +285,8 @@ public class AdminFlowService {
     public Flow archiveFlow(UUID id) {
         Flow flow = ownFlow(id);
         flow.archive();
-        return flowRepository.save(flow);
+        flowRepository.save(flow);
+        return getFlowForEdit(id).orElseThrow();
     }
 
     /**
@@ -236,67 +297,9 @@ public class AdminFlowService {
         Flow original = getFlowForEdit(id)
                 .orElseThrow(() -> new IllegalArgumentException("Flow not found: " + id));
 
-        Flow copy = new Flow(original.getName() + " (kopia)");
-        copy.setOrganizationId(original.getOrganizationId());
-        copy.setAccessScope(original.getAccessScope());
-        copy.setShortDescription(original.getShortDescription());
-        copy.setLongDescription(original.getLongDescription());
-        copy.setSubmittedMessage(original.getSubmittedMessage());
-        copy.setRequireAuth(original.isRequireAuth());
-        copy.setRequireSigning(original.isRequireSigning());
-        copy.setSequentialSigning(original.isSequentialSigning());
-        copy.setAllowSaveDraft(original.isAllowSaveDraft());
-        copy.setAllowMultiple(original.isAllowMultiple());
-        copy.setTags(original.getTags() != null ? original.getTags().clone() : null);
-        copy.setType(original.getType());
-        copy.setCategory(original.getCategory());
-
-        // Copy status definitions
-        for (StatusDefinition origStatus : original.getStatusDefinitions()) {
-            StatusDefinition statusCopy = new StatusDefinition(
-                    origStatus.getName(),
-                    origStatus.getStatusType()
-            );
-            statusCopy.setDescription(origStatus.getDescription());
-            statusCopy.setColor(origStatus.getColor());
-            statusCopy.setIcon(origStatus.getIcon());
-            statusCopy.setUserCanEdit(origStatus.isUserCanEdit());
-            statusCopy.setUserCanDelete(origStatus.isUserCanDelete());
-            statusCopy.setUserCanMessage(origStatus.isUserCanMessage());
-            statusCopy.setManagerCanEdit(origStatus.isManagerCanEdit());
-            statusCopy.setHandlingDays(origStatus.getHandlingDays());
-            statusCopy.setSortOrder(origStatus.getSortOrder());
-            statusCopy.setFlow(copy);
-            copy.getStatusDefinitions().add(statusCopy);
-        }
-
-        // Copy steps
-        for (Step origStep : original.getStepsSorted()) {
-            Step stepCopy = new Step(origStep.getName());
-            stepCopy.setDescription(origStep.getDescription());
-            stepCopy.setSortOrder(origStep.getSortOrder());
-            stepCopy.setFlow(copy);
-            copy.getSteps().add(stepCopy);
-
-            // Copy queries
-            for (QueryDefinition origQuery : origStep.getQueryDefinitions()) {
-                QueryDefinition queryCopy = new QueryDefinition(origQuery.getName(), origQuery.getQueryType());
-                queryCopy.setDescription(origQuery.getDescription());
-                queryCopy.setHelpText(origQuery.getHelpText());
-                queryCopy.setPlaceholder(origQuery.getPlaceholder());
-                queryCopy.setConfig(origQuery.getConfig());
-                queryCopy.setRequired(origQuery.isRequired());
-                queryCopy.setDefaultState(origQuery.getDefaultState());
-                queryCopy.setExportName(origQuery.getExportName());
-                queryCopy.setExportable(origQuery.isExportable());
-                queryCopy.setSortOrder(origQuery.getSortOrder());
-                queryCopy.setWidth(origQuery.getWidth());
-                queryCopy.setStep(stepCopy);
-                stepCopy.getQueryDefinitions().add(queryCopy);
-            }
-        }
-
-        return flowRepository.save(copy);
+        String name = original.getName() + " (kopia)";
+        Flow copy = flowCopier.copy(original, name, newFamily(name, original.getOrganizationId()), 1);
+        return getFlowForEdit(copy.getId()).orElseThrow();
     }
 
     // Step management
@@ -306,7 +309,7 @@ public class AdminFlowService {
      */
     @Transactional
     public Step addStep(UUID flowId, String name, String description, Integer sortOrder) {
-        Flow flow = ownFlow(flowId);
+        Flow flow = ownDraft(flowId);
 
         Step step = new Step(name);
         step.setDescription(description);
@@ -322,7 +325,7 @@ public class AdminFlowService {
      */
     @Transactional
     public Step updateStep(UUID flowId, UUID stepId, String name, String description, Integer sortOrder) {
-        ownFlow(flowId);
+        ownDraft(flowId);
         Step step = stepRepository.findById(stepId)
                 .orElseThrow(() -> new IllegalArgumentException("Step not found: " + stepId));
 
@@ -342,7 +345,7 @@ public class AdminFlowService {
      */
     @Transactional
     public void deleteStep(UUID flowId, UUID stepId) {
-        ownFlow(flowId);
+        ownDraft(flowId);
         Step step = stepRepository.findById(stepId)
                 .orElseThrow(() -> new IllegalArgumentException("Step not found: " + stepId));
 
@@ -360,7 +363,7 @@ public class AdminFlowService {
      */
     @Transactional
     public void reorderSteps(UUID flowId, List<UUID> stepIds) {
-        Flow flow = ownFlow(flowId);
+        Flow flow = ownDraft(flowId);
 
         org.hibernate.Hibernate.initialize(flow.getSteps());
 
@@ -394,7 +397,7 @@ public class AdminFlowService {
             QueryState defaultState,
             Integer sortOrder,
             String width) {
-        ownFlow(flowId);
+        ownDraft(flowId);
 
         Step step = stepRepository.findById(stepId)
                 .orElseThrow(() -> new IllegalArgumentException("Step not found: " + stepId));
@@ -437,7 +440,7 @@ public class AdminFlowService {
             QueryState defaultState,
             Integer sortOrder,
             String width) {
-        ownFlow(flowId);
+        ownDraft(flowId);
 
         QueryDefinition query = queryDefinitionRepository.findById(queryId)
                 .orElseThrow(() -> new IllegalArgumentException("Query not found: " + queryId));
@@ -467,7 +470,7 @@ public class AdminFlowService {
      */
     @Transactional
     public void deleteQueryDefinition(UUID flowId, UUID stepId, UUID queryId) {
-        ownFlow(flowId);
+        ownDraft(flowId);
         QueryDefinition query = queryDefinitionRepository.findById(queryId)
                 .orElseThrow(() -> new IllegalArgumentException("Query not found: " + queryId));
 
@@ -488,7 +491,7 @@ public class AdminFlowService {
      */
     @Transactional
     public void reorderQueries(UUID flowId, UUID stepId, List<UUID> queryIds) {
-        ownFlow(flowId);
+        ownDraft(flowId);
         Step step = stepRepository.findById(stepId)
                 .orElseThrow(() -> new IllegalArgumentException("Step not found: " + stepId));
 
@@ -565,7 +568,7 @@ public class AdminFlowService {
     public EvaluatorDefinition addEvaluator(UUID flowId, UUID queryId, EvaluatorType type,
                                             Map<String, Object> condition, List<UUID> targetQueryIds,
                                             QueryState targetState) {
-        ownFlow(flowId);
+        ownDraft(flowId);
         QueryDefinition source = queryInFlow(flowId, queryId);
         validateEvaluator(source, type, targetQueryIds, targetState);
 
@@ -589,7 +592,7 @@ public class AdminFlowService {
     public EvaluatorDefinition updateEvaluator(UUID flowId, UUID queryId, UUID evaluatorId, EvaluatorType type,
                                                Map<String, Object> condition, List<UUID> targetQueryIds,
                                                QueryState targetState) {
-        ownFlow(flowId);
+        ownDraft(flowId);
         QueryDefinition source = queryInFlow(flowId, queryId);
         EvaluatorDefinition evaluator = evaluatorOf(source, evaluatorId);
         validateEvaluator(source, type, targetQueryIds, targetState);
@@ -609,7 +612,7 @@ public class AdminFlowService {
 
     @Transactional
     public void deleteEvaluator(UUID flowId, UUID queryId, UUID evaluatorId) {
-        ownFlow(flowId);
+        ownDraft(flowId);
         QueryDefinition source = queryInFlow(flowId, queryId);
         EvaluatorDefinition evaluator = evaluatorOf(source, evaluatorId);
         Set<UUID> affected = new HashSet<>(evaluator.getTargetQueryIds());

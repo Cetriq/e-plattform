@@ -6,5 +6,7 @@ package se.eplatform.flow.domain;
 public enum FlowStatus {
     DRAFT,
     PUBLISHED,
+    /** Replaced by a newer published version: takes no new cases, its existing cases continue. */
+    SUPERSEDED,
     ARCHIVED
 }

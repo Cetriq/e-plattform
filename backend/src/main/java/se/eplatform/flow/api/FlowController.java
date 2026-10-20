@@ -31,8 +31,11 @@ public class FlowController {
     private final FlowService flowService;
 
     private final se.eplatform.user.repository.OrganizationRepository organizations;
+    private final se.eplatform.cases.repository.CaseRepository caseRepository;
 
-    public FlowController(FlowService flowService, se.eplatform.user.repository.OrganizationRepository organizations) {
+    public FlowController(FlowService flowService, se.eplatform.user.repository.OrganizationRepository organizations,
+                          se.eplatform.cases.repository.CaseRepository caseRepository) {
+        this.caseRepository = caseRepository;
         this.organizations = organizations;
         this.flowService = flowService;
     }
@@ -120,9 +123,27 @@ public class FlowController {
             @Parameter(description = "E-tjänstens UUID", required = true)
             @PathVariable UUID id) {
         return flowService.getFlow(id)
+                .filter(this::mayRead)
                 .map(FlowDTO::from)
                 .map(ResponseEntity::ok)
                 .orElse(ResponseEntity.notFound().build());
+    }
+
+    /**
+     * Published versions are public. Other versions (drafts, superseded,
+     * archived) are shown to the organisation's staff and to people with a
+     * case on that version, which they still need to see.
+     */
+    private boolean mayRead(se.eplatform.flow.domain.Flow flow) {
+        if (flow.getStatus() == se.eplatform.flow.domain.FlowStatus.PUBLISHED) {
+            return true;
+        }
+        return se.eplatform.common.security.CurrentUser.get().map(user -> {
+            boolean staff = user.activeOrganization() != null
+                    && user.activeOrganization().id().equals(String.valueOf(flow.getOrganizationId()))
+                    && (user.roles().contains("ADMIN") || user.roles().contains("MANAGER") || user.roles().contains("FLOW_EDITOR"));
+            return staff || caseRepository.existsByFlowIdAndCreatedById(flow.getId(), java.util.UUID.fromString(user.id()));
+        }).orElse(false);
     }
 
     @Operation(
@@ -201,6 +222,7 @@ public class FlowController {
             @Parameter(description = "Familjens UUID", required = true)
             @PathVariable UUID familyId) {
         return flowService.getFlowVersions(familyId).stream()
+                .filter(flow -> flow.getStatus() == se.eplatform.flow.domain.FlowStatus.PUBLISHED)
                 .map(FlowDTO::summary)
                 .toList();
     }

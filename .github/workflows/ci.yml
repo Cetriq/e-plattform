@@ -97,6 +97,11 @@ jobs:
           cache: npm
           cache-dependency-path: frontend/package-lock.json
 
+      # The application connects as eplatform_app, bound by row level
+      # security (V14), as in the deployed environments
+      - name: Create the application role
+        run: PGPASSWORD=eplatform psql -h localhost -U eplatform -d eplatform -c "CREATE ROLE eplatform_app LOGIN PASSWORD 'app-ci'"
+
       # Backend with the seeded demo data; file storage and e-mail are not
       # needed for the pages under test, and the scan would trip the rate limit
       - name: Start backend
@@ -107,8 +112,10 @@ jobs:
         env:
           SPRING_PROFILES_ACTIVE: dev
           SPRING_DATASOURCE_URL: jdbc:postgresql://localhost:5432/eplatform
-          SPRING_DATASOURCE_USERNAME: eplatform
-          SPRING_DATASOURCE_PASSWORD: eplatform
+          SPRING_DATASOURCE_USERNAME: eplatform_app
+          SPRING_DATASOURCE_PASSWORD: app-ci
+          SPRING_FLYWAY_USER: eplatform
+          SPRING_FLYWAY_PASSWORD: eplatform
           EMAIL_ENABLED: 'false'
           EPLATFORM_SECURITY_RATELIMIT_ENABLED: 'false'
 

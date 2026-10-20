@@ -161,6 +161,8 @@ export interface FlowType {
   icon?: string;
   sortOrder: number;
   categories: Category[];
+  /** Shared by every organisation; cannot be changed or removed here. */
+  shared?: boolean;
 }
 
 export interface CreateCategoryRequest {

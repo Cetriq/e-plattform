@@ -14,6 +14,10 @@ import java.util.UUID;
 @Table(name = "flow_types")
 public class FlowType {
 
+    /** The organisation that added the type, or null for the shared types every organisation uses. */
+    @Column(name = "organization_id")
+    private UUID organizationId;
+
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
     private UUID id;
@@ -111,5 +115,13 @@ public class FlowType {
     public void addCategory(Category category) {
         categories.add(category);
         category.setFlowType(this);
+    }
+
+    public UUID getOrganizationId() {
+        return organizationId;
+    }
+
+    public void setOrganizationId(UUID organizationId) {
+        this.organizationId = organizationId;
     }
 }

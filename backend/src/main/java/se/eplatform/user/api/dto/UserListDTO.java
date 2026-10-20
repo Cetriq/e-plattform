@@ -19,8 +19,12 @@ public record UserListDTO(
     Instant lastLoginAt,
     Instant createdAt
 ) {
-    public static UserListDTO from(User user) {
-        List<String> roles = user.allRoles()
+    /** With the user's global roles and their roles in the given organisation. */
+    public static UserListDTO from(User user, java.util.UUID organizationId) {
+        List<String> roles = java.util.stream.Stream.concat(user.getRoles().stream(),
+                user.getMemberships().stream()
+                    .filter(m -> m.getOrganization().getId().equals(organizationId))
+                    .flatMap(m -> m.getRoles().stream()))
             .map(r -> r.getName())
             .distinct()
             .sorted()

@@ -52,14 +52,28 @@ public class AdminFlowService {
      * Get all flows (including drafts) for admin view.
      */
     public Page<Flow> getAllFlows(Pageable pageable) {
-        return flowRepository.findAllWithRelations(pageable);
+        return flowRepository.findAllWithRelations(CurrentUser.requireOrganizationId(), pageable);
+    }
+
+    /**
+     * The flow, if it belongs to the organisation the user is working for.
+     * Flows of other organisations are reported as not found.
+     */
+    private Flow ownFlow(UUID flowId) {
+        UUID organizationId = CurrentUser.requireOrganizationId();
+        return flowRepository.findById(flowId)
+                .filter(flow -> organizationId.equals(flow.getOrganizationId()))
+                .orElseThrow(() -> new org.springframework.web.server.ResponseStatusException(
+                        org.springframework.http.HttpStatus.NOT_FOUND, "E-tjänsten hittades inte"));
     }
 
     /**
      * Get a flow with all details for editing.
      */
     public Optional<Flow> getFlowForEdit(UUID id) {
-        Optional<Flow> flowOpt = flowRepository.findByIdWithBasicRelations(id);
+        UUID organizationId = CurrentUser.requireOrganizationId();
+        Optional<Flow> flowOpt = flowRepository.findByIdWithBasicRelations(id)
+                .filter(flow -> organizationId.equals(flow.getOrganizationId()));
         if (flowOpt.isEmpty()) {
             return Optional.empty();
         }
@@ -129,8 +143,7 @@ public class AdminFlowService {
             String[] tags,
             Integer retentionMonths) {
 
-        Flow flow = flowRepository.findById(id)
-                .orElseThrow(() -> new IllegalArgumentException("Flow not found: " + id));
+        Flow flow = ownFlow(id);
 
         if (name != null) flow.setName(name);
         if (shortDescription != null) flow.setShortDescription(shortDescription);
@@ -148,12 +161,18 @@ public class AdminFlowService {
         if (retentionMonths != null) flow.setRetentionMonths(retentionMonths > 0 ? retentionMonths : null);
 
         // Update type and category
+        // Only the organisation's own categories, and shared or own service types
+        UUID organizationId = flow.getOrganizationId();
         if (typeId != null) {
-            FlowType type = flowTypeRepository.findById(typeId).orElse(null);
+            FlowType type = flowTypeRepository.findById(typeId)
+                    .filter(t -> t.getOrganizationId() == null || organizationId.equals(t.getOrganizationId()))
+                    .orElse(null);
             flow.setType(type);
         }
         if (categoryId != null) {
-            Category category = categoryRepository.findById(categoryId).orElse(null);
+            Category category = categoryRepository.findById(categoryId)
+                    .filter(c -> organizationId.equals(c.getOrganizationId()))
+                    .orElse(null);
             flow.setCategory(category);
         }
 
@@ -182,8 +201,7 @@ public class AdminFlowService {
      */
     @Transactional
     public void deleteFlow(UUID id) {
-        Flow flow = flowRepository.findById(id)
-                .orElseThrow(() -> new IllegalArgumentException("Flow not found: " + id));
+        Flow flow = ownFlow(id);
         if (flow.getStatus() != FlowStatus.DRAFT) {
             throw new IllegalStateException("Can only delete draft flows");
         }
@@ -195,8 +213,7 @@ public class AdminFlowService {
      */
     @Transactional
     public Flow publishFlow(UUID id) {
-        Flow flow = flowRepository.findById(id)
-                .orElseThrow(() -> new IllegalArgumentException("Flow not found: " + id));
+        Flow flow = ownFlow(id);
         flow.publish();
         return flowRepository.save(flow);
     }
@@ -206,8 +223,7 @@ public class AdminFlowService {
      */
     @Transactional
     public Flow archiveFlow(UUID id) {
-        Flow flow = flowRepository.findById(id)
-                .orElseThrow(() -> new IllegalArgumentException("Flow not found: " + id));
+        Flow flow = ownFlow(id);
         flow.archive();
         return flowRepository.save(flow);
     }
@@ -290,8 +306,7 @@ public class AdminFlowService {
      */
     @Transactional
     public Step addStep(UUID flowId, String name, String description, Integer sortOrder) {
-        Flow flow = flowRepository.findById(flowId)
-                .orElseThrow(() -> new IllegalArgumentException("Flow not found: " + flowId));
+        Flow flow = ownFlow(flowId);
 
         Step step = new Step(name);
         step.setDescription(description);
@@ -307,6 +322,7 @@ public class AdminFlowService {
      */
     @Transactional
     public Step updateStep(UUID flowId, UUID stepId, String name, String description, Integer sortOrder) {
+        ownFlow(flowId);
         Step step = stepRepository.findById(stepId)
                 .orElseThrow(() -> new IllegalArgumentException("Step not found: " + stepId));
 
@@ -326,6 +342,7 @@ public class AdminFlowService {
      */
     @Transactional
     public void deleteStep(UUID flowId, UUID stepId) {
+        ownFlow(flowId);
         Step step = stepRepository.findById(stepId)
                 .orElseThrow(() -> new IllegalArgumentException("Step not found: " + stepId));
 
@@ -343,8 +360,7 @@ public class AdminFlowService {
      */
     @Transactional
     public void reorderSteps(UUID flowId, List<UUID> stepIds) {
-        Flow flow = flowRepository.findById(flowId)
-                .orElseThrow(() -> new IllegalArgumentException("Flow not found: " + flowId));
+        Flow flow = ownFlow(flowId);
 
         org.hibernate.Hibernate.initialize(flow.getSteps());
 
@@ -378,6 +394,7 @@ public class AdminFlowService {
             QueryState defaultState,
             Integer sortOrder,
             String width) {
+        ownFlow(flowId);
 
         Step step = stepRepository.findById(stepId)
                 .orElseThrow(() -> new IllegalArgumentException("Step not found: " + stepId));
@@ -420,6 +437,7 @@ public class AdminFlowService {
             QueryState defaultState,
             Integer sortOrder,
             String width) {
+        ownFlow(flowId);
 
         QueryDefinition query = queryDefinitionRepository.findById(queryId)
                 .orElseThrow(() -> new IllegalArgumentException("Query not found: " + queryId));
@@ -449,6 +467,7 @@ public class AdminFlowService {
      */
     @Transactional
     public void deleteQueryDefinition(UUID flowId, UUID stepId, UUID queryId) {
+        ownFlow(flowId);
         QueryDefinition query = queryDefinitionRepository.findById(queryId)
                 .orElseThrow(() -> new IllegalArgumentException("Query not found: " + queryId));
 
@@ -469,6 +488,7 @@ public class AdminFlowService {
      */
     @Transactional
     public void reorderQueries(UUID flowId, UUID stepId, List<UUID> queryIds) {
+        ownFlow(flowId);
         Step step = stepRepository.findById(stepId)
                 .orElseThrow(() -> new IllegalArgumentException("Step not found: " + stepId));
 
@@ -545,6 +565,7 @@ public class AdminFlowService {
     public EvaluatorDefinition addEvaluator(UUID flowId, UUID queryId, EvaluatorType type,
                                             Map<String, Object> condition, List<UUID> targetQueryIds,
                                             QueryState targetState) {
+        ownFlow(flowId);
         QueryDefinition source = queryInFlow(flowId, queryId);
         validateEvaluator(source, type, targetQueryIds, targetState);
 
@@ -568,6 +589,7 @@ public class AdminFlowService {
     public EvaluatorDefinition updateEvaluator(UUID flowId, UUID queryId, UUID evaluatorId, EvaluatorType type,
                                                Map<String, Object> condition, List<UUID> targetQueryIds,
                                                QueryState targetState) {
+        ownFlow(flowId);
         QueryDefinition source = queryInFlow(flowId, queryId);
         EvaluatorDefinition evaluator = evaluatorOf(source, evaluatorId);
         validateEvaluator(source, type, targetQueryIds, targetState);
@@ -587,6 +609,7 @@ public class AdminFlowService {
 
     @Transactional
     public void deleteEvaluator(UUID flowId, UUID queryId, UUID evaluatorId) {
+        ownFlow(flowId);
         QueryDefinition source = queryInFlow(flowId, queryId);
         EvaluatorDefinition evaluator = evaluatorOf(source, evaluatorId);
         Set<UUID> affected = new HashSet<>(evaluator.getTargetQueryIds());

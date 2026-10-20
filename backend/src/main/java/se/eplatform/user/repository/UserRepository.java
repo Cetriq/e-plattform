@@ -51,14 +51,15 @@ public interface UserRepository extends JpaRepository<User, UUID> {
     Page<User> search(@Param("query") String query, Pageable pageable);
 
     /**
-     * Search by name/e-mail and filter by role. Pass an empty string to skip a filter.
+     * Members of an organisation, searched by name/e-mail and filtered by their
+     * role there. Pass an empty string to skip a filter.
      */
-    @Query("SELECT u FROM User u WHERE " +
+    @Query("SELECT u FROM User u JOIN u.memberships m WHERE m.organization.id = :orgId AND " +
            "(:query = '' OR " +
            "LOWER(u.firstName) LIKE LOWER(CONCAT('%', :query, '%')) OR " +
            "LOWER(u.lastName) LIKE LOWER(CONCAT('%', :query, '%')) OR " +
            "LOWER(u.email) LIKE LOWER(CONCAT('%', :query, '%'))) AND " +
-           "(:role = '' OR EXISTS (SELECT r FROM u.roles r WHERE r.name = :role) " +
-           "OR EXISTS (SELECT mr FROM u.memberships m JOIN m.roles mr WHERE mr.name = :role))")
-    Page<User> searchWithRole(@Param("query") String query, @Param("role") String role, Pageable pageable);
+           "(:role = '' OR EXISTS (SELECT r FROM m.roles r WHERE r.name = :role))")
+    Page<User> searchMembers(@Param("orgId") UUID orgId, @Param("query") String query,
+                             @Param("role") String role, Pageable pageable);
 }

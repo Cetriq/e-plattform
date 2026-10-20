@@ -3,6 +3,9 @@ package se.eplatform.flow.api;
 import se.eplatform.audit.domain.AuditAction;
 import se.eplatform.audit.web.Audited;
 import org.springframework.http.ResponseEntity;
+import se.eplatform.common.security.CurrentUser;
+import org.springframework.web.server.ResponseStatusException;
+import org.springframework.http.HttpStatus;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
 import se.eplatform.flow.domain.Category;
@@ -37,35 +40,39 @@ public class AdminCategoryController {
     // ==================
 
     /**
-     * Get all flow types with their categories.
+     * Shared service types (no organisation) and the organisation's own, each
+     * with the organisation's own categories.
      */
     @GetMapping("/flow-types")
     public List<FlowTypeDTO> getAllFlowTypes() {
+        UUID org = CurrentUser.requireOrganizationId();
         return flowTypeRepository.findAllByOrderBySortOrderAsc()
                 .stream()
-                .map(FlowTypeDTO::from)
+                .filter(type -> visible(type, org))
+                .map(type -> FlowTypeDTO.from(type, org))
                 .toList();
     }
 
-    /**
-     * Get a single flow type.
-     */
     @GetMapping("/flow-types/{id}")
     public ResponseEntity<FlowTypeDTO> getFlowType(@PathVariable UUID id) {
+        UUID org = CurrentUser.requireOrganizationId();
         return flowTypeRepository.findById(id)
-                .map(FlowTypeDTO::from)
+                .filter(type -> visible(type, org))
+                .map(type -> FlowTypeDTO.from(type, org))
                 .map(ResponseEntity::ok)
                 .orElse(ResponseEntity.notFound().build());
     }
 
     /**
-     * Create a new flow type.
+     * Create a service type for the organisation.
      */
     @Audited(value = AuditAction.CATEGORY_CHANGE, entity = "CATEGORY")
     @PostMapping("/flow-types")
     @Transactional
     public ResponseEntity<FlowTypeDTO> createFlowType(@RequestBody FlowTypeRequest request) {
+        UUID org = CurrentUser.requireOrganizationId();
         FlowType flowType = new FlowType(request.name());
+        flowType.setOrganizationId(org);
         flowType.setDescription(request.description());
         flowType.setColor(request.color());
         flowType.setIcon(request.icon());
@@ -74,11 +81,12 @@ public class AdminCategoryController {
         FlowType saved = flowTypeRepository.save(flowType);
         return ResponseEntity
                 .created(URI.create("/api/v1/admin/flow-types/" + saved.getId()))
-                .body(FlowTypeDTO.from(saved));
+                .body(FlowTypeDTO.from(saved, org));
     }
 
     /**
-     * Update a flow type.
+     * Update one of the organisation's service types. Shared types are
+     * changed through migrations, since every organisation uses them.
      */
     @Audited(value = AuditAction.CATEGORY_CHANGE, entity = "CATEGORY", idParam = "id")
     @PutMapping("/flow-types/{id}")
@@ -86,36 +94,24 @@ public class AdminCategoryController {
     public ResponseEntity<FlowTypeDTO> updateFlowType(
             @PathVariable UUID id,
             @RequestBody FlowTypeRequest request) {
-        return flowTypeRepository.findById(id)
-                .map(flowType -> {
-                    flowType.setName(request.name());
-                    flowType.setDescription(request.description());
-                    flowType.setColor(request.color());
-                    flowType.setIcon(request.icon());
-                    if (request.sortOrder() != null) {
-                        flowType.setSortOrder(request.sortOrder());
-                    }
-                    return flowTypeRepository.save(flowType);
-                })
-                .map(FlowTypeDTO::from)
-                .map(ResponseEntity::ok)
-                .orElse(ResponseEntity.notFound().build());
+        UUID org = CurrentUser.requireOrganizationId();
+        FlowType flowType = ownFlowType(id, org);
+        flowType.setName(request.name());
+        flowType.setDescription(request.description());
+        flowType.setColor(request.color());
+        flowType.setIcon(request.icon());
+        if (request.sortOrder() != null) {
+            flowType.setSortOrder(request.sortOrder());
+        }
+        return ResponseEntity.ok(FlowTypeDTO.from(flowTypeRepository.save(flowType), org));
     }
 
-    /**
-     * Delete a flow type (only if it has no flows).
-     */
     @Audited(value = AuditAction.CATEGORY_CHANGE, entity = "CATEGORY", idParam = "id")
     @DeleteMapping("/flow-types/{id}")
     @Transactional
     public ResponseEntity<Void> deleteFlowType(@PathVariable UUID id) {
-        return flowTypeRepository.findById(id)
-                .map(flowType -> {
-                    // TODO: Check if any flows are using this type
-                    flowTypeRepository.delete(flowType);
-                    return ResponseEntity.noContent().<Void>build();
-                })
-                .orElse(ResponseEntity.notFound().build());
+        flowTypeRepository.delete(ownFlowType(id, CurrentUser.requireOrganizationId()));
+        return ResponseEntity.noContent().build();
     }
 
     // ==================
@@ -123,52 +119,46 @@ public class AdminCategoryController {
     // ==================
 
     /**
-     * Get all categories.
+     * The organisation's categories.
      */
     @GetMapping("/categories")
     public List<CategoryDTO> getAllCategories() {
+        UUID org = CurrentUser.requireOrganizationId();
         return categoryRepository.findAll()
                 .stream()
+                .filter(category -> org.equals(category.getOrganizationId()))
                 .map(CategoryDTO::from)
                 .toList();
     }
 
-    /**
-     * Get categories for a flow type.
-     */
     @GetMapping("/flow-types/{flowTypeId}/categories")
     public List<CategoryDTO> getCategoriesByFlowType(@PathVariable UUID flowTypeId) {
+        UUID org = CurrentUser.requireOrganizationId();
         return categoryRepository.findByFlowTypeIdOrderBySortOrderAsc(flowTypeId)
                 .stream()
+                .filter(category -> org.equals(category.getOrganizationId()))
                 .map(CategoryDTO::from)
                 .toList();
     }
 
-    /**
-     * Get a single category.
-     */
     @GetMapping("/categories/{id}")
     public ResponseEntity<CategoryDTO> getCategory(@PathVariable UUID id) {
-        return categoryRepository.findById(id)
-                .map(CategoryDTO::from)
-                .map(ResponseEntity::ok)
-                .orElse(ResponseEntity.notFound().build());
+        return ResponseEntity.ok(CategoryDTO.from(ownCategory(id, CurrentUser.requireOrganizationId())));
     }
 
-    /**
-     * Create a new category.
-     */
     @Audited(value = AuditAction.CATEGORY_CHANGE, entity = "CATEGORY")
     @PostMapping("/categories")
     @Transactional
     public ResponseEntity<CategoryDTO> createCategory(@RequestBody CategoryRequest request) {
+        UUID org = CurrentUser.requireOrganizationId();
         Category category = new Category(request.name());
-        category.setOrganizationId(se.eplatform.common.security.CurrentUser.requireOrganizationId());
+        category.setOrganizationId(org);
         category.setDescription(request.description());
         category.setSortOrder(request.sortOrder() != null ? request.sortOrder() : 0);
 
         if (request.flowTypeId() != null) {
             flowTypeRepository.findById(request.flowTypeId())
+                    .filter(type -> visible(type, org))
                     .ifPresent(category::setFlowType);
         }
 
@@ -178,47 +168,58 @@ public class AdminCategoryController {
                 .body(CategoryDTO.from(saved));
     }
 
-    /**
-     * Update a category.
-     */
     @Audited(value = AuditAction.CATEGORY_CHANGE, entity = "CATEGORY", idParam = "id")
     @PutMapping("/categories/{id}")
     @Transactional
     public ResponseEntity<CategoryDTO> updateCategory(
             @PathVariable UUID id,
             @RequestBody CategoryRequest request) {
-        return categoryRepository.findById(id)
-                .map(category -> {
-                    category.setName(request.name());
-                    category.setDescription(request.description());
-                    if (request.sortOrder() != null) {
-                        category.setSortOrder(request.sortOrder());
-                    }
-                    if (request.flowTypeId() != null) {
-                        flowTypeRepository.findById(request.flowTypeId())
-                                .ifPresent(category::setFlowType);
-                    }
-                    return categoryRepository.save(category);
-                })
-                .map(CategoryDTO::from)
-                .map(ResponseEntity::ok)
-                .orElse(ResponseEntity.notFound().build());
+        UUID org = CurrentUser.requireOrganizationId();
+        Category category = ownCategory(id, org);
+        category.setName(request.name());
+        category.setDescription(request.description());
+        if (request.sortOrder() != null) {
+            category.setSortOrder(request.sortOrder());
+        }
+        if (request.flowTypeId() != null) {
+            flowTypeRepository.findById(request.flowTypeId())
+                    .filter(type -> visible(type, org))
+                    .ifPresent(category::setFlowType);
+        }
+        return ResponseEntity.ok(CategoryDTO.from(categoryRepository.save(category)));
     }
 
-    /**
-     * Delete a category (only if it has no flows).
-     */
     @Audited(value = AuditAction.CATEGORY_CHANGE, entity = "CATEGORY", idParam = "id")
     @DeleteMapping("/categories/{id}")
     @Transactional
     public ResponseEntity<Void> deleteCategory(@PathVariable UUID id) {
+        categoryRepository.delete(ownCategory(id, CurrentUser.requireOrganizationId()));
+        return ResponseEntity.noContent().build();
+    }
+
+    // ---------- Organisation checks ----------
+
+    /** Shared types and the organisation's own. */
+    private static boolean visible(FlowType type, UUID org) {
+        return type.getOrganizationId() == null || org.equals(type.getOrganizationId());
+    }
+
+    /** One of the organisation's own types; 403 for shared ones, 404 for other organisations'. */
+    private FlowType ownFlowType(UUID id, UUID org) {
+        FlowType type = flowTypeRepository.findById(id)
+                .filter(t -> visible(t, org))
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Tjänsttypen hittades inte"));
+        if (type.getOrganizationId() == null) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN,
+                    "Gemensamma tjänsttyper används av alla organisationer och ändras inte här");
+        }
+        return type;
+    }
+
+    private Category ownCategory(UUID id, UUID org) {
         return categoryRepository.findById(id)
-                .map(category -> {
-                    // TODO: Check if any flows are using this category
-                    categoryRepository.delete(category);
-                    return ResponseEntity.noContent().<Void>build();
-                })
-                .orElse(ResponseEntity.notFound().build());
+                .filter(c -> org.equals(c.getOrganizationId()))
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Kategorin hittades inte"));
     }
 
     // ==================
@@ -232,9 +233,12 @@ public class AdminCategoryController {
             String color,
             String icon,
             Integer sortOrder,
-            List<CategoryDTO> categories
+            List<CategoryDTO> categories,
+            /** Shared by every organisation; changed only through migrations. */
+            boolean shared
     ) {
-        public static FlowTypeDTO from(FlowType flowType) {
+        /** With only the given organisation's categories. */
+        public static FlowTypeDTO from(FlowType flowType, UUID org) {
             return new FlowTypeDTO(
                     flowType.getId(),
                     flowType.getName(),
@@ -243,8 +247,10 @@ public class AdminCategoryController {
                     flowType.getIcon(),
                     flowType.getSortOrder(),
                     flowType.getCategories().stream()
+                            .filter(category -> org.equals(category.getOrganizationId()))
                             .map(CategoryDTO::from)
-                            .toList()
+                            .toList(),
+                    flowType.getOrganizationId() == null
             );
         }
     }

@@ -75,6 +75,65 @@ class TenantIsolationTest extends IntegrationTest {
         CASE_ENDPOINTS.put("GET /api/v1/files/case/{caseId}", id -> get("/api/v1/files/case/" + id));
     }
 
+    /** Ids of Exempelkommun's administration objects, used across the border. */
+    record AdminIds(String flow, String step, String query, String evaluator, String category, String type) {}
+
+    private static MockHttpServletRequestBuilder json(MockHttpServletRequestBuilder request, String body) {
+        return request.contentType(MediaType.APPLICATION_JSON).content(body);
+    }
+
+    /**
+     * Every administration endpoint that takes an id, with a plausible request.
+     * From another organisation each must answer 404, except the category list
+     * of a service type, which answers 200 with only the caller's categories.
+     */
+    static final Map<String, Function<AdminIds, MockHttpServletRequestBuilder>> ADMIN_ENDPOINTS = new LinkedHashMap<>();
+    static {
+        var del = (java.util.function.Function<String, MockHttpServletRequestBuilder>)
+                org.springframework.test.web.servlet.request.MockMvcRequestBuilders::delete;
+        String flows = "/api/v1/admin/flows/";
+        ADMIN_ENDPOINTS.put("GET /api/v1/admin/flows/{id}", i -> get(flows + i.flow()));
+        ADMIN_ENDPOINTS.put("PUT /api/v1/admin/flows/{id}", i -> json(put(flows + i.flow()), "{\"name\":\"Kapad\"}"));
+        ADMIN_ENDPOINTS.put("DELETE /api/v1/admin/flows/{id}", i -> del.apply(flows + i.flow()));
+        ADMIN_ENDPOINTS.put("POST /api/v1/admin/flows/{id}/publish", i -> post(flows + i.flow() + "/publish"));
+        ADMIN_ENDPOINTS.put("POST /api/v1/admin/flows/{id}/archive", i -> post(flows + i.flow() + "/archive"));
+        ADMIN_ENDPOINTS.put("POST /api/v1/admin/flows/{id}/duplicate", i -> post(flows + i.flow() + "/duplicate"));
+        ADMIN_ENDPOINTS.put("POST /api/v1/admin/flows/{flowId}/steps",
+                i -> json(post(flows + i.flow() + "/steps"), "{\"name\":\"Kapat steg\"}"));
+        ADMIN_ENDPOINTS.put("PUT /api/v1/admin/flows/{flowId}/steps/reorder",
+                i -> json(put(flows + i.flow() + "/steps/reorder"), "{\"ids\":[\"" + i.step() + "\"]}"));
+        ADMIN_ENDPOINTS.put("PUT /api/v1/admin/flows/{flowId}/steps/{stepId}",
+                i -> json(put(flows + i.flow() + "/steps/" + i.step()), "{\"name\":\"Kapat steg\"}"));
+        ADMIN_ENDPOINTS.put("DELETE /api/v1/admin/flows/{flowId}/steps/{stepId}",
+                i -> del.apply(flows + i.flow() + "/steps/" + i.step()));
+        ADMIN_ENDPOINTS.put("POST /api/v1/admin/flows/{flowId}/steps/{stepId}/queries",
+                i -> json(post(flows + i.flow() + "/steps/" + i.step() + "/queries"), "{\"name\":\"Kapad\",\"queryType\":\"TEXT\"}"));
+        ADMIN_ENDPOINTS.put("PUT /api/v1/admin/flows/{flowId}/steps/{stepId}/queries/reorder",
+                i -> json(put(flows + i.flow() + "/steps/" + i.step() + "/queries/reorder"), "{\"ids\":[\"" + i.query() + "\"]}"));
+        ADMIN_ENDPOINTS.put("PUT /api/v1/admin/flows/{flowId}/steps/{stepId}/queries/{queryId}",
+                i -> json(put(flows + i.flow() + "/steps/" + i.step() + "/queries/" + i.query()), "{\"name\":\"Kapad\"}"));
+        ADMIN_ENDPOINTS.put("DELETE /api/v1/admin/flows/{flowId}/steps/{stepId}/queries/{queryId}",
+                i -> del.apply(flows + i.flow() + "/steps/" + i.step() + "/queries/" + i.query()));
+        ADMIN_ENDPOINTS.put("POST /api/v1/admin/flows/{flowId}/queries/{queryId}/evaluators",
+                i -> json(post(flows + i.flow() + "/queries/" + i.query() + "/evaluators"),
+                        "{\"evaluatorType\":\"IS_EMPTY\",\"condition\":{},\"targetQueryIds\":[\"" + i.query() + "\"],\"targetState\":\"HIDDEN\"}"));
+        ADMIN_ENDPOINTS.put("PUT /api/v1/admin/flows/{flowId}/queries/{queryId}/evaluators/{evaluatorId}",
+                i -> json(put(flows + i.flow() + "/queries/" + i.query() + "/evaluators/" + i.evaluator()),
+                        "{\"evaluatorType\":\"IS_EMPTY\",\"condition\":{},\"targetQueryIds\":[\"" + i.query() + "\"],\"targetState\":\"HIDDEN\"}"));
+        ADMIN_ENDPOINTS.put("DELETE /api/v1/admin/flows/{flowId}/queries/{queryId}/evaluators/{evaluatorId}",
+                i -> del.apply(flows + i.flow() + "/queries/" + i.query() + "/evaluators/" + i.evaluator()));
+        ADMIN_ENDPOINTS.put("GET /api/v1/admin/categories/{id}", i -> get("/api/v1/admin/categories/" + i.category()));
+        ADMIN_ENDPOINTS.put("PUT /api/v1/admin/categories/{id}",
+                i -> json(put("/api/v1/admin/categories/" + i.category()), "{\"name\":\"Kapad\"}"));
+        ADMIN_ENDPOINTS.put("DELETE /api/v1/admin/categories/{id}", i -> del.apply("/api/v1/admin/categories/" + i.category()));
+        ADMIN_ENDPOINTS.put("GET /api/v1/admin/flow-types/{id}", i -> get("/api/v1/admin/flow-types/" + i.type()));
+        ADMIN_ENDPOINTS.put("PUT /api/v1/admin/flow-types/{id}",
+                i -> json(put("/api/v1/admin/flow-types/" + i.type()), "{\"name\":\"Kapad\"}"));
+        ADMIN_ENDPOINTS.put("DELETE /api/v1/admin/flow-types/{id}", i -> del.apply("/api/v1/admin/flow-types/" + i.type()));
+        ADMIN_ENDPOINTS.put("GET /api/v1/admin/flow-types/{flowTypeId}/categories",
+                i -> get("/api/v1/admin/flow-types/" + i.type() + "/categories"));
+    }
+
     /**
      * Endpoints with an id that are covered elsewhere or are not about cases,
      * each with the reason. Shrinks as steg 1.3b (administration) and 1.3c
@@ -82,7 +141,6 @@ class TenantIsolationTest extends IntegrationTest {
      */
     static final Map<String, String> EXEMPT = new LinkedHashMap<>();
     static {
-        String admin = "1.3b: administration per organisation";
         String security = "1.3c: traceability and data protection per organisation";
         String self = "the caller's own data only (FileController/CaseController check the user id)";
         String publicFlows = "published e-services are public";
@@ -101,7 +159,6 @@ class TenantIsolationTest extends IntegrationTest {
                 "GET /api/v1/flows/by-category/{categoryId}", "GET /api/v1/flows/family/{familyId}/versions")) {
             EXEMPT.put(flow, publicFlows);
         }
-        EXEMPT.put("/api/v1/admin/**", admin);
         EXEMPT.put("/api/v1/security/**", security);
     }
 
@@ -313,6 +370,79 @@ class TenantIsolationTest extends IntegrationTest {
         }
     }
 
+
+    // ---------- Administration ----------
+
+    private AdminIds exempelAdminIds() throws Exception {
+        String type = json.readTree(mvc.perform(as(loginAs(ADMIN), post("/api/v1/admin/flow-types"))
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"name\":\"Exempelkommuns egen typ\"}"))
+                .andExpect(status().isCreated()).andReturn().getResponse().getContentAsString()).get("id").asText();
+        Map<String, Object> evaluator = jdbc.queryForMap("""
+                SELECT e.id, e.query_id, q.step_id FROM evaluator_definitions e
+                JOIN query_definitions q ON q.id = e.query_id JOIN steps s ON s.id = q.step_id
+                WHERE s.flow_id = ? LIMIT 1""", UUID.fromString(BUILDING_PERMIT_FLOW));
+        return new AdminIds(BUILDING_PERMIT_FLOW, evaluator.get("step_id").toString(), evaluator.get("query_id").toString(),
+                evaluator.get("id").toString(), "00000000-0000-0000-0002-000000000001", type);
+    }
+
+    @Test
+    void anAdministratorInAnotherOrganisationGetsNotFoundEverywhere() throws Exception {
+        AdminIds ids = exempelAdminIds();
+        String flowBefore = jdbc.queryForObject("SELECT name || status || version FROM flows WHERE id = ?", String.class,
+                UUID.fromString(BUILDING_PERMIT_FLOW));
+        String granneAdmin = loginAs("admin.grannkommun@example.com");
+
+        for (var endpoint : ADMIN_ENDPOINTS.entrySet()) {
+            var response = mvc.perform(as(granneAdmin, endpoint.getValue().apply(ids))).andReturn().getResponse();
+            if (endpoint.getKey().endsWith("/categories") && endpoint.getKey().startsWith("GET /api/v1/admin/flow-types")) {
+                assertThat(response.getStatus()).as(endpoint.getKey()).isIn(200, 404);
+                assertThat(response.getContentAsString()).as(endpoint.getKey()).doesNotContain(ids.category());
+            } else {
+                assertThat(response.getStatus()).as(endpoint.getKey()).isEqualTo(404);
+            }
+        }
+
+        // Nothing changed
+        assertThat(jdbc.queryForObject("SELECT name || status || version FROM flows WHERE id = ?", String.class,
+                UUID.fromString(BUILDING_PERMIT_FLOW))).isEqualTo(flowBefore);
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM flow_types WHERE id = ?", Integer.class, UUID.fromString(ids.type())))
+                .isOne();
+        mvc.perform(as(loginAs(ADMIN), get("/api/v1/admin/flows/" + BUILDING_PERMIT_FLOW))).andExpect(status().isOk());
+    }
+
+    @Test
+    void administrationListsShowOnlyTheOrganisation() throws Exception {
+        String granneAdmin = loginAs("admin.grannkommun@example.com");
+        String flows = mvc.perform(as(granneAdmin, get("/api/v1/admin/flows")).param("size", "200"))
+                .andExpect(status().isOk()).andReturn().getResponse().getContentAsString(java.nio.charset.StandardCharsets.UTF_8);
+        assertThat(flows).contains(SCHOOL_TRANSPORT_FLOW).doesNotContain(BUILDING_PERMIT_FLOW);
+
+        String categories = mvc.perform(as(granneAdmin, get("/api/v1/admin/categories")))
+                .andReturn().getResponse().getContentAsString(java.nio.charset.StandardCharsets.UTF_8);
+        assertThat(categories).contains("Skolskjuts").doesNotContain("Bygglov");
+
+        String types = mvc.perform(as(granneAdmin, get("/api/v1/admin/flow-types")))
+                .andReturn().getResponse().getContentAsString(java.nio.charset.StandardCharsets.UTF_8);
+        assertThat(types).contains("Skola & Förskola").doesNotContain("Bygglov");
+
+        String users = mvc.perform(as(granneAdmin, get("/api/v1/admin/users")).param("size", "200"))
+                .andExpect(status().isOk()).andReturn().getResponse().getContentAsString(java.nio.charset.StandardCharsets.UTF_8);
+        assertThat(users).contains(GRANNKOMMUN_MANAGER).doesNotContain(MANAGER + "\"").doesNotContain("demo.example.com");
+    }
+
+    @Test
+    void sharedServiceTypesCannotBeChangedByOneOrganisation() throws Exception {
+        String shared = "00000000-0000-0000-0001-000000000004";
+        mvc.perform(as(loginAs("admin.grannkommun@example.com"), put("/api/v1/admin/flow-types/" + shared))
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"name\":\"Ändrad\"}"))
+                .andExpect(status().isForbidden());
+        mvc.perform(as(loginAs(ADMIN), org.springframework.test.web.servlet.request.MockMvcRequestBuilders
+                        .delete("/api/v1/admin/flow-types/" + shared)))
+                .andExpect(status().isForbidden());
+        assertThat(jdbc.queryForObject("SELECT name FROM flow_types WHERE id = ?", String.class, UUID.fromString(shared)))
+                .isEqualTo("Skola & Förskola");
+    }
+
     // ---------- Inventory ----------
 
     @Test
@@ -332,7 +462,7 @@ class TenantIsolationTest extends IntegrationTest {
                     boolean exempt = EXEMPT.containsKey(key) || EXEMPT.keySet().stream()
                             .filter(k -> k.endsWith("/**"))
                             .anyMatch(k -> pattern.startsWith(k.substring(0, k.length() - 3)));
-                    if (!CASE_ENDPOINTS.containsKey(key) && !exempt) {
+                    if (!CASE_ENDPOINTS.containsKey(key) && !ADMIN_ENDPOINTS.containsKey(key) && !exempt) {
                         uncovered.add(key);
                     }
                 }
@@ -343,7 +473,8 @@ class TenantIsolationTest extends IntegrationTest {
                 .isEmpty();
         // The lists must describe endpoints that exist, or the test proves nothing
         assertThat(seen).containsAll(CASE_ENDPOINTS.keySet());
+        assertThat(seen).containsAll(ADMIN_ENDPOINTS.keySet());
         assertThat(seen).containsAll(EXEMPT.keySet().stream().filter(k -> !k.endsWith("/**")).toList());
-        assertThat(seen.stream().filter(k -> k.contains("/admin/"))).isNotEmpty();
+
     }
 }

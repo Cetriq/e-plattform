@@ -88,13 +88,15 @@ public interface FlowRepository extends JpaRepository<Flow, UUID> {
     Optional<Flow> findByIdWithBasicRelations(@Param("id") UUID id);
 
     /**
-     * Find all flows with basic relations for admin listing.
+     * One organisation's flows with basic relations, for the admin listing.
      */
-    @Query("SELECT f FROM Flow f " +
+    @Query(value = "SELECT f FROM Flow f " +
            "LEFT JOIN FETCH f.type " +
            "LEFT JOIN FETCH f.category " +
-           "LEFT JOIN FETCH f.family")
-    Page<Flow> findAllWithRelations(Pageable pageable);
+           "LEFT JOIN FETCH f.family " +
+           "WHERE f.organizationId = :orgId",
+           countQuery = "SELECT COUNT(f) FROM Flow f WHERE f.organizationId = :orgId")
+    Page<Flow> findAllWithRelations(@Param("orgId") UUID orgId, Pageable pageable);
 
     long countByOrganizationId(UUID organizationId);
 

@@ -35,8 +35,10 @@ public class AdminUserController {
     @Operation(
         summary = "Lista användare",
         description = """
-            Hämta paginerad lista över användare. Stöder fritextsökning på namn/e-post via `q`,
-            filter på roll via `role`, samt paginering/sortering (`page`, `size`, `sort`).
+            Hämta paginerad lista över medlemmarna i den organisation administratören
+            arbetar för, med deras roller där. Medborgare är inte medlemmar och visas
+            inte. Stöder fritextsökning på namn/e-post via `q`, filter på roll via
+            `role`, samt paginering/sortering (`page`, `size`, `sort`).
             Endast läsbar i denna version.
             """
     )
@@ -53,8 +55,9 @@ public class AdminUserController {
         String queryFilter = query == null ? "" : query.trim();
         String roleFilter = role == null ? "" : role.trim();
 
-        return userRepository.searchWithRole(queryFilter, roleFilter, pageable)
-            .map(UserListDTO::from);
+        java.util.UUID org = se.eplatform.common.security.CurrentUser.requireOrganizationId();
+        return userRepository.searchMembers(org, queryFilter, roleFilter, pageable)
+            .map(user -> UserListDTO.from(user, org));
     }
 
     private void requireAdmin() {

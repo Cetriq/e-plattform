@@ -37,6 +37,7 @@ public class CaseService {
     private final NotificationService notificationService;
     private final StatusTransitionService statusTransitions;
     private final ExternalMessageRepository externalMessageRepository;
+    private final se.eplatform.flow.contract.PublicationService publicationService;
 
     /** Roles that handle cases and can be assigned to them. */
     public static final List<String> STAFF_ROLES = List.of("MANAGER", "ADMIN");
@@ -44,7 +45,9 @@ public class CaseService {
     public CaseService(CaseRepository caseRepository, FlowRepository flowRepository,
                        UserRepository userRepository, NotificationService notificationService,
                        StatusTransitionService statusTransitions,
-                       ExternalMessageRepository externalMessageRepository) {
+                       ExternalMessageRepository externalMessageRepository,
+                       se.eplatform.flow.contract.PublicationService publicationService) {
+        this.publicationService = publicationService;
         this.caseRepository = caseRepository;
         this.flowRepository = flowRepository;
         this.userRepository = userRepository;
@@ -461,5 +464,29 @@ public class CaseService {
         }
 
         caseRepository.delete(caseEntity);
+    }
+
+    /**
+     * The manifest, contract and projection a case was created on, and whether
+     * they check out. Empty for a case without a manifest.
+     */
+    @Transactional(readOnly = true)
+    public Optional<Map<String, Object>> verifyContract(UUID caseId) {
+        Case caseEntity = caseRepository.findById(caseId).orElse(null);
+        if (caseEntity == null || caseEntity.getManifestHash() == null) {
+            return Optional.empty();
+        }
+        var verification = publicationService.verify(caseEntity.getManifestHash(), caseEntity.getFlow());
+        Map<String, Object> result = new java.util.LinkedHashMap<>();
+        result.put("manifestHash", verification.manifestHash());
+        result.put("backfilled", caseEntity.isManifestBackfilled());
+        result.put("intact", verification.intact());
+        result.put("manifestIntact", verification.manifestIntact());
+        result.put("documentsIntact", verification.documentsIntact());
+        result.put("versionUnchanged", verification.versionUnchanged());
+        result.put("manifest", verification.manifest());
+        result.put("contract", verification.contract());
+        result.put("projection", verification.projection());
+        return Optional.of(result);
     }
 }

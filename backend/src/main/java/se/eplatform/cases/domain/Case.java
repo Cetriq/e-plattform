@@ -22,6 +22,14 @@ import java.util.*;
 @Table(name = "cases")
 public class Case extends BaseEntity {
 
+    /** The publication manifest of the version the case was created on; never changed. */
+    @Column(name = "manifest_hash", length = 64)
+    private String manifestHash;
+
+    /** Bound afterwards to its version's manifest, written when manifests were introduced. */
+    @Column(name = "manifest_backfilled", nullable = false)
+    private boolean manifestBackfilled;
+
     /** The group handling the case, for e-services with access scope GROUP. */
     @Column(name = "handling_group_id")
     private UUID handlingGroupId;
@@ -114,6 +122,7 @@ public class Case extends BaseEntity {
         Case newCase = new Case();
         newCase.setFlow(flow);
         newCase.setOrganizationId(flow.getOrganizationId());
+        newCase.setManifestHash(flow.getManifestHash());
         newCase.setCreatedBy(creator);
         newCase.addOwner(creator);
         newCase.setCurrentStepIndex(0);
@@ -364,5 +373,17 @@ public class Case extends BaseEntity {
 
     public void setConfidentiality(String confidentiality) {
         this.confidentiality = confidentiality;
+    }
+
+    public String getManifestHash() {
+        return manifestHash;
+    }
+
+    public void setManifestHash(String manifestHash) {
+        this.manifestHash = manifestHash;
+    }
+
+    public boolean isManifestBackfilled() {
+        return manifestBackfilled;
     }
 }

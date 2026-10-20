@@ -13,6 +13,9 @@ import java.util.List;
 @Table(name = "organizations")
 public class Organization extends BaseEntity {
 
+    /** The platform itself (kind PLATFORM, migration V13); its security function reads the platform's log. */
+    public static final java.util.UUID PLATFORM_ID = java.util.UUID.fromString("00000000-0000-0000-0000-000000000012");
+
     @Column(nullable = false)
     private String name;
 

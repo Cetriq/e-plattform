@@ -75,7 +75,8 @@ class ComplianceTest extends IntegrationTest {
 
     @Test
     void loginsAndCreatedCasesAreLogged() throws Exception {
-        mvc.perform(as(security, get("/api/v1/security/audit"))
+        // A citizen account belongs to no organisation: it is in the platform's log
+        mvc.perform(as(platformSecurity(), get("/api/v1/security/audit"))
                         .param("subjectId", citizenId).param("action", "DEMO_ACCOUNT_CREATED"))
                 .andExpect(jsonPath("$.content.length()").value(1));
         mvc.perform(as(security, get("/api/v1/security/audit"))
@@ -115,7 +116,7 @@ class ComplianceTest extends IntegrationTest {
 
     @Test
     void auditLogCanBeExportedAsCsv() throws Exception {
-        String csv = mvc.perform(as(security, get("/api/v1/security/audit/export"))
+        String csv = mvc.perform(as(platformSecurity(), get("/api/v1/security/audit/export"))
                         .param("subjectId", citizenId))
                 .andExpect(status().isOk())
                 .andExpect(header().string("Content-Disposition", org.hamcrest.Matchers.containsString("sparbarhetslogg-")))
@@ -124,7 +125,7 @@ class ComplianceTest extends IntegrationTest {
         assertThat(csv).contains("DEMO_ACCOUNT_CREATED");
 
         // The export is itself logged
-        mvc.perform(as(security, get("/api/v1/security/audit")).param("action", "AUDIT_EXPORT"))
+        mvc.perform(as(platformSecurity(), get("/api/v1/security/audit")).param("action", "AUDIT_EXPORT"))
                 .andExpect(jsonPath("$.content[0].details").value(org.hamcrest.Matchers.containsString("CSV")));
     }
 
@@ -233,7 +234,9 @@ class ComplianceTest extends IntegrationTest {
         mvc.perform(as(security, get("/api/v1/security/retention")))
                 .andExpect(jsonPath("$.dueWithin30Days[?(@.caseId == '" + expired + "')]").exists());
 
-        mvc.perform(as(security, post("/api/v1/security/retention/run")))
+        // Gallring covers every organisation, so only the platform starts it
+        mvc.perform(as(security, post("/api/v1/security/retention/run"))).andExpect(status().isForbidden());
+        mvc.perform(as(platformSecurity(), post("/api/v1/security/retention/run")))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.casesPurged").value(org.hamcrest.Matchers.greaterThanOrEqualTo(1)))
                 .andExpect(jsonPath("$.draftsPurged").value(org.hamcrest.Matchers.greaterThanOrEqualTo(1)));

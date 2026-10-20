@@ -31,15 +31,22 @@ import java.util.UUID;
  * request itself fails or is denied. Each entry stores the SHA-256 of the
  * previous entry and of its own content, forming a chain that reveals any
  * later change (see {@link AuditChainVerifier}).
+ *
+ * Every organisation has its own chain, and so does the platform. An entry
+ * belongs to the organisation of the thing it is about (a case, file, e-service,
+ * category or organisation), otherwise to the organisation the actor works
+ * for, otherwise to the platform.
  */
 @Service
 public class AuditService {
 
     private static final Logger log = LoggerFactory.getLogger(AuditService.class);
 
-    /** Advisory lock id that serializes writers so the chain stays linear. */
-    private static final long CHAIN_LOCK = 0x4155444954L; // "AUDIT"
     static final String GENESIS = "0".repeat(64);
+    /** Chain of events that belong to no organisation. */
+    public static final String PLATFORM_CHAIN = "platform";
+    /** The single chain of entries written before chains per organisation (hash version 1). */
+    public static final String LEGACY_CHAIN = "global";
 
     private final AuditEventRepository repository;
     private final EntityManager entityManager;
@@ -61,26 +68,32 @@ public class AuditService {
             String entityId,
             UUID subjectUserId,
             String details,
-            Integer responseStatus) {
+            Integer responseStatus,
+            UUID organizationId) {
 
         public static Entry of(AuditAction action) {
-            return new Entry(action, AuditOutcome.SUCCESS, null, null, null, null, null);
+            return new Entry(action, AuditOutcome.SUCCESS, null, null, null, null, null, null);
         }
 
         public Entry entity(String type, Object id) {
-            return new Entry(action, outcome, type, id == null ? null : id.toString(), subjectUserId, details, responseStatus);
+            return new Entry(action, outcome, type, id == null ? null : id.toString(), subjectUserId, details, responseStatus, organizationId);
         }
 
         public Entry subject(UUID subject) {
-            return new Entry(action, outcome, entityType, entityId, subject, details, responseStatus);
+            return new Entry(action, outcome, entityType, entityId, subject, details, responseStatus, organizationId);
         }
 
         public Entry details(String text) {
-            return new Entry(action, outcome, entityType, entityId, subjectUserId, text, responseStatus);
+            return new Entry(action, outcome, entityType, entityId, subjectUserId, text, responseStatus, organizationId);
         }
 
         public Entry outcome(AuditOutcome result, Integer status) {
-            return new Entry(action, result, entityType, entityId, subjectUserId, details, status);
+            return new Entry(action, result, entityType, entityId, subjectUserId, details, status, organizationId);
+        }
+
+        /** Put the entry in this organisation's chain regardless of entity and actor. */
+        public Entry organization(UUID organization) {
+            return new Entry(action, outcome, entityType, entityId, subjectUserId, details, responseStatus, organization);
         }
     }
 
@@ -99,7 +112,7 @@ public class AuditService {
             event.setResponseStatus(entry.responseStatus());
             applyActor(event);
             applyRequest(event);
-            append(event);
+            append(event, entry, CurrentUser.activeOrganizationId().orElse(null));
         } catch (Exception e) {
             log.error("Could not write audit entry {} {}", entry.action(), entry.entityId(), e);
         }
@@ -122,7 +135,8 @@ public class AuditService {
             event.setUserEmail(actor.email());
             event.setUserName(actor.displayName());
             applyRequest(event);
-            append(event);
+            append(event, entry, actor.activeOrganization() == null ? null
+                    : UUID.fromString(actor.activeOrganization().id()));
         } catch (Exception e) {
             log.error("Could not write audit entry {} {}", entry.action(), entry.entityId(), e);
         }
@@ -141,21 +155,56 @@ public class AuditService {
             event.setDetails(truncate(entry.details(), 2000));
             event.setUserId("system");
             event.setUserName("System");
-            append(event);
+            append(event, entry, null);
         } catch (Exception e) {
             log.error("Could not write audit entry {} {}", entry.action(), entry.entityId(), e);
         }
     }
 
-    private void append(AuditEvent event) {
-        // Serialize writers (across instances) so each entry links to the latest one
-        entityManager.createNativeQuery("SELECT pg_advisory_xact_lock(:id)")
-                .setParameter("id", CHAIN_LOCK)
+    private void append(AuditEvent event, Entry entry, UUID actorOrganization) {
+        UUID organization = entry.organizationId() != null ? entry.organizationId()
+                : entityOrganization(entry.entityType(), entry.entityId()).orElse(actorOrganization);
+        if (se.eplatform.user.domain.Organization.PLATFORM_ID.equals(organization)) {
+            organization = null; // the platform's own events form the platform chain
+        }
+        String chain = organization == null ? PLATFORM_CHAIN : organization.toString();
+        event.setOrganizationId(organization);
+        event.setChainKey(chain);
+
+        // Serialize writers to this chain (across instances) so each entry links
+        // to the latest one. The retention procedures take the same lock.
+        entityManager.createNativeQuery("SELECT pg_advisory_xact_lock(hashtext(:key))")
+                .setParameter("key", "audit:" + chain)
                 .getSingleResult();
-        String prev = repository.findLatestHash().orElse(GENESIS);
+        String prev = repository.findLatestHash(chain).orElse(GENESIS);
         event.setPrevHash(prev);
         event.setHash(hash(prev, event));
         repository.save(event);
+    }
+
+    /** The organisation owning the thing an entry is about, if it is one that has one. */
+    private java.util.Optional<UUID> entityOrganization(String type, String id) {
+        if (type == null || id == null) return java.util.Optional.empty();
+        UUID uuid;
+        try {
+            uuid = UUID.fromString(id);
+        } catch (IllegalArgumentException e) {
+            return java.util.Optional.empty();
+        }
+        String sql = switch (type) {
+            case "CASE" -> "SELECT organization_id FROM cases WHERE id = :id";
+            case "FILE" -> "SELECT organization_id FROM attachments WHERE id = :id";
+            case "FLOW" -> "SELECT organization_id FROM flows WHERE id = :id";
+            case "CATEGORY" -> "SELECT COALESCE((SELECT organization_id FROM categories WHERE id = :id), " +
+                               "(SELECT organization_id FROM flow_types WHERE id = :id))";
+            case "ORGANIZATION" -> "SELECT id FROM organizations WHERE id = :id AND kind <> 'PLATFORM'";
+            default -> null;
+        };
+        if (sql == null) return java.util.Optional.empty();
+        return entityManager.createNativeQuery(sql).setParameter("id", uuid).getResultList().stream()
+                .filter(java.util.Objects::nonNull)
+                .map(o -> (UUID) o)
+                .findFirst();
     }
 
     static String hash(String prevHash, AuditEvent event) {

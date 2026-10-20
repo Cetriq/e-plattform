@@ -73,8 +73,10 @@ services:
     environment:
       SPRING_PROFILES_ACTIVE: dev
       SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/eplatform
-      SPRING_DATASOURCE_USERNAME: eplatform
-      SPRING_DATASOURCE_PASSWORD: ${DB_PASSWORD:-devpassword}
+      SPRING_DATASOURCE_USERNAME: eplatform_app
+      SPRING_DATASOURCE_PASSWORD: app-dev
+      SPRING_FLYWAY_USER: eplatform
+      SPRING_FLYWAY_PASSWORD: ${DB_PASSWORD:-devpassword}
       MINIO_ENDPOINT: http://minio:9000
       MINIO_ACCESS_KEY: ${MINIO_USER:-minioadmin}
       MINIO_SECRET_KEY: ${MINIO_PASSWORD:-minioadmin}

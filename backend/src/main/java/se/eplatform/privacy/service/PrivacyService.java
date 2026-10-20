@@ -140,9 +140,9 @@ public class PrivacyService {
             person.put("organisationer", user.getMemberships().stream()
                     .map(m -> m.getOrganization().getName()).sorted().toList());
             // Where the person's cases are, so a request about them can be passed on
-            extract.put("arenden_finns_hos", entityManager.createQuery(
-                            "SELECT DISTINCT o.name FROM Case c, Organization o " +
-                            "WHERE c.createdBy.id = :id AND o.id = c.organizationId ORDER BY o.name", String.class)
+            // (a database function: the platform may not read the cases themselves)
+            extract.put("arenden_finns_hos", entityManager
+                    .createNativeQuery("SELECT name FROM privacy_case_organizations(:id)")
                     .setParameter("id", userId).getResultList());
         }
         person.put("skapad", user.getCreatedAt());
@@ -297,12 +297,16 @@ public class PrivacyService {
             throw new IllegalStateException(reason);
         }
 
-        int drafts = entityManager.createNativeQuery("DELETE FROM cases WHERE created_by = :id AND submitted_at IS NULL " +
-                        "AND (CAST(:all AS boolean) OR organization_id = :org)")
-                .setParameter("id", userId)
-                .setParameter("all", scope.platform())
-                .setParameter("org", scope.organizationId())
-                .executeUpdate();
+        // The platform removes drafts in every organisation through a database
+        // function, since it may not reach the cases themselves (RLS, V14)
+        int drafts = scope.platform()
+                ? ((Number) entityManager.createNativeQuery("SELECT privacy_delete_drafts(:id)")
+                        .setParameter("id", userId).getSingleResult()).intValue()
+                : entityManager.createNativeQuery("DELETE FROM cases WHERE created_by = :id AND submitted_at IS NULL " +
+                                "AND organization_id = :org")
+                        .setParameter("id", userId)
+                        .setParameter("org", scope.organizationId())
+                        .executeUpdate();
         long retained = countCases(userId, scope, true);
         if (!scope.platform()) {
             return new ErasureResult(drafts, (int) retained, false);

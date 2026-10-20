@@ -14,6 +14,11 @@ import java.util.List;
 import java.util.UUID;
 
 @Repository
+/**
+ * Declared query methods run in a read-only transaction, so the row level
+ * security context (TenantContextBinder) is always set when they query.
+ */
+@org.springframework.transaction.annotation.Transactional(readOnly = true)
 public interface ExternalMessageRepository extends JpaRepository<ExternalMessage, UUID> {
 
     @Query("SELECT m FROM ExternalMessage m JOIN FETCH m.createdBy " +
@@ -30,6 +35,7 @@ public interface ExternalMessageRepository extends JpaRepository<ExternalMessage
     List<Object[]> countUnread(@Param("caseIds") Collection<UUID> caseIds, @Param("fromManager") boolean fromManager);
 
     @Modifying
+    @org.springframework.transaction.annotation.Transactional
     @Query("UPDATE ExternalMessage m SET m.readAt = :now, m.readBy = :reader " +
            "WHERE m.caseEntity.id = :caseId AND m.fromManager = :fromManager AND m.readAt IS NULL")
     int markRead(@Param("caseId") UUID caseId, @Param("fromManager") boolean fromManager,

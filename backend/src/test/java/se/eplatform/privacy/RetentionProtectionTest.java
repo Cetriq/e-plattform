@@ -29,8 +29,6 @@ class RetentionProtectionTest extends IntegrationTest {
 
     static final String EXEMPELKOMMUN = "00000000-0000-0000-0000-000000000010";
 
-    @Autowired
-    JdbcTemplate jdbc;
 
     String security;
 
@@ -76,9 +74,15 @@ class RetentionProtectionTest extends IntegrationTest {
              Statement statement = probe.createStatement()) {
             assertThatThrownBy(() -> statement.executeQuery("SELECT * FROM retention.purge_audit_events()"))
                     .hasMessageContaining("permission denied");
-            // Even with DELETE granted, the trigger refuses everyone but the procedures
-            assertThatThrownBy(() -> statement.executeUpdate("DELETE FROM audit_events"))
-                    .hasMessageContaining("append-only");
+            // Even with DELETE granted nothing goes: row level security shows the
+            // role no entries, and the trigger refuses everyone but the procedures
+            Integer before = jdbc.queryForObject("SELECT COUNT(*) FROM audit_events", Integer.class);
+            try {
+                statement.executeUpdate("DELETE FROM audit_events");
+            } catch (SQLException refused) {
+                assertThat(refused.getMessage()).contains("append-only");
+            }
+            assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM audit_events", Integer.class)).isGreaterThanOrEqualTo(before);
         } finally {
             jdbc.execute("REVOKE ALL ON audit_events FROM retention_probe");
             jdbc.execute("DROP ROLE retention_probe");

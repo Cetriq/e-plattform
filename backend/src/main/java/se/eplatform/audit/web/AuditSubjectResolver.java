@@ -28,19 +28,15 @@ public class AuditSubjectResolver {
         } catch (IllegalArgumentException | NullPointerException e) {
             return null;
         }
-        String jpql = switch (entityType) {
-            case "CASE" -> "SELECT c.createdBy.id FROM Case c WHERE c.id = :id";
-            case "FILE" -> "SELECT a.uploadedBy FROM Attachment a WHERE a.id = :id";
-            case "USER" -> null;
-            default -> "";
-        };
-        if (jpql == null) {
+        if ("USER".equals(entityType)) {
             return id;
         }
-        if (jpql.isEmpty()) {
-            return null;
-        }
-        List<UUID> result = entityManager.createQuery(jpql, UUID.class).setParameter("id", id).getResultList();
-        return result.isEmpty() ? null : result.get(0);
+        // A database function, because row level security hides a case from
+        // someone who may not reach it, and a denied attempt must still say
+        // whose data it concerned
+        return (UUID) entityManager.createNativeQuery("SELECT audit_entity_subject(:type, :id)")
+                .setParameter("type", entityType)
+                .setParameter("id", id)
+                .getSingleResult();
     }
 }

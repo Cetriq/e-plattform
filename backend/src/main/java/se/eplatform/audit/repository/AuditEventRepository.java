@@ -13,6 +13,11 @@ import java.util.Optional;
 import java.util.UUID;
 
 @Repository
+/**
+ * Declared query methods run in a read-only transaction, so the row level
+ * security context (TenantContextBinder) is always set when they query.
+ */
+@org.springframework.transaction.annotation.Transactional(readOnly = true)
 public interface AuditEventRepository extends JpaRepository<AuditEvent, UUID>, JpaSpecificationExecutor<AuditEvent> {
 
     /**
@@ -20,11 +25,8 @@ public interface AuditEventRepository extends JpaRepository<AuditEvent, UUID>, J
      * when gallring has removed all of them, the last removed one recorded in
      * the chain's newest anchor.
      */
-    @Query(value = """
-            SELECT COALESCE(
-                (SELECT hash FROM audit_events WHERE chain_key = :chain ORDER BY seq DESC LIMIT 1),
-                (SELECT last_removed_hash FROM audit_chain_anchors WHERE chain_key = :chain ORDER BY id DESC LIMIT 1))
-            """, nativeQuery = true)
+    // A database function, because a writer may not be allowed to read the chain (RLS, V14)
+    @Query(value = "SELECT audit_latest_hash(:chain)", nativeQuery = true)
     Optional<String> findLatestHash(@Param("chain") String chainKey);
 
     /** Entries in chain order, for verification. */

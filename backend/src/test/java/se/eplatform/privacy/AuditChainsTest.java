@@ -30,8 +30,6 @@ class AuditChainsTest extends IntegrationTest {
     static final String SCHOOL_TRANSPORT_FLOW = "00000000-0000-0000-0004-000000000011";
     static final String GRANNE_SECURITY = "informationssakerhet.grannkommun@example.com";
 
-    @Autowired
-    JdbcTemplate jdbc;
 
     String citizen;
     String citizenId;

@@ -16,6 +16,11 @@ import java.util.Optional;
 import java.util.UUID;
 
 @Repository
+/**
+ * Declared query methods run in a read-only transaction, so the row level
+ * security context (TenantContextBinder) is always set when they query.
+ */
+@org.springframework.transaction.annotation.Transactional(readOnly = true)
 public interface CaseRepository extends JpaRepository<Case, UUID> {
 
     /**

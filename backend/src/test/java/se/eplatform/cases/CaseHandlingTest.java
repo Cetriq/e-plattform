@@ -34,8 +34,6 @@ class CaseHandlingTest extends IntegrationTest {
     static final String NEEDS_COMPLETION = "00000000-0000-0000-0008-000000000004";
     static final String APPROVED = "00000000-0000-0000-0008-000000000005";
 
-    @Autowired
-    JdbcTemplate jdbc;
 
     String citizen;
     String citizenId;

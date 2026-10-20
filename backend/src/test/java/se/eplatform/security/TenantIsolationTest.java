@@ -168,8 +168,6 @@ class TenantIsolationTest extends IntegrationTest {
         }
     }
 
-    @Autowired
-    JdbcTemplate jdbc;
 
     @Autowired
     @Qualifier("requestMappingHandlerMapping")

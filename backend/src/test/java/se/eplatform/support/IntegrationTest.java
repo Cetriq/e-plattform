@@ -35,6 +35,8 @@ public abstract class IntegrationTest {
 
     /** Gallring logs in as this role; in real environments LOGIN and the password are set outside migrations. */
     public static final String RETENTION_PASSWORD = "retention-test";
+    /** The application logs in as this role, bound by row level security (V14). */
+    public static final String APP_PASSWORD = "app-test";
 
     static {
         POSTGRES.start();
@@ -42,6 +44,7 @@ public abstract class IntegrationTest {
                 POSTGRES.getJdbcUrl(), POSTGRES.getUsername(), POSTGRES.getPassword());
              var statement = connection.createStatement()) {
             statement.execute("CREATE ROLE eplatform_retention LOGIN PASSWORD '" + RETENTION_PASSWORD + "'");
+            statement.execute("CREATE ROLE eplatform_app LOGIN PASSWORD '" + APP_PASSWORD + "'");
         } catch (java.sql.SQLException e) {
             throw new IllegalStateException(e);
         }
@@ -49,9 +52,13 @@ public abstract class IntegrationTest {
 
     @DynamicPropertySource
     static void databaseProperties(DynamicPropertyRegistry registry) {
+        // The application as eplatform_app, so the tests run under row level
+        // security; migrations as the database owner
         registry.add("spring.datasource.url", POSTGRES::getJdbcUrl);
-        registry.add("spring.datasource.username", POSTGRES::getUsername);
-        registry.add("spring.datasource.password", POSTGRES::getPassword);
+        registry.add("spring.datasource.username", () -> "eplatform_app");
+        registry.add("spring.datasource.password", () -> APP_PASSWORD);
+        registry.add("spring.flyway.user", POSTGRES::getUsername);
+        registry.add("spring.flyway.password", POSTGRES::getPassword);
         registry.add("eplatform.retention.datasource.url", POSTGRES::getJdbcUrl);
         registry.add("eplatform.retention.datasource.password", () -> RETENTION_PASSWORD);
         registry.add("eplatform.security.rate-limit.enabled", () -> "false");
@@ -60,6 +67,14 @@ public abstract class IntegrationTest {
 
     @Autowired
     protected MockMvc mvc;
+
+    /**
+     * Direct database access for setting up and inspecting test data, as the
+     * owner: it is not bound by row level security, unlike the application.
+     */
+    protected final org.springframework.jdbc.core.JdbcTemplate jdbc = new org.springframework.jdbc.core.JdbcTemplate(
+            new org.springframework.jdbc.datasource.DriverManagerDataSource(
+                    POSTGRES.getJdbcUrl(), POSTGRES.getUsername(), POSTGRES.getPassword()));
 
     @Autowired
     protected ObjectMapper json;

@@ -191,20 +191,14 @@ public class AuditService {
         } catch (IllegalArgumentException e) {
             return java.util.Optional.empty();
         }
-        String sql = switch (type) {
-            case "CASE" -> "SELECT organization_id FROM cases WHERE id = :id";
-            case "FILE" -> "SELECT organization_id FROM attachments WHERE id = :id";
-            case "FLOW" -> "SELECT organization_id FROM flows WHERE id = :id";
-            case "CATEGORY" -> "SELECT COALESCE((SELECT organization_id FROM categories WHERE id = :id), " +
-                               "(SELECT organization_id FROM flow_types WHERE id = :id))";
-            case "ORGANIZATION" -> "SELECT id FROM organizations WHERE id = :id AND kind <> 'PLATFORM'";
-            default -> null;
-        };
-        if (sql == null) return java.util.Optional.empty();
-        return entityManager.createNativeQuery(sql).setParameter("id", uuid).getResultList().stream()
-                .filter(java.util.Objects::nonNull)
-                .map(o -> (UUID) o)
-                .findFirst();
+        // A database function, because RLS hides another organisation's case from
+        // the person trying to reach it, and that attempt belongs in its log
+        Object organization = entityManager
+                .createNativeQuery("SELECT audit_entity_organization(:type, :id)")
+                .setParameter("type", type)
+                .setParameter("id", uuid)
+                .getSingleResult();
+        return java.util.Optional.ofNullable((UUID) organization);
     }
 
     static String hash(String prevHash, AuditEvent event) {

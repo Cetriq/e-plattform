@@ -62,6 +62,9 @@ public interface CaseRepository extends JpaRepository<Case, UUID> {
            "WHERE c.id = :caseId AND (c.createdBy.id = :userId OR o.id = :userId)")
     boolean isOwnedBy(@Param("caseId") UUID caseId, @Param("userId") UUID userId);
 
+    /** Whether the user has a case on this version of an e-service. */
+    boolean existsByFlowIdAndCreatedById(UUID flowId, UUID userId);
+
     /**
      * Ids of the cases created by any of the given users.
      */

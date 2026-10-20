@@ -16,6 +16,7 @@ import { Modal } from '@/components/ui/Modal';
 const statusLabels: Record<string, { label: string; bg: string; text: string }> = {
   DRAFT: { label: 'Utkast', bg: 'bg-gray-100', text: 'text-gray-700' },
   PUBLISHED: { label: 'Publicerad', bg: 'bg-green-100', text: 'text-green-700' },
+  SUPERSEDED: { label: 'Ersatt', bg: 'bg-blue-50', text: 'text-blue-800' },
   ARCHIVED: { label: 'Arkiverad', bg: 'bg-yellow-100', text: 'text-yellow-700' },
 };
 
@@ -111,6 +112,7 @@ export default function FlowsListPage() {
             <option value="">Alla statusar</option>
             <option value="DRAFT">Utkast</option>
             <option value="PUBLISHED">Publicerad</option>
+            <option value="SUPERSEDED">Ersatt</option>
             <option value="ARCHIVED">Arkiverad</option>
           </select>
           <select aria-label="Filtrera på kategori" className="px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-500">

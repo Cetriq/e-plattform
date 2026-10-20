@@ -146,6 +146,22 @@ public class AdminFlowController {
                 .body(FlowDTO.from(flow));
     }
 
+    /**
+     * Start a new draft version of a published e-service.
+     */
+    @io.swagger.v3.oas.annotations.Operation(summary = "Ny version",
+        description = "Kopierar versionen till ett nytt utkast i samma e-tjänst. Publicerade versioner kan inte ändras; "
+                    + "ändringar görs i den nya versionen och gäller nya ärenden när den publiceras. "
+                    + "409 om e-tjänsten redan har ett utkast.")
+    @Audited(value = AuditAction.FLOW_CHANGE, entity = "FLOW", idParam = "id")
+    @PostMapping("/{id}/versions")
+    public ResponseEntity<FlowDTO> createNewVersion(@PathVariable UUID id) {
+        Flow flow = adminFlowService.createNewVersion(id);
+        return ResponseEntity
+                .created(URI.create("/api/v1/admin/flows/" + flow.getId()))
+                .body(FlowDTO.from(flow));
+    }
+
     // Step management
 
     /**

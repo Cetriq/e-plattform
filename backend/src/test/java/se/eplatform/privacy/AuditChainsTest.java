@@ -137,17 +137,25 @@ class AuditChainsTest extends IntegrationTest {
     void onlyThePlatformStartsGallringAndEachOrganisationSeesItsOwnDueCases() throws Exception {
         mvc.perform(as(loginAs(GRANNE_SECURITY), post("/api/v1/security/retention/run"))).andExpect(status().isForbidden());
 
-        jdbc.update("UPDATE flows SET retention_months = 1 WHERE id = ?", UUID.fromString(SCHOOL_TRANSPORT_FLOW));
+        // A copy of Grannkommun's e-service with a gallringsfrist, published while still a draft
+        String copy = json.readTree(mvc.perform(as(loginAs("admin.grannkommun@example.com"),
+                        post("/api/v1/admin/flows/" + SCHOOL_TRANSPORT_FLOW + "/duplicate")))
+                .andReturn().getResponse().getContentAsString()).get("id").asText();
+        jdbc.update("UPDATE flows SET retention_months = 1, status = 'PUBLISHED', enabled = true WHERE id = ?",
+                UUID.fromString(copy));
+        String due = json.readTree(mvc.perform(as(citizen, post("/api/v1/cases"))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(json.writeValueAsString(Map.of("flowId", copy))))
+                .andExpect(status().isCreated()).andReturn().getResponse().getContentAsString()).get("id").asText();
         jdbc.update("UPDATE cases SET submitted_at = NOW() - INTERVAL '3 months', completed_at = NOW() - INTERVAL '2 months' " +
-                    "WHERE id = ?", UUID.fromString(grannCase));
-        try {
-            mvc.perform(as(loginAs(GRANNE_SECURITY), get("/api/v1/security/retention")))
-                    .andExpect(jsonPath("$.dueWithin30Days[?(@.caseId == '" + grannCase + "')]").exists());
-            mvc.perform(as(loginAs("informationssakerhet@example.com"), get("/api/v1/security/retention")))
-                    .andExpect(jsonPath("$.dueWithin30Days[?(@.caseId == '" + grannCase + "')]").doesNotExist());
-        } finally {
-            jdbc.update("UPDATE flows SET retention_months = NULL WHERE id = ?", UUID.fromString(SCHOOL_TRANSPORT_FLOW));
-            jdbc.update("UPDATE cases SET completed_at = NULL WHERE id = ?", UUID.fromString(grannCase));
-        }
+                    "WHERE id = ?", UUID.fromString(due));
+
+        mvc.perform(as(loginAs(GRANNE_SECURITY), get("/api/v1/security/retention")))
+                .andExpect(jsonPath("$.dueWithin30Days[?(@.caseId == '" + due + "')]").exists());
+        mvc.perform(as(loginAs("informationssakerhet@example.com"), get("/api/v1/security/retention")))
+                .andExpect(jsonPath("$.dueWithin30Days[?(@.caseId == '" + due + "')]").doesNotExist());
+        jdbc.update("UPDATE cases SET completed_at = NULL WHERE id = ?", UUID.fromString(due));
+        // Out of the catalogue again for the other tests
+        jdbc.update("UPDATE flows SET status = 'ARCHIVED', enabled = false WHERE id = ?", UUID.fromString(copy));
     }
 }

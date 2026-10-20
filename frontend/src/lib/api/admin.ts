@@ -9,7 +9,7 @@ export interface FlowSummary {
   name: string;
   version: number;
   shortDescription?: string;
-  status: 'DRAFT' | 'PUBLISHED' | 'ARCHIVED';
+  status: 'DRAFT' | 'PUBLISHED' | 'SUPERSEDED' | 'ARCHIVED';
   enabled: boolean;
   requireAuth: boolean;
   requireSigning: boolean;
@@ -240,6 +240,13 @@ export async function archiveFlow(flowId: string): Promise<FlowDetail> {
 /**
  * Duplicate a flow (create new version or copy).
  */
+/**
+ * Start a new draft version of a published e-service (published versions are locked).
+ */
+export async function createNewVersion(flowId: string): Promise<FlowDetail> {
+  return api.post<FlowDetail>(`/api/v1/admin/flows/${flowId}/versions`);
+}
+
 export async function duplicateFlow(flowId: string): Promise<FlowDetail> {
   return api.post<FlowDetail>(`/api/v1/admin/flows/${flowId}/duplicate`);
 }
@@ -271,7 +278,7 @@ export async function deleteStep(flowId: string, stepId: string): Promise<void> 
  * Reorder steps.
  */
 export async function reorderSteps(flowId: string, stepIds: string[]): Promise<void> {
-  return api.put(`/api/v1/admin/flows/${flowId}/steps/reorder`, { stepIds });
+  return api.put(`/api/v1/admin/flows/${flowId}/steps/reorder`, { ids: stepIds });
 }
 
 // Query Definition API
@@ -324,7 +331,7 @@ export async function reorderQueries(
   stepId: string,
   queryIds: string[]
 ): Promise<void> {
-  return api.put(`/api/v1/admin/flows/${flowId}/steps/${stepId}/queries/reorder`, { queryIds });
+  return api.put(`/api/v1/admin/flows/${flowId}/steps/${stepId}/queries/reorder`, { ids: queryIds });
 }
 
 // Categories API

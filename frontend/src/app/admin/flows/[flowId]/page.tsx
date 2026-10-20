@@ -5,6 +5,7 @@ import { useParams, useRouter } from 'next/navigation';
 import { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
+  createNewVersion,
   getFlowForEdit,
   updateFlow,
   publishFlow,
@@ -140,6 +141,13 @@ export default function FlowEditorPage() {
     },
   });
 
+  // Published versions are locked; changes go into a new draft version
+  const locked = !!flow && flow.status !== 'DRAFT';
+  const newVersionMutation = useMutation({
+    mutationFn: () => createNewVersion(flowId),
+    onSuccess: (created) => router.push(`/admin/flows/${created.id}`),
+  });
+
   const publishMutation = useMutation({
     mutationFn: () => publishFlow(flowId),
     onSuccess: () => {
@@ -242,6 +250,7 @@ export default function FlowEditorPage() {
             <p className="text-sm text-gray-500">
               {flow?.status === 'DRAFT' && 'Utkast'}
               {flow?.status === 'PUBLISHED' && 'Publicerad'}
+              {flow?.status === 'SUPERSEDED' && 'Ersatt av en nyare version'}
               {flow?.status === 'ARCHIVED' && 'Arkiverad'}
               {flow && ` • Version ${flow.version}`}
             </p>
@@ -263,15 +272,40 @@ export default function FlowEditorPage() {
               {publishMutation.isPending ? 'Publicerar...' : 'Publicera'}
             </button>
           )}
-          <button
-            onClick={() => updateFlowMutation.mutate(flowForm)}
-            disabled={updateFlowMutation.isPending}
-            className="px-4 py-2 bg-brand-600 text-white rounded-lg hover:bg-brand-700 disabled:opacity-50"
-          >
-            {updateFlowMutation.isPending ? 'Sparar...' : 'Spara'}
-          </button>
+          {locked ? (
+            <button
+              onClick={() => newVersionMutation.mutate()}
+              disabled={newVersionMutation.isPending}
+              className="px-4 py-2 bg-brand-600 text-white rounded-lg hover:bg-brand-700 disabled:opacity-50"
+            >
+              {newVersionMutation.isPending ? 'Skapar...' : 'Skapa ny version'}
+            </button>
+          ) : (
+            <button
+              onClick={() => updateFlowMutation.mutate(flowForm)}
+              disabled={updateFlowMutation.isPending}
+              className="px-4 py-2 bg-brand-600 text-white rounded-lg hover:bg-brand-700 disabled:opacity-50"
+            >
+              {updateFlowMutation.isPending ? 'Sparar...' : 'Spara'}
+            </button>
+          )}
         </div>
       </div>
+
+      {locked && (
+        <div role="status" className="mb-6 rounded-lg border border-amber-300 bg-amber-50 p-4 text-sm text-amber-900">
+          Version {flow?.version} är {flow?.status === 'PUBLISHED' ? 'publicerad' : flow?.status === 'SUPERSEDED' ? 'ersatt' : 'arkiverad'} och
+          kan inte ändras, så att pågående ärenden behåller exakt det de skapades på. Skapa en ny version för att göra
+          ändringar; den gäller nya ärenden när den publiceras.
+          {newVersionMutation.isError && (
+            <span className="block mt-2 font-medium">
+              {String((newVersionMutation.error as Error)?.message ?? '').includes('FLOW_DRAFT_EXISTS')
+                ? 'Det finns redan ett utkast av en nyare version. Öppna det från listan över e-tjänster.'
+                : 'Det gick inte att skapa en ny version.'}
+            </span>
+          )}
+        </div>
+      )}
 
       {/* Tabs */}
       <div className="border-b mb-6">
@@ -310,6 +344,8 @@ export default function FlowEditorPage() {
       </div>
 
       {/* Content */}
+      <fieldset disabled={locked} className="contents">
+      <legend className="sr-only">{locked ? 'Låst version, kan inte ändras' : 'Redigera e-tjänsten'}</legend>
       {activeTab === 'steps' && (
         <div className="flex gap-6">
           {/* Steps sidebar */}
@@ -686,6 +722,8 @@ export default function FlowEditorPage() {
           </div>
         </div>
       )}
+
+      </fieldset>
 
       {activeTab === 'preview' && (
         <div className="bg-white rounded-lg border shadow-sm p-6">

@@ -26,8 +26,6 @@ class PrivacyScopeTest extends IntegrationTest {
 
     static final String SCHOOL_TRANSPORT_FLOW = "00000000-0000-0000-0004-000000000011";
 
-    @Autowired
-    JdbcTemplate jdbc;
 
     String citizen;
     String citizenId;

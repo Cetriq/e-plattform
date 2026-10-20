@@ -36,8 +36,6 @@ class DemoLoginTest extends IntegrationTest {
     @Autowired
     DemoCleanupJob cleanupJob;
 
-    @Autowired
-    JdbcTemplate jdbc;
 
     @Test
     void configTellsTheLoginPageWhatToShow() throws Exception {

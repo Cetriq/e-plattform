@@ -28,8 +28,6 @@ class OrganizationTest extends IntegrationTest {
     static final String GRANNKOMMUN_MANAGER = "handlaggare.grannkommun@example.com";
     static final String SCHOOL_TRANSPORT_FLOW = "00000000-0000-0000-0004-000000000011";
 
-    @Autowired
-    JdbcTemplate jdbc;
 
     @Autowired
     TokenService tokens;

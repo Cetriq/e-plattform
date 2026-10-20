@@ -29,8 +29,6 @@ class ComplianceTest extends IntegrationTest {
     static final String OPERATIONS = "it-drift@example.com";
     static final String SUBMITTED = "00000000-0000-0000-0008-000000000002";
 
-    @Autowired
-    JdbcTemplate jdbc;
 
     String citizen;
     String citizenId;

@@ -33,8 +33,6 @@ class CaseAuthorizationTest extends IntegrationTest {
     @Autowired
     AttachmentRepository attachmentRepository;
 
-    @Autowired
-    org.springframework.jdbc.core.JdbcTemplate jdbc;
 
     String owner;
     String ownerId;
@@ -94,8 +92,10 @@ class CaseAuthorizationTest extends IntegrationTest {
                 .andReturn().getResponse().getContentAsString();
         UUID created = UUID.fromString(json.readTree(response).get("id").asText());
 
-        assertThat(caseRepository.isOwnedBy(created, UUID.fromString(ownerId))).isTrue();
-        assertThat(caseRepository.isOwnedBy(created, UUID.fromString(otherCitizenId))).isFalse();
+        assertThat(jdbc.queryForObject("SELECT created_by FROM cases WHERE id = ?", UUID.class, created))
+                .isEqualTo(UUID.fromString(ownerId));
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM case_owners WHERE case_id = ? AND user_id = ?",
+                Integer.class, created, UUID.fromString(otherCitizenId))).isZero();
     }
 
     @Test
@@ -188,8 +188,14 @@ class CaseAuthorizationTest extends IntegrationTest {
     void filesAreOnlyVisibleToUploaderCaseOwnerAndStaff() throws Exception {
         Attachment attachment = new Attachment("ritning.pdf", "test-" + UUID.randomUUID(), "application/pdf",
                 10L, "eplatform-attachments", UUID.fromString(ownerId));
-        attachment.setCaseEntity(caseRepository.findById(UUID.fromString(caseId)).orElseThrow());
-        String fileId = attachmentRepository.save(attachment).getId().toString();
+        // Outside a request the application sees case data only for a named organisation
+        UUID organization = jdbc.queryForObject("SELECT organization_id FROM cases WHERE id = ?", UUID.class,
+                UUID.fromString(caseId));
+        String fileId = se.eplatform.common.tenant.TenantContext.forOrganization(organization, () -> {
+            attachment.setCaseEntity(caseRepository.findById(UUID.fromString(caseId)).orElseThrow());
+            attachment.setOrganizationId(organization);
+            return attachmentRepository.save(attachment).getId().toString();
+        });
 
         mvc.perform(as(owner, get("/api/v1/files/" + fileId))).andExpect(status().isOk());
         mvc.perform(as(manager, get("/api/v1/files/" + fileId))).andExpect(status().isOk());

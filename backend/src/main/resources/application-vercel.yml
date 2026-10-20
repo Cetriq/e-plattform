@@ -7,14 +7,22 @@ spring:
     # (unpooled) host: the pooled one runs PgBouncer in transaction mode, which
     # does not work with server-side prepared statements or Flyway.
     url: jdbc:postgresql://${PGHOST_UNPOOLED}/${PGDATABASE}?sslmode=${PGSSLMODE:require}
-    username: ${PGUSER}
-    password: ${PGPASSWORD}
+    # The application connects as eplatform_app, which owns nothing and is
+    # bound by row level security (V14). Until APP_DB_PASSWORD is set it falls
+    # back to the owner role from the Neon integration.
+    username: ${APP_DB_USER:${PGUSER}}
+    password: ${APP_DB_PASSWORD:${PGPASSWORD}}
     hikari:
       # Each container instance gets a small pool; instances scale to zero
       maximum-pool-size: 3
       minimum-idle: 0
       idle-timeout: 60000
       connection-timeout: 20000
+
+  # Migrations run as the role that owns the tables
+  flyway:
+    user: ${PGUSER}
+    password: ${PGPASSWORD}
 
   jpa:
     show-sql: false

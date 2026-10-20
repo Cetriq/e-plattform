@@ -2,11 +2,18 @@ spring:
   # Database
   datasource:
     url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/eplatform}
-    username: ${SPRING_DATASOURCE_USERNAME:eplatform}
-    password: ${SPRING_DATASOURCE_PASSWORD:devpassword}
+    # The application role, bound by row level security (V14); see
+    # docker/postgres/init/02-app-role.sql
+    username: ${SPRING_DATASOURCE_USERNAME:eplatform_app}
+    password: ${SPRING_DATASOURCE_PASSWORD:app-dev}
     hikari:
       maximum-pool-size: 10
       minimum-idle: 2
+
+  # Migrations run as the role that owns the tables
+  flyway:
+    user: ${SPRING_FLYWAY_USER:eplatform}
+    password: ${SPRING_FLYWAY_PASSWORD:${DB_PASSWORD:devpassword}}
 
   # JPA
   jpa:

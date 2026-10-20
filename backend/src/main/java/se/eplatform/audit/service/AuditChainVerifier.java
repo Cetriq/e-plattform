@@ -25,6 +25,9 @@ import java.util.List;
  * entry, so the first kept entry must link to the newest anchor, or to the
  * genesis hash when nothing has been removed. The anchors form their own
  * chain and are verified first.
+ *
+ * Each organisation, the platform, and the entries written before chains per
+ * organisation ("global") form separate chains, verified one at a time.
  */
 @Service
 public class AuditChainVerifier {
@@ -40,32 +43,33 @@ public class AuditChainVerifier {
     }
 
     /**
+     * @param chain             the chain checked
      * @param verified          number of entries checked
      * @param intact            true when every anchor and entry matches its hash and links to the one before
      * @param firstBrokenSeq    the first entry that doesn't, or null
      * @param anchors           number of gallring anchors checked
      * @param firstBrokenAnchor the first anchor that doesn't, or null
      */
-    public record Result(long verified, boolean intact, Long firstBrokenSeq, long anchors, Long firstBrokenAnchor) {}
+    public record Result(String chain, long verified, boolean intact, Long firstBrokenSeq, long anchors, Long firstBrokenAnchor) {}
 
     record Anchor(long id, String chainKey, String kind, Long seqFrom, Long seqTo, int rowCount,
                   String lastRemovedHash, String rule, Instant createdAt, String prevHash, String hash) {}
 
     @Transactional(readOnly = true)
-    public Result verify() {
+    public Result verify(String chain) {
         List<Anchor> anchors = jdbc.query("""
                 SELECT id, chain_key, kind, seq_from, seq_to, row_count, last_removed_hash, rule,
                        created_at, prev_hash, hash
-                FROM audit_chain_anchors WHERE chain_key = 'global' ORDER BY id
+                FROM audit_chain_anchors WHERE chain_key = ? ORDER BY id
                 """, (rs, i) -> new Anchor(rs.getLong("id"), rs.getString("chain_key"), rs.getString("kind"),
                 rs.getObject("seq_from", Long.class), rs.getObject("seq_to", Long.class), rs.getInt("row_count"),
                 rs.getString("last_removed_hash"), rs.getString("rule"),
-                rs.getTimestamp("created_at").toInstant(), rs.getString("prev_hash"), rs.getString("hash")));
+                rs.getTimestamp("created_at").toInstant(), rs.getString("prev_hash"), rs.getString("hash")), chain);
 
         String expectedAnchorPrev = AuditService.GENESIS;
         for (Anchor anchor : anchors) {
             if (!expectedAnchorPrev.equals(anchor.prevHash()) || !anchor.hash().equals(hash(anchor))) {
-                return new Result(0, false, null, anchors.size(), anchor.id());
+                return new Result(chain, 0, false, null, anchors.size(), anchor.id());
             }
             expectedAnchorPrev = anchor.hash();
         }
@@ -76,13 +80,13 @@ public class AuditChainVerifier {
 
         Slice<AuditEvent> slice;
         do {
-            slice = repository.findBySeqGreaterThanOrderBySeqAsc(lastSeq, PageRequest.of(0, BATCH));
+            slice = repository.findByChainKeyAndSeqGreaterThanOrderBySeqAsc(chain, lastSeq, PageRequest.of(0, BATCH));
             for (AuditEvent event : slice) {
                 boolean linked = expectedPrev.equals(event.getPrevHash());
                 boolean unchanged = event.getHash() != null
                         && event.getHash().equals(AuditService.hash(event.getPrevHash(), event));
                 if (!linked || !unchanged) {
-                    return new Result(verified, false, event.getSeq(), anchors.size(), null);
+                    return new Result(chain, verified, false, event.getSeq(), anchors.size(), null);
                 }
                 expectedPrev = event.getHash();
                 lastSeq = event.getSeq();
@@ -90,7 +94,7 @@ public class AuditChainVerifier {
             }
         } while (slice.hasNext());
 
-        return new Result(verified, true, null, anchors.size(), null);
+        return new Result(chain, verified, true, null, anchors.size(), null);
     }
 
     /** Same as the database function audit_anchor_hash (V9). */

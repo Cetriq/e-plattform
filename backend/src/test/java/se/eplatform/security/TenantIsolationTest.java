@@ -141,7 +141,7 @@ class TenantIsolationTest extends IntegrationTest {
      */
     static final Map<String, String> EXEMPT = new LinkedHashMap<>();
     static {
-        String security = "1.3c: traceability and data protection per organisation";
+        String security = "1.3d: data protection (register extract, erasure) per organisation";
         String self = "the caller's own data only (FileController/CaseController check the user id)";
         String publicFlows = "published e-services are public";
         String referenced = "checked through CaseAccessPolicy on the case the reference or file points to (tested below)";
@@ -159,7 +159,7 @@ class TenantIsolationTest extends IntegrationTest {
                 "GET /api/v1/flows/by-category/{categoryId}", "GET /api/v1/flows/family/{familyId}/versions")) {
             EXEMPT.put(flow, publicFlows);
         }
-        EXEMPT.put("/api/v1/security/**", security);
+        EXEMPT.put("/api/v1/security/people/**", security);
     }
 
     @Autowired

@@ -20,6 +20,9 @@ import se.eplatform.audit.domain.AuditEvent;
 import se.eplatform.audit.domain.AuditOutcome;
 import se.eplatform.audit.repository.AuditEventRepository;
 import se.eplatform.audit.service.AuditChainVerifier;
+import se.eplatform.audit.service.AuditService;
+import se.eplatform.user.domain.Organization;
+import se.eplatform.common.security.CurrentUser;
 import se.eplatform.audit.web.AuditContext;
 import se.eplatform.audit.web.Audited;
 import se.eplatform.privacy.service.PrivacyService;
@@ -132,12 +135,33 @@ public class SecurityOfficerController {
     @Operation(summary = "Kontrollera att loggen inte har ändrats", description = "Räknar om hashkedjan.")
     @Audited(AuditAction.AUDIT_VERIFY)
     @GetMapping("/audit/verify")
-    public AuditChainVerifier.Result verifyAudit() {
-        AuditChainVerifier.Result result = chainVerifier.verify();
+    public ChainVerification verifyAudit() {
+        UUID organization = CurrentUser.requireOrganizationId();
+        // An organisation verifies its own chain. The platform verifies its chain
+        // and the shared chain of entries written before chains per organisation.
+        List<AuditChainVerifier.Result> results = Organization.PLATFORM_ID.equals(organization)
+                ? List.of(chainVerifier.verify(AuditService.PLATFORM_CHAIN), chainVerifier.verify(AuditService.LEGACY_CHAIN))
+                : List.of(chainVerifier.verify(organization.toString()));
+        ChainVerification result = ChainVerification.of(results);
         AuditContext.details(result.intact() ? result.verified() + " poster och " + result.anchors() + " gallringsankare intakta"
                 : result.firstBrokenAnchor() != null ? "Bruten vid gallringsankare " + result.firstBrokenAnchor()
                 : "Bruten vid post " + result.firstBrokenSeq());
         return result;
+    }
+
+    /** The chains checked, and the first break across them. */
+    public record ChainVerification(long verified, boolean intact, Long firstBrokenSeq, long anchors,
+                                    Long firstBrokenAnchor, List<AuditChainVerifier.Result> chains) {
+        static ChainVerification of(List<AuditChainVerifier.Result> chains) {
+            AuditChainVerifier.Result broken = chains.stream().filter(r -> !r.intact()).findFirst().orElse(null);
+            return new ChainVerification(
+                    chains.stream().mapToLong(AuditChainVerifier.Result::verified).sum(),
+                    broken == null,
+                    broken == null ? null : broken.firstBrokenSeq(),
+                    chains.stream().mapToLong(AuditChainVerifier.Result::anchors).sum(),
+                    broken == null ? null : broken.firstBrokenAnchor(),
+                    chains);
+        }
     }
 
     // ---------- Registrerade ----------
@@ -185,13 +209,21 @@ public class SecurityOfficerController {
     @Operation(summary = "Gallringsläge", description = "Inställningar och ärenden som gallras inom 30 dagar.")
     @GetMapping("/retention")
     public RetentionOverview retention() {
+        UUID organization = CurrentUser.requireOrganizationId();
         return new RetentionOverview(retentionService.getDraftDays(), retentionService.getAuditMonths(),
-                retentionService.dueCases(30));
+                retentionService.dueCases(30).stream()
+                        .filter(due -> organization.equals(due.organizationId()))
+                        .toList());
     }
 
-    @Operation(summary = "Kör gallring nu")
+    @Operation(summary = "Kör gallring nu",
+               description = "Gallrar alla organisationer på en gång, så bara plattformens säkerhetsfunktion kan starta den.")
     @PostMapping("/retention/run")
     public RetentionService.Result runRetention() {
+        if (!Organization.PLATFORM_ID.equals(CurrentUser.requireOrganizationId())) {
+            throw new org.springframework.web.server.ResponseStatusException(
+                    org.springframework.http.HttpStatus.FORBIDDEN, "Gallringen startas av plattformens säkerhetsfunktion");
+        }
         return retentionService.run();
     }
 
@@ -200,8 +232,14 @@ public class SecurityOfficerController {
     private static Specification<AuditEvent> filter(String userId, UUID subjectId, AuditAction action,
                                                     AuditCategory category, AuditOutcome outcome, String entityId,
                                                     LocalDate from, LocalDate to) {
+        // Only the entries of the organisation the security officer works for;
+        // the platform's security function sees the entries of no organisation
+        UUID organization = CurrentUser.requireOrganizationId();
         return (root, query, cb) -> {
             List<Predicate> p = new ArrayList<>();
+            p.add(Organization.PLATFORM_ID.equals(organization)
+                    ? cb.isNull(root.get("organizationId"))
+                    : cb.equal(root.get("organizationId"), organization));
             if (userId != null && !userId.isBlank()) p.add(cb.equal(root.get("userId"), userId));
             if (subjectId != null) p.add(cb.equal(root.get("subjectUserId"), subjectId));
             if (action != null) p.add(cb.equal(root.get("action"), action));

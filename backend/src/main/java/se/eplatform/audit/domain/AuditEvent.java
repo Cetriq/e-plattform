@@ -81,6 +81,23 @@ public class AuditEvent {
     @Column(length = 64)
     private String hash;
 
+    /**
+     * The hash chain the entry belongs to: the organisation's id, "platform",
+     * or "global" for entries written before chains per organisation.
+     */
+    @Column(name = "chain_key", nullable = false, length = 80)
+    private String chainKey;
+
+    /** Whose entry it is; null for platform events. */
+    @Column(name = "organization_id")
+    private UUID organizationId;
+
+    /** 1 = original content; 2 = also chain and organisation. */
+    @Column(name = "hash_version", nullable = false)
+    private short hashVersion = CURRENT_HASH_VERSION;
+
+    public static final short CURRENT_HASH_VERSION = 2;
+
     protected AuditEvent() {}
 
     public AuditEvent(AuditAction action, AuditOutcome outcome) {
@@ -97,14 +114,24 @@ public class AuditEvent {
      * after the fact breaks the chain.
      */
     public String canonicalContent() {
-        return String.join("|",
+        String content = String.join("|",
                 String.valueOf(timestamp.toEpochMilli()),
                 nz(userId), nz(action.name()), nz(outcome.name()),
                 nz(entityType), nz(entityId),
                 subjectUserId == null ? "" : subjectUserId.toString(),
                 nz(details), nz(ipAddress), nz(requestMethod), nz(requestPath),
                 responseStatus == null ? "" : responseStatus.toString());
+        if (hashVersion < 2) {
+            return content;
+        }
+        return content + "|" + nz(chainKey) + "|" + (organizationId == null ? "" : organizationId.toString());
     }
+
+    public String getChainKey() { return chainKey; }
+    public void setChainKey(String chainKey) { this.chainKey = chainKey; }
+    public UUID getOrganizationId() { return organizationId; }
+    public void setOrganizationId(UUID organizationId) { this.organizationId = organizationId; }
+    public short getHashVersion() { return hashVersion; }
 
     private static String nz(String s) {
         return s == null ? "" : s;

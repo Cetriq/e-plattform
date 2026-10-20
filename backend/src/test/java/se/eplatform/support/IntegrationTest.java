@@ -69,6 +69,22 @@ public abstract class IntegrationTest {
         return login(Map.of("email", email)).get("token").asText();
     }
 
+    public static final String PLATFORM = "00000000-0000-0000-0000-000000000012";
+
+    /**
+     * Ingrid Säkerhet working for the platform: the security function that reads
+     * the platform's log (citizen accounts, logins, jobs) and runs gallring.
+     */
+    protected String platformSecurity() throws Exception {
+        String token = loginAs("informationssakerhet@example.com");
+        String response = mvc.perform(as(token, post("/api/v1/public/auth/organization"))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(json.writeValueAsString(Map.of("organizationId", PLATFORM))))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+        return json.readTree(response).get("token").asText();
+    }
+
     protected JsonNode login(Map<String, String> body) throws Exception {
         String response = mvc.perform(post("/api/v1/public/auth/login")
                         .contentType(MediaType.APPLICATION_JSON)

@@ -27,6 +27,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  */
 class RetentionProtectionTest extends IntegrationTest {
 
+    static final String EXEMPELKOMMUN = "00000000-0000-0000-0000-000000000010";
+
     @Autowired
     JdbcTemplate jdbc;
 
@@ -96,7 +98,7 @@ class RetentionProtectionTest extends IntegrationTest {
         // Pretend the rule says "keep everything newer than the marker"
         jdbc.update("UPDATE retention_rules SET keep_interval = now() - ? WHERE data_type = 'audit_events'", marker);
         try {
-            mvc.perform(as(security, post("/api/v1/security/retention/run")))
+            mvc.perform(as(platformSecurity(), post("/api/v1/security/retention/run")))
                     .andExpect(status().isOk())
                     .andExpect(jsonPath("$.auditEntriesPurged").value(org.hamcrest.Matchers.greaterThan(0)));
         } finally {
@@ -108,11 +110,20 @@ class RetentionProtectionTest extends IntegrationTest {
         assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM audit_events WHERE timestamp >= ?", Integer.class, marker))
                 .isGreaterThanOrEqualTo(youngBefore);
 
-        // The first kept entry links to the newest anchor
+        // In every chain, the first kept entry links to that chain's newest anchor
+        for (String chain : jdbc.queryForList("SELECT DISTINCT chain_key FROM audit_chain_anchors", String.class)) {
+            String first = jdbc.queryForObject(
+                    "SELECT prev_hash FROM audit_events WHERE chain_key = ? ORDER BY seq LIMIT 1", String.class, chain);
+            String anchored = jdbc.queryForObject(
+                    "SELECT last_removed_hash FROM audit_chain_anchors WHERE chain_key = ? ORDER BY id DESC LIMIT 1",
+                    String.class, chain);
+            if (first != null) {
+                assertThat(first).as(chain).isEqualTo(anchored);
+            }
+        }
         Map<String, Object> anchor = jdbc.queryForMap(
-                "SELECT id, last_removed_hash FROM audit_chain_anchors ORDER BY id DESC LIMIT 1");
-        assertThat(jdbc.queryForObject("SELECT prev_hash FROM audit_events ORDER BY seq LIMIT 1", String.class))
-                .isEqualTo(anchor.get("last_removed_hash"));
+                "SELECT id, last_removed_hash FROM audit_chain_anchors WHERE chain_key = ? ORDER BY id DESC LIMIT 1",
+                EXEMPELKOMMUN);
 
         mvc.perform(as(security, get("/api/v1/security/audit/verify")))
                 .andExpect(jsonPath("$.intact").value(true))
@@ -158,11 +169,13 @@ class RetentionProtectionTest extends IntegrationTest {
         // Make sure there is an anchor to change
         jdbc.update("UPDATE retention_rules SET keep_interval = INTERVAL '1 microsecond' WHERE data_type = 'audit_events'");
         try {
-            mvc.perform(as(security, post("/api/v1/security/retention/run"))).andExpect(status().isOk());
+            mvc.perform(as(platformSecurity(), post("/api/v1/security/retention/run"))).andExpect(status().isOk());
         } finally {
             jdbc.update("UPDATE retention_rules SET keep_interval = INTERVAL '24 months' WHERE data_type = 'audit_events'");
         }
-        Long anchorId = jdbc.queryForObject("SELECT MAX(id) FROM audit_chain_anchors", Long.class);
+        // Exempelkommun's chain, which its security officer verifies
+        Long anchorId = jdbc.queryForObject("SELECT MAX(id) FROM audit_chain_anchors WHERE chain_key = ?", Long.class,
+                EXEMPELKOMMUN);
         String rule = jdbc.queryForObject("SELECT rule FROM audit_chain_anchors WHERE id = ?", String.class, anchorId);
 
         jdbc.execute("ALTER TABLE audit_chain_anchors DISABLE TRIGGER trg_anchor_append_only");

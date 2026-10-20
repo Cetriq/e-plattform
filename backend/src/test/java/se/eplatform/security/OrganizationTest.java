@@ -73,7 +73,8 @@ class OrganizationTest extends IntegrationTest {
         String manager = loginAs(MANAGER);
         switchTo(manager, GRANNKOMMUN, 403);
 
-        String security = loginAs("informationssakerhet@example.com");
+        // The attempt concerns Grannkommun, so it is in Grannkommun's log
+        String security = loginAs("informationssakerhet.grannkommun@example.com");
         mvc.perform(as(security, get("/api/v1/security/audit"))
                         .param("action", "ORGANIZATION_SWITCH").param("entityId", GRANNKOMMUN))
                 .andExpect(jsonPath("$.content[0].outcome").value("DENIED"));

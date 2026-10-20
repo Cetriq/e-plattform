@@ -50,6 +50,15 @@ public interface UserRepository extends JpaRepository<User, UUID> {
            "LOWER(u.email) LIKE LOWER(CONCAT('%', :query, '%'))")
     Page<User> search(@Param("query") String query, Pageable pageable);
 
+    /** Search among the people an organisation holds data about: those with cases there, and its members. */
+    @Query("SELECT u FROM User u WHERE (" +
+           "LOWER(u.firstName) LIKE LOWER(CONCAT('%', :query, '%')) OR " +
+           "LOWER(u.lastName) LIKE LOWER(CONCAT('%', :query, '%')) OR " +
+           "LOWER(u.email) LIKE LOWER(CONCAT('%', :query, '%'))) AND (" +
+           "EXISTS (SELECT c FROM Case c WHERE c.createdBy = u AND c.organizationId = :org) OR " +
+           "EXISTS (SELECT m FROM OrganizationMembership m WHERE m.user = u AND m.organization.id = :org))")
+    Page<User> searchInOrganization(@Param("query") String query, @Param("org") UUID organizationId, Pageable pageable);
+
     /**
      * Members of an organisation, searched by name/e-mail and filtered by their
      * role there. Pass an empty string to skip a filter.

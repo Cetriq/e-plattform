@@ -180,10 +180,16 @@ class ComplianceTest extends IntegrationTest {
                 .andExpect(jsonPath("$.draftsToDelete").value(1))
                 .andExpect(jsonPath("$.retainedCases.length()").value(1));
 
+        // The organisation removes its drafts; the account is the platform's to erase
         mvc.perform(as(security, post("/api/v1/security/people/" + citizenId + "/erase")))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.draftsDeleted").value(1))
-                .andExpect(jsonPath("$.casesRetained").value(1));
+                .andExpect(jsonPath("$.casesRetained").value(1))
+                .andExpect(jsonPath("$.accountErased").value(false));
+        assertThat(jdbc.queryForObject("SELECT active FROM users WHERE id = ?", Boolean.class, UUID.fromString(citizenId))).isTrue();
+        mvc.perform(as(platformSecurity(), post("/api/v1/security/people/" + citizenId + "/erase")))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.accountErased").value(true));
 
         assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM cases WHERE id = ?", Integer.class, UUID.fromString(caseId))).isZero();
         assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM cases WHERE id = ?", Integer.class, UUID.fromString(submitted))).isOne();

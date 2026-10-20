@@ -134,6 +134,14 @@ class TenantIsolationTest extends IntegrationTest {
                 i -> get("/api/v1/admin/flow-types/" + i.type() + "/categories"));
     }
 
+    /** Data subject endpoints; another organisation's security officer must get 404. */
+    static final Map<String, Function<String, MockHttpServletRequestBuilder>> PEOPLE_ENDPOINTS = new LinkedHashMap<>();
+    static {
+        PEOPLE_ENDPOINTS.put("GET /api/v1/security/people/{userId}/extract", id -> get("/api/v1/security/people/" + id + "/extract"));
+        PEOPLE_ENDPOINTS.put("GET /api/v1/security/people/{userId}/erasure", id -> get("/api/v1/security/people/" + id + "/erasure"));
+        PEOPLE_ENDPOINTS.put("POST /api/v1/security/people/{userId}/erase", id -> post("/api/v1/security/people/" + id + "/erase"));
+    }
+
     /**
      * Endpoints with an id that are covered elsewhere or are not about cases,
      * each with the reason. Shrinks as steg 1.3b (administration) and 1.3c
@@ -141,7 +149,6 @@ class TenantIsolationTest extends IntegrationTest {
      */
     static final Map<String, String> EXEMPT = new LinkedHashMap<>();
     static {
-        String security = "1.3d: data protection (register extract, erasure) per organisation";
         String self = "the caller's own data only (FileController/CaseController check the user id)";
         String publicFlows = "published e-services are public";
         String referenced = "checked through CaseAccessPolicy on the case the reference or file points to (tested below)";
@@ -159,7 +166,6 @@ class TenantIsolationTest extends IntegrationTest {
                 "GET /api/v1/flows/by-category/{categoryId}", "GET /api/v1/flows/family/{familyId}/versions")) {
             EXEMPT.put(flow, publicFlows);
         }
-        EXEMPT.put("/api/v1/security/people/**", security);
     }
 
     @Autowired
@@ -443,6 +449,30 @@ class TenantIsolationTest extends IntegrationTest {
                 .isEqualTo("Skola & Förskola");
     }
 
+
+    // ---------- Data subjects ----------
+
+    @Test
+    void anotherOrganisationsSecurityOfficerCannotReachAPersonWithoutDataThere() throws Exception {
+        // A citizen with a case only in Exempelkommun
+        var only = newDemoCitizen(Map.of());
+        String token = only.get("token").asText();
+        String personId = only.get("user").get("id").asText();
+        createCase(token);
+
+        String granne = loginAs("informationssakerhet.grannkommun@example.com");
+        for (var endpoint : PEOPLE_ENDPOINTS.entrySet()) {
+            assertThat(mvc.perform(as(granne, endpoint.getValue().apply(personId))).andReturn().getResponse().getStatus())
+                    .as(endpoint.getKey()).isEqualTo(404);
+        }
+        String email = only.get("user").get("email").asText();
+        mvc.perform(as(granne, get("/api/v1/security/people")).param("q", email))
+                .andExpect(jsonPath("$.length()").value(0));
+        mvc.perform(as(loginAs("informationssakerhet@example.com"), get("/api/v1/security/people")).param("q", email))
+                .andExpect(jsonPath("$.length()").value(1));
+        assertThat(jdbc.queryForObject("SELECT active FROM users WHERE id = ?", Boolean.class, UUID.fromString(personId))).isTrue();
+    }
+
     // ---------- Inventory ----------
 
     @Test
@@ -462,7 +492,8 @@ class TenantIsolationTest extends IntegrationTest {
                     boolean exempt = EXEMPT.containsKey(key) || EXEMPT.keySet().stream()
                             .filter(k -> k.endsWith("/**"))
                             .anyMatch(k -> pattern.startsWith(k.substring(0, k.length() - 3)));
-                    if (!CASE_ENDPOINTS.containsKey(key) && !ADMIN_ENDPOINTS.containsKey(key) && !exempt) {
+                    if (!CASE_ENDPOINTS.containsKey(key) && !ADMIN_ENDPOINTS.containsKey(key)
+                            && !PEOPLE_ENDPOINTS.containsKey(key) && !exempt) {
                         uncovered.add(key);
                     }
                 }
@@ -474,6 +505,7 @@ class TenantIsolationTest extends IntegrationTest {
         // The lists must describe endpoints that exist, or the test proves nothing
         assertThat(seen).containsAll(CASE_ENDPOINTS.keySet());
         assertThat(seen).containsAll(ADMIN_ENDPOINTS.keySet());
+        assertThat(seen).containsAll(PEOPLE_ENDPOINTS.keySet());
         assertThat(seen).containsAll(EXEMPT.keySet().stream().filter(k -> !k.endsWith("/**")).toList());
 
     }

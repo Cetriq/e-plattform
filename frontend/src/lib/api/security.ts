@@ -104,13 +104,15 @@ export interface ErasurePreview {
   notAllowedReason?: string;
   draftsToDelete: number;
   retainedCases: RetainedCase[];
+  /** The account itself is anonymised; only the platform's security function does that. */
+  accountErased: boolean;
 }
 
 export async function getErasurePreview(userId: string): Promise<ErasurePreview> {
   return api.get(`/api/v1/security/people/${userId}/erasure`);
 }
 
-export async function erasePerson(userId: string): Promise<{ draftsDeleted: number; casesRetained: number }> {
+export async function erasePerson(userId: string): Promise<{ draftsDeleted: number; casesRetained: number; accountErased: boolean }> {
   return api.post(`/api/v1/security/people/${userId}/erase`);
 }
 

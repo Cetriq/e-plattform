@@ -32,6 +32,13 @@ import java.util.UUID;
  * gallringsfrist runs out (see {@link RetentionService}). What can be erased
  * on request is the account itself, its contact details and drafts that
  * were never submitted.
+ *
+ * Each organisation is data controller for what its e-services hold: it finds
+ * the people with cases there (and its own staff), its extract contains its
+ * cases, files and log, and its erasure removes its drafts. The platform is
+ * data controller for the account itself: its extract is the account, the
+ * memberships and the platform's log, and only it erases the account. People
+ * outside the organisation's scope are reported as not found.
  */
 @Service
 public class PrivacyService {
@@ -42,6 +49,17 @@ public class PrivacyService {
     public PrivacyService(EntityManager entityManager, UserRepository userRepository) {
         this.entityManager = entityManager;
         this.userRepository = userRepository;
+    }
+
+    /** Whose data the request concerns: one organisation's, or the platform's (the accounts). */
+    record Scope(UUID organizationId) {
+        static Scope current() {
+            return new Scope(se.eplatform.common.security.CurrentUser.requireOrganizationId());
+        }
+
+        boolean platform() {
+            return se.eplatform.user.domain.Organization.PLATFORM_ID.equals(organizationId);
+        }
     }
 
     public record PersonSummary(UUID id, String name, String email, List<String> roles,
@@ -56,21 +74,44 @@ public class PrivacyService {
         if (q.length() < 2) {
             return List.of();
         }
-        return userRepository.search(q, org.springframework.data.domain.PageRequest.of(0, 25)).stream()
-                .map(this::summarize)
+        Scope scope = Scope.current();
+        var page = org.springframework.data.domain.PageRequest.of(0, 25);
+        return (scope.platform() ? userRepository.search(q, page)
+                                 : userRepository.searchInOrganization(q, scope.organizationId(), page))
+                .stream()
+                .map(user -> summarize(user, scope))
                 .toList();
     }
 
     @Transactional(readOnly = true)
     public PersonSummary summary(UUID userId) {
-        return summarize(requireUser(userId));
+        Scope scope = Scope.current();
+        return summarize(requireUser(userId, scope), scope);
     }
 
-    private PersonSummary summarize(User user) {
-        long submitted = count("SELECT COUNT(c) FROM Case c WHERE c.createdBy.id = :id AND c.submittedAt IS NOT NULL", user.getId());
-        long drafts = count("SELECT COUNT(c) FROM Case c WHERE c.createdBy.id = :id AND c.submittedAt IS NULL", user.getId());
+    private PersonSummary summarize(User user, Scope scope) {
+        long submitted = countCases(user.getId(), scope, true);
+        long drafts = countCases(user.getId(), scope, false);
         return new PersonSummary(user.getId(), user.getFullName(), user.getEmail(),
-                user.allRoles().map(Role::getName).distinct().sorted().toList(), submitted, drafts, user.isActive());
+                roles(user, scope), submitted, drafts, user.isActive());
+    }
+
+    /** Global roles, and the roles in the organisation (all of them for the platform). */
+    private static List<String> roles(User user, Scope scope) {
+        return java.util.stream.Stream.concat(user.getRoles().stream(), user.getMemberships().stream()
+                        .filter(m -> scope.platform() || m.getOrganization().getId().equals(scope.organizationId()))
+                        .flatMap(m -> m.getRoles().stream()))
+                .map(Role::getName).distinct().sorted().toList();
+    }
+
+    private long countCases(UUID userId, Scope scope, boolean submitted) {
+        return entityManager.createQuery("SELECT COUNT(c) FROM Case c WHERE c.createdBy.id = :id AND " +
+                        (submitted ? "c.submittedAt IS NOT NULL" : "c.submittedAt IS NULL") +
+                        " AND (:all = true OR c.organizationId = :org)", Long.class)
+                .setParameter("id", userId)
+                .setParameter("all", scope.platform())
+                .setParameter("org", scope.organizationId())
+                .getSingleResult();
     }
 
     /**
@@ -78,10 +119,14 @@ public class PrivacyService {
      */
     @Transactional(readOnly = true)
     public Map<String, Object> registerExtract(UUID userId) {
-        User user = requireUser(userId);
+        Scope scope = Scope.current();
+        User user = requireUser(userId, scope);
         Map<String, Object> extract = new LinkedHashMap<>();
         extract.put("typ", "Registerutdrag enligt artikel 15 dataskyddsförordningen");
         extract.put("framtaget", Instant.now().toString());
+        extract.put("personuppgiftsansvarig", entityManager.createQuery(
+                        "SELECT o.name FROM Organization o WHERE o.id = :id", String.class)
+                .setParameter("id", scope.organizationId()).getSingleResult());
 
         Map<String, Object> person = new LinkedHashMap<>();
         person.put("id", user.getId());
@@ -90,15 +135,25 @@ public class PrivacyService {
         person.put("efternamn", user.getLastName());
         person.put("epost", user.getEmail());
         person.put("telefon", user.getPhone());
-        person.put("roller", user.allRoles().map(Role::getName).distinct().sorted().toList());
+        person.put("roller", roles(user, scope));
+        if (scope.platform()) {
+            person.put("organisationer", user.getMemberships().stream()
+                    .map(m -> m.getOrganization().getName()).sorted().toList());
+            // Where the person's cases are, so a request about them can be passed on
+            extract.put("arenden_finns_hos", entityManager.createQuery(
+                            "SELECT DISTINCT o.name FROM Case c, Organization o " +
+                            "WHERE c.createdBy.id = :id AND o.id = c.organizationId ORDER BY o.name", String.class)
+                    .setParameter("id", userId).getResultList());
+        }
         person.put("skapad", user.getCreatedAt());
         person.put("senastInloggad", user.getLastLoginAt());
         extract.put("person", person);
 
         List<Case> cases = entityManager.createQuery(
                         "SELECT DISTINCT c FROM Case c JOIN FETCH c.flow LEFT JOIN FETCH c.status " +
-                        "WHERE c.createdBy.id = :id ORDER BY c.createdAt", Case.class)
+                        "WHERE c.createdBy.id = :id AND c.organizationId = :org ORDER BY c.createdAt", Case.class)
                 .setParameter("id", userId)
+                .setParameter("org", scope.organizationId())
                 .getResultList();
         List<Map<String, Object>> caseList = new ArrayList<>();
         for (Case c : cases) {
@@ -145,8 +200,10 @@ public class PrivacyService {
         extract.put("arenden", caseList);
 
         List<Attachment> files = entityManager.createQuery(
-                        "SELECT a FROM Attachment a WHERE a.uploadedBy = :id AND a.deleted = false ORDER BY a.uploadedAt", Attachment.class)
+                        "SELECT a FROM Attachment a WHERE a.uploadedBy = :id AND a.deleted = false " +
+                        "AND a.organizationId = :org ORDER BY a.uploadedAt", Attachment.class)
                 .setParameter("id", userId)
+                .setParameter("org", scope.organizationId())
                 .getResultList();
         extract.put("bilagor", files.stream().map(a -> Map.of(
                 "filnamn", a.getOriginalFilename(),
@@ -154,11 +211,17 @@ public class PrivacyService {
                 "storlek", a.getFileSize(),
                 "uppladdad", a.getUploadedAt().toString())).toList());
 
-        // Who has handled this person's data (art. 15.1 c, recipients)
-        List<AuditEvent> access = entityManager.createQuery(
-                        "SELECT e FROM AuditEvent e WHERE e.subjectUserId = :id ORDER BY e.timestamp", AuditEvent.class)
-                .setParameter("id", userId)
-                .getResultList();
+        // Who has handled this person's data (art. 15.1 c, recipients), in this
+        // organisation's log; the platform's log holds the account events
+        var accessQuery = entityManager.createQuery(
+                        "SELECT e FROM AuditEvent e WHERE e.subjectUserId = :id AND " +
+                        (scope.platform() ? "e.organizationId IS NULL" : "e.organizationId = :org") +
+                        " ORDER BY e.timestamp", AuditEvent.class)
+                .setParameter("id", userId);
+        if (!scope.platform()) {
+            accessQuery.setParameter("org", scope.organizationId());
+        }
+        List<AuditEvent> access = accessQuery.getResultList();
         extract.put("atkomstlogg", access.stream().map(e -> {
             Map<String, Object> row = new LinkedHashMap<>();
             row.put("tid", e.getTimestamp().toString());
@@ -177,12 +240,16 @@ public class PrivacyService {
     }
 
     /** What erasure on request would remove and what has to be kept. */
+    /**
+     * @param accountErased true when the account itself would be anonymised (platform only)
+     */
     public record ErasurePreview(
             PersonSummary person,
             boolean allowed,
             String notAllowedReason,
             long draftsToDelete,
-            List<RetainedCase> retainedCases) {}
+            List<RetainedCase> retainedCases,
+            boolean accountErased) {}
 
     public record RetainedCase(String referenceNumber, String flowName, String status,
                                Instant closedAt, Integer retentionMonths, Instant purgeAfter) {}
@@ -190,44 +257,56 @@ public class PrivacyService {
     @Transactional(readOnly = true)
     @SuppressWarnings("unchecked")
     public ErasurePreview erasurePreview(UUID userId) {
-        User user = requireUser(userId);
-        PersonSummary person = summarize(user);
-        String reason = staffReason(user);
+        Scope scope = Scope.current();
+        User user = requireUser(userId, scope);
+        PersonSummary person = summarize(user, scope);
+        String reason = staffReason(user, scope);
 
         List<Object[]> rows = entityManager.createNativeQuery("""
                 SELECT c.reference_number, f.name, s.name, c.completed_at, f.retention_months,
                        c.completed_at + make_interval(months => f.retention_months)
                 FROM cases c JOIN flows f ON f.id = c.flow_id LEFT JOIN status_definitions s ON s.id = c.status_id
-                WHERE c.created_by = :id AND c.submitted_at IS NOT NULL ORDER BY c.submitted_at
-                """).setParameter("id", userId).getResultList();
+                WHERE c.created_by = :id AND c.submitted_at IS NOT NULL
+                  AND (CAST(:all AS boolean) OR c.organization_id = :org)
+                ORDER BY c.submitted_at
+                """).setParameter("id", userId).setParameter("all", scope.platform())
+                .setParameter("org", scope.organizationId()).getResultList();
         List<RetainedCase> retained = rows.stream().map(r -> new RetainedCase(
                 (String) r[0], (String) r[1], (String) r[2],
                 RetentionService.toInstant(r[3]),
                 (Integer) r[4],
                 RetentionService.toInstant(r[5]))).toList();
 
-        return new ErasurePreview(person, reason == null, reason, person.drafts(), retained);
+        return new ErasurePreview(person, reason == null, reason, person.drafts(), retained, scope.platform());
     }
 
-    public record ErasureResult(long draftsDeleted, int casesRetained) {}
+    public record ErasureResult(long draftsDeleted, int casesRetained, boolean accountErased) {}
 
     /**
-     * Erase what may be erased on request: drafts are deleted, the account is
-     * deactivated and its name and contact details removed. Submitted cases
-     * stay until gallring.
+     * Erase what may be erased on request. An organisation deletes the drafts
+     * in its e-services. The platform also deactivates the account and removes
+     * its name and contact details, and deletes drafts everywhere. Submitted
+     * cases stay until gallring.
      */
     @Transactional
     public ErasureResult erase(UUID userId) {
-        User user = requireUser(userId);
-        String reason = staffReason(user);
+        Scope scope = Scope.current();
+        User user = requireUser(userId, scope);
+        String reason = staffReason(user, scope);
         if (reason != null) {
             throw new IllegalStateException(reason);
         }
 
-        int drafts = entityManager.createNativeQuery("DELETE FROM cases WHERE created_by = :id AND submitted_at IS NULL")
+        int drafts = entityManager.createNativeQuery("DELETE FROM cases WHERE created_by = :id AND submitted_at IS NULL " +
+                        "AND (CAST(:all AS boolean) OR organization_id = :org)")
                 .setParameter("id", userId)
+                .setParameter("all", scope.platform())
+                .setParameter("org", scope.organizationId())
                 .executeUpdate();
-        long retained = count("SELECT COUNT(c) FROM Case c WHERE c.createdBy.id = :id", userId);
+        long retained = countCases(userId, scope, true);
+        if (!scope.platform()) {
+            return new ErasureResult(drafts, (int) retained, false);
+        }
 
         String tag = userId.toString().substring(0, 8);
         user.setEmail("raderad-" + tag + "@raderad.invalid");
@@ -243,21 +322,33 @@ public class PrivacyService {
         user.getMemberships().clear();
         userRepository.save(user);
 
-        return new ErasureResult(drafts, (int) retained);
+        return new ErasureResult(drafts, (int) retained, true);
     }
 
     /** Staff accounts are handled through employment, not data subject requests. */
-    private static String staffReason(User user) {
-        boolean staff = user.allRoles().anyMatch(r -> !"USER".equals(r.getName()));
+    private static String staffReason(User user, Scope scope) {
+        boolean staff = user.getRoles().stream().anyMatch(r -> !"USER".equals(r.getName()))
+                || user.getMemberships().stream().anyMatch(m ->
+                        scope.platform() || m.getOrganization().getId().equals(scope.organizationId()));
         return staff ? "Kontot har en tjänsteroll och hanteras inte som en registrerads begäran" : null;
     }
 
-    private User requireUser(UUID userId) {
+    /** The person, if they are in the scope's data: cases there, or a member there. */
+    private User requireUser(UUID userId, Scope scope) {
         return userRepository.findById(userId)
-                .orElseThrow(() -> new IllegalArgumentException("User not found: " + userId));
+                .filter(user -> scope.platform() || inOrganization(userId, scope.organizationId()))
+                .orElseThrow(() -> new org.springframework.web.server.ResponseStatusException(
+                        org.springframework.http.HttpStatus.NOT_FOUND, "Personen hittades inte"));
     }
 
-    private long count(String jpql, UUID id) {
-        return entityManager.createQuery(jpql, Long.class).setParameter("id", id).getSingleResult();
+    private boolean inOrganization(UUID userId, UUID organizationId) {
+        return entityManager.createQuery(
+                        "SELECT COUNT(u) > 0 FROM User u WHERE u.id = :id AND (" +
+                        "EXISTS (SELECT c FROM Case c WHERE c.createdBy = u AND c.organizationId = :org) OR " +
+                        "EXISTS (SELECT m FROM OrganizationMembership m WHERE m.user = u AND m.organization.id = :org))",
+                        Boolean.class)
+                .setParameter("id", userId)
+                .setParameter("org", organizationId)
+                .getSingleResult();
     }
 }

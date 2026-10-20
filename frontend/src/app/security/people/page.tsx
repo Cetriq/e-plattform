@@ -145,7 +145,8 @@ function PersonDetail({ userId }: { userId: string }) {
     try {
       const result = await erasePerson(userId);
       toast.success('Personuppgifter raderade',
-        `${result.draftsDeleted} utkast raderade, ${result.casesRetained} ärenden bevaras.`);
+        `${result.draftsDeleted} utkast raderade, ${result.casesRetained} ärenden bevaras.` +
+          (result.accountErased ? ' Kontot är avaktiverat.' : ''));
       setConfirming(false);
       await queryClient.invalidateQueries({ queryKey: ['erasure', userId] });
       await queryClient.invalidateQueries({ queryKey: ['people'] });
@@ -179,8 +180,8 @@ function PersonDetail({ userId }: { userId: string }) {
           </div>
         </div>
         <p className="text-xs text-gray-500 mt-4">
-          Registerutdraget innehåller allt systemet har om personen, även interna anteckningar.
-          Pröva sekretess enligt OSL innan utdraget lämnas ut.
+          Registerutdraget innehåller allt organisationen har om personen, även interna anteckningar.
+          Uppgifter hos andra organisationer lämnas av dem. Pröva sekretess enligt OSL innan utdraget lämnas ut.
         </p>
       </section>
 
@@ -196,9 +197,18 @@ function PersonDetail({ userId }: { userId: string }) {
                 <h3 className="font-medium text-red-900 mb-2">Raderas</h3>
                 <ul className="list-disc pl-5 space-y-1 text-red-900">
                   <li>{data.draftsToDelete} utkast som aldrig skickats in</li>
-                  <li>Namn, e-post och telefonnummer</li>
-                  <li>Kontot avaktiveras och kan inte längre logga in</li>
+                  {data.accountErased && (
+                    <>
+                      <li>Namn, e-post och telefonnummer</li>
+                      <li>Kontot avaktiveras och kan inte längre logga in</li>
+                    </>
+                  )}
                 </ul>
+                {!data.accountErased && (
+                  <p className="mt-2 text-red-900">
+                    Själva kontot raderas av plattformens säkerhetsfunktion.
+                  </p>
+                )}
               </div>
               <div className="p-4 rounded-lg bg-gray-50 border">
                 <h3 className="font-medium text-gray-900 mb-2">Bevaras ({data.retainedCases.length})</h3>

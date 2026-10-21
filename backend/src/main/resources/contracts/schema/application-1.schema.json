@@ -1,0 +1,76 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://e-plattform.vercel.app/schemas/eplatform.application-1.json",
+  "title": "eplatform.application/1",
+  "description": "An organisation's application of a service definition (level 2): parameter values, local content at the definition's extension points, fees, integrations and AI policy.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["format", "parameters", "extensions"],
+  "properties": {
+    "format": { "const": "eplatform.application/1" },
+    "parameters": {
+      "type": "object",
+      "additionalProperties": { "type": ["number", "string", "boolean"] }
+    },
+    "extensions": {
+      "description": "Local content per extension point of the definition",
+      "type": "object",
+      "additionalProperties": { "type": "array", "items": { "$ref": "#/$defs/extension" } }
+    },
+    "fees": { "type": "array", "items": { "$ref": "#/$defs/fee" } },
+    "integrations": { "type": "array", "items": { "$ref": "#/$defs/integration" } },
+    "aiPolicy": { "$ref": "#/$defs/aiPolicy" },
+    "localInformation": { "type": "string" }
+  },
+  "$defs": {
+    "localKey": { "type": "string", "pattern": "^local\\.[a-z0-9-]+(\\.[a-z0-9-]+)*$" },
+    "extension": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "key"],
+      "properties": {
+        "kind": { "enum": ["field", "visibility-rule", "validation-rule", "eligibility-rule", "fee", "information"] },
+        "key": { "$ref": "#/$defs/localKey" },
+        "concept": { "type": "string", "pattern": "^[a-z][a-z0-9.-]*@[0-9]+$" },
+        "required": { "type": "boolean" },
+        "when": { "type": "object" },
+        "then": { "type": "object" },
+        "text": { "type": "string" },
+        "description": { "type": "string" }
+      }
+    },
+    "fee": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["key", "amount", "currency"],
+      "properties": {
+        "key": { "$ref": "#/$defs/localKey" },
+        "amount": { "type": "number", "minimum": 0 },
+        "currency": { "const": "SEK" },
+        "description": { "type": "string" }
+      }
+    },
+    "integration": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["key", "system"],
+      "properties": {
+        "key": { "$ref": "#/$defs/localKey" },
+        "system": { "type": "string" },
+        "purpose": { "type": "string" }
+      }
+    },
+    "aiPolicy": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "features": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": { "enum": ["summary", "completeness", "draft-reply", "semantic-search", "citizen-dialogue"] }
+        },
+        "maxDataClass": { "enum": ["PUBLIC", "PERSONAL", "SENSITIVE", "CONFIDENTIAL"] }
+      }
+    }
+  }
+}

@@ -38,6 +38,7 @@ public enum AuditAction {
 
     // Administration
     FLOW_CHANGE(AuditCategory.ADMIN),
+    CONTRACT_CHANGE(AuditCategory.ADMIN),
     CATEGORY_CHANGE(AuditCategory.ADMIN),
     USER_ROLE_CHANGE(AuditCategory.ADMIN),
 

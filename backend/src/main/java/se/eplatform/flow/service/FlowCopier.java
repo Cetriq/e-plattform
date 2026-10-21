@@ -45,6 +45,7 @@ public class FlowCopier {
         copy.setVersion(version);
         copy.setOrganizationId(original.getOrganizationId());
         copy.setAccessScope(original.getAccessScope());
+        copy.setApplicationVersionId(original.getApplicationVersionId());
         copy.setShortDescription(original.getShortDescription());
         copy.setLongDescription(original.getLongDescription());
         copy.setSubmittedMessage(original.getSubmittedMessage());
@@ -96,6 +97,7 @@ public class FlowCopier {
                 queryCopy.setRequired(query.isRequired());
                 queryCopy.setDefaultState(query.getDefaultState());
                 queryCopy.setExportName(query.getExportName());
+                queryCopy.setFieldKey(query.getFieldKey());
                 queryCopy.setExportable(query.isExportable());
                 queryCopy.setSortOrder(query.getSortOrder());
                 queryCopy.setWidth(query.getWidth());

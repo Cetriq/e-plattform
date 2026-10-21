@@ -31,7 +31,9 @@ public record FlowDTO(
         Instant updatedAt,
         /** Gallringsfrist in months; null = bevaras. */
         Integer retentionMonths,
-        UUID organizationId
+        UUID organizationId,
+        /** The published service application version it applies (contract level 2); null = not on the levels. */
+        UUID applicationVersionId
 ) {
     public static FlowDTO from(Flow flow) {
         return new FlowDTO(
@@ -54,7 +56,8 @@ public record FlowDTO(
                 flow.getCreatedAt(),
                 flow.getUpdatedAt(),
                 flow.getRetentionMonths(),
-                flow.getOrganizationId()
+                flow.getOrganizationId(),
+                flow.getApplicationVersionId()
         );
     }
 
@@ -82,7 +85,8 @@ public record FlowDTO(
                 flow.getCreatedAt(),
                 flow.getUpdatedAt(),
                 flow.getRetentionMonths(),
-                flow.getOrganizationId()
+                flow.getOrganizationId(),
+                flow.getApplicationVersionId()
         );
     }
 }

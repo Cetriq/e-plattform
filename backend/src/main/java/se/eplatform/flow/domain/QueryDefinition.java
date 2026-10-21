@@ -62,6 +62,10 @@ public class QueryDefinition {
     @Column(name = "export_name")
     private String exportName;
 
+    /** The field of the definition, or local field of the application, that this field collects. */
+    @Column(name = "field_key", length = 120)
+    private String fieldKey;
+
     @Column(nullable = false)
     private boolean exportable = true;
 
@@ -188,6 +192,14 @@ public class QueryDefinition {
 
     public void setDefaultState(QueryState defaultState) {
         this.defaultState = defaultState;
+    }
+
+    public String getFieldKey() {
+        return fieldKey;
+    }
+
+    public void setFieldKey(String fieldKey) {
+        this.fieldKey = fieldKey;
     }
 
     public String getExportName() {

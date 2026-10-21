@@ -23,7 +23,9 @@ public record QueryDefinitionDTO(
         QueryState defaultState,
         Integer sortOrder,
         String width,
-        List<EvaluatorDTO> evaluators
+        List<EvaluatorDTO> evaluators,
+        /** The definition or application field it collects, when the version applies a service application. */
+        String fieldKey
 ) {
     public static QueryDefinitionDTO from(QueryDefinition query) {
         return new QueryDefinitionDTO(
@@ -41,7 +43,8 @@ public record QueryDefinitionDTO(
                 query.getEvaluators().stream()
                         .filter(e -> e.isEnabled())
                         .map(EvaluatorDTO::from)
-                        .toList()
+                        .toList(),
+                query.getFieldKey()
         );
     }
 }

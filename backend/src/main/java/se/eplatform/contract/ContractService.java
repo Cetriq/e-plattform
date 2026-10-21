@@ -15,9 +15,12 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.time.LocalDate;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
+import java.util.TreeSet;
 import java.util.UUID;
 
 /**
@@ -67,6 +70,16 @@ public class ContractService {
                               List<Role> roles, List<Version> versions) {}
 
     public record Concept(String key, int version, JsonNode schema, String dataClass, String description) {}
+
+    /**
+     * A published application version as a version of an e-service applies it:
+     * both level versions with their hashes, the legal validity they give
+     * together, and the field keys the e-service's fields may name (the
+     * definition's fields and the application's local fields).
+     */
+    public record Binding(UUID applicationId, UUID applicationVersionId, int applicationVersion, String applicationHash,
+                          UUID definitionId, String definitionKey, UUID definitionVersionId, int definitionVersion,
+                          String definitionHash, LocalDate validFrom, LocalDate validTo, Set<String> fieldKeys) {}
 
     /** Documents that do not follow their schema. */
     public static class InvalidDocument extends RuntimeException {
@@ -355,6 +368,56 @@ public class ContractService {
         validity(doc, v);
         doc.put("content", v.content());
         return doc;
+    }
+
+    // ---------- Applied by e-service versions ----------
+
+    /** The binding of a published application version the active organisation owns or has a role in; 404, or 409 if not published. */
+    public Binding binding(UUID applicationVersionId) {
+        List<Map<String, Object>> rows = jdbc.queryForList("""
+                SELECT a.id AS application_id, av.version AS application_version, av.status AS application_status,
+                       av.content::text AS application_content, av.content_hash AS application_hash,
+                       av.valid_from AS application_from, av.valid_to AS application_to,
+                       d.id AS definition_id, d.key AS definition_key, dv.id AS definition_version_id,
+                       dv.version AS definition_version, dv.content::text AS definition_content,
+                       dv.content_hash AS definition_hash, dv.valid_from AS definition_from, dv.valid_to AS definition_to
+                FROM service_application_versions av
+                JOIN service_applications a ON a.id = av.application_id
+                JOIN service_definition_versions dv ON dv.id = av.definition_version_id
+                JOIN service_definitions d ON d.id = dv.definition_id
+                WHERE av.id = ?""", applicationVersionId);
+        if (rows.isEmpty()) throw notFound("Tillämpningsversionen hittades inte");
+        Map<String, Object> row = rows.get(0);
+        readableApplication((UUID) row.get("application_id"));
+        if (!"PUBLISHED".equals(row.get("application_status"))) {
+            throw conflict("APPLICATION_NOT_PUBLISHED: tillämpningsversionen är " + row.get("application_status"));
+        }
+
+        Set<String> keys = new TreeSet<>();
+        json((String) row.get("definition_content")).path("fields").forEach(f -> keys.add(f.path("key").asText()));
+        json((String) row.get("application_content")).path("extensions").forEach(point -> point.forEach(item -> {
+            if ("field".equals(item.path("kind").asText())) keys.add(item.path("key").asText());
+        }));
+        return new Binding((UUID) row.get("application_id"), applicationVersionId, (Integer) row.get("application_version"),
+                (String) row.get("application_hash"), (UUID) row.get("definition_id"), (String) row.get("definition_key"),
+                (UUID) row.get("definition_version_id"), (Integer) row.get("definition_version"),
+                (String) row.get("definition_hash"),
+                later(local(row.get("definition_from")), local(row.get("application_from"))),
+                earlier(local(row.get("definition_to")), local(row.get("application_to"))),
+                Collections.unmodifiableSet(keys));
+    }
+
+    private static LocalDate local(Object value) {
+        return value == null ? null : ((Date) value).toLocalDate();
+    }
+
+    /** Open (null) is the widest; validity is where both hold. */
+    private static LocalDate later(LocalDate a, LocalDate b) {
+        return a == null ? b : b == null ? a : a.isAfter(b) ? a : b;
+    }
+
+    private static LocalDate earlier(LocalDate a, LocalDate b) {
+        return a == null ? b : b == null ? a : a.isBefore(b) ? a : b;
     }
 
     // ---------- Access ----------

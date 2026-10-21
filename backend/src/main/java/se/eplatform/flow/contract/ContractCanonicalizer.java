@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import org.erdtman.jcs.JsonCanonicalizer;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Component;
+import se.eplatform.contract.ContractService;
 import se.eplatform.flow.domain.EvaluatorDefinition;
 import se.eplatform.flow.domain.Flow;
 import se.eplatform.flow.domain.QueryDefinition;
@@ -36,6 +37,13 @@ import java.util.UUID;
  *   questions, help texts and messages
  * - manifest (eplatform.manifest/1): binds both to the published version
  *
+ * A version that applies a service application (contract levels, steg 3b)
+ * gets eplatform.contract/2, where each field names the definition or
+ * application field it collects, and eplatform.manifest/2, which also names
+ * the definition and application versions with their hashes and takes its
+ * legal validity from them. Versions that do not apply one keep the /1
+ * documents exactly, so their stored hashes still verify.
+ *
  * Lists are in a fixed order (sort order, then id), so the same version always
  * gives the same documents.
  */
@@ -45,6 +53,8 @@ public class ContractCanonicalizer {
     public static final String CONTRACT_FORMAT = "eplatform.contract/1";
     public static final String PROJECTION_FORMAT = "eplatform.projection/1";
     public static final String MANIFEST_FORMAT = "eplatform.manifest/1";
+    public static final String CONTRACT_FORMAT_LEVELS = "eplatform.contract/2";
+    public static final String MANIFEST_FORMAT_LEVELS = "eplatform.manifest/2";
 
     /** A canonical document and its hash. */
     public record Document(String format, String canonical, String hash) {}
@@ -67,8 +77,10 @@ public class ContractCanonicalizer {
 
     /** The rules of a version. Must run in a transaction with the version's parts loadable. */
     public Document contract(Flow flow) {
+        boolean levels = flow.getApplicationVersionId() != null;
+        String format = levels ? CONTRACT_FORMAT_LEVELS : CONTRACT_FORMAT;
         Map<String, Object> doc = new LinkedHashMap<>();
-        doc.put("format", CONTRACT_FORMAT);
+        doc.put("format", format);
 
         Map<String, Object> service = new LinkedHashMap<>();
         service.put("organizationId", str(flow.getOrganizationId()));
@@ -95,6 +107,7 @@ public class ContractCanonicalizer {
                 field.put("config", query.getConfig());
                 field.put("exportName", query.getExportName());
                 field.put("exportable", query.isExportable());
+                if (levels) field.put("fieldKey", query.getFieldKey());
                 fields.add(field);
 
                 for (EvaluatorDefinition evaluator : query.getEvaluators().stream()
@@ -146,7 +159,7 @@ public class ContractCanonicalizer {
                     return t;
                 });
         doc.put("transitions", transitions);
-        return document(CONTRACT_FORMAT, doc);
+        return document(format, doc);
     }
 
     /** What the citizen is shown in a version. */
@@ -198,12 +211,14 @@ public class ContractCanonicalizer {
 
     /**
      * The manifest binding contract and projection to the version.
-     * @param origin "publish", or "backfill" for versions published before manifests existed
+     * @param origin  "publish", or "backfill" for versions published before manifests existed
+     * @param binding the service application version it applies, or null
      */
     public Document manifest(Flow flow, Document contract, Document projection, Instant publishedAt,
-                             UUID publishedBy, String origin) {
+                             UUID publishedBy, String origin, ContractService.Binding binding) {
+        String format = binding == null ? MANIFEST_FORMAT : MANIFEST_FORMAT_LEVELS;
         Map<String, Object> doc = new LinkedHashMap<>();
-        doc.put("format", MANIFEST_FORMAT);
+        doc.put("format", format);
         doc.put("origin", origin);
         doc.put("flowId", str(flow.getId()));
         doc.put("familyId", str(flow.getFamily().getId()));
@@ -213,10 +228,29 @@ public class ContractCanonicalizer {
         doc.put("projectionHash", projection.hash());
         doc.put("publishedAt", publishedAt == null ? null : publishedAt.truncatedTo(ChronoUnit.MILLIS).toString());
         doc.put("publishedBy", str(publishedBy));
-        // Legal validity is decided per definition in steg 3; until then it is open
-        doc.put("validFrom", null);
-        doc.put("validTo", null);
-        return document(MANIFEST_FORMAT, doc);
+        if (binding == null) {
+            // Not on the contract levels: no legal validity of its own
+            doc.put("validFrom", null);
+            doc.put("validTo", null);
+        } else {
+            Map<String, Object> definition = new LinkedHashMap<>();
+            definition.put("id", str(binding.definitionId()));
+            definition.put("key", binding.definitionKey());
+            definition.put("versionId", str(binding.definitionVersionId()));
+            definition.put("version", binding.definitionVersion());
+            definition.put("contentHash", binding.definitionHash());
+            doc.put("definition", definition);
+            Map<String, Object> application = new LinkedHashMap<>();
+            application.put("id", str(binding.applicationId()));
+            application.put("versionId", str(binding.applicationVersionId()));
+            application.put("version", binding.applicationVersion());
+            application.put("contentHash", binding.applicationHash());
+            doc.put("application", application);
+            // Where both the definition and the application hold
+            doc.put("validFrom", str(binding.validFrom()));
+            doc.put("validTo", str(binding.validTo()));
+        }
+        return document(format, doc);
     }
 
     /** Canonical form and SHA-256 of a stored document, to verify it. */

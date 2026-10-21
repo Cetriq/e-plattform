@@ -146,6 +146,11 @@ export default function FlowEditorPage() {
   const newVersionMutation = useMutation({
     mutationFn: () => createNewVersion(flowId),
     onSuccess: (created) => router.push(`/admin/flows/${created.id}`),
+    // A newer version is already a draft: open it instead
+    onError: (error) => {
+      const draft = /FLOW_DRAFT_EXISTS.*\(([0-9a-f-]{36})\)/.exec(String((error as Error)?.message ?? ''));
+      if (draft) router.push(`/admin/flows/${draft[1]}`);
+    },
   });
 
   const publishMutation = useMutation({

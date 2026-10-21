@@ -49,6 +49,8 @@ dependencies {
 
     // Signed tokens (JWT)
     implementation("com.nimbusds:nimbus-jose-jwt:10.10")
+    // RFC 8785 JSON canonicalization, for hashing service contracts
+    implementation("io.github.erdtman:java-json-canonicalization:1.1")
 
     // Rate Limiting
     implementation("com.bucket4j:bucket4j-core:8.10.1")

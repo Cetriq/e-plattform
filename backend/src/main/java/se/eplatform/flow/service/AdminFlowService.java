@@ -35,6 +35,7 @@ public class AdminFlowService {
     private final FlowTypeRepository flowTypeRepository;
     private final CategoryRepository categoryRepository;
     private final FlowCopier flowCopier;
+    private final se.eplatform.flow.contract.PublicationService publicationService;
     private final jakarta.persistence.EntityManager entityManager;
 
     public AdminFlowService(
@@ -44,7 +45,9 @@ public class AdminFlowService {
             FlowTypeRepository flowTypeRepository,
             CategoryRepository categoryRepository,
             FlowCopier flowCopier,
-            jakarta.persistence.EntityManager entityManager) {
+            jakarta.persistence.EntityManager entityManager,
+            se.eplatform.flow.contract.PublicationService publicationService) {
+        this.publicationService = publicationService;
         this.flowCopier = flowCopier;
         this.entityManager = entityManager;
         this.flowRepository = flowRepository;
@@ -231,6 +234,9 @@ public class AdminFlowService {
                 flowRepository.save(other);
             }
         }
+        // The documents of this version, with the manifest binding them; cases
+        // created on it are bound to the manifest
+        flow.setManifestHash(publicationService.publish(flow, java.time.Instant.now(), CurrentUser.requireId(), "publish"));
         flow.publish();
         flowRepository.save(flow);
         // With its parts loaded, for the response

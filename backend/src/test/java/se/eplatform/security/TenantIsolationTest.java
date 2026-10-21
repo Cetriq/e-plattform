@@ -67,6 +67,7 @@ class TenantIsolationTest extends IntegrationTest {
         CASE_ENDPOINTS.put("GET /api/v1/cases/{id}/pdf", id -> get("/api/v1/cases/" + id + "/pdf"));
         CASE_ENDPOINTS.put("GET /api/v1/cases/{id}/pdf/own", id -> get("/api/v1/cases/" + id + "/pdf/own"));
         CASE_ENDPOINTS.put("GET /api/v1/cases/{id}/events", id -> get("/api/v1/cases/" + id + "/events"));
+        CASE_ENDPOINTS.put("GET /api/v1/cases/{id}/contract", id -> get("/api/v1/cases/" + id + "/contract"));
         CASE_ENDPOINTS.put("PUT /api/v1/cases/{id}/values", id -> put("/api/v1/cases/" + id + "/values")
                 .contentType(MediaType.APPLICATION_JSON).content("{}"));
         CASE_ENDPOINTS.put("POST /api/v1/cases/{id}/submit", id -> post("/api/v1/cases/" + id + "/submit"));

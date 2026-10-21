@@ -567,6 +567,24 @@ public class CaseController {
         return page.map(dto -> dto.withUnreadMessages(counts.getOrDefault(dto.id(), 0L)));
     }
 
+    @Operation(
+        summary = "Ärendets kontrakt",
+        description = """
+            Publiceringsmanifestet för den version ärendet skapades på, med kontraktet (reglerna)
+            och projektionen (det medborgaren såg), och en kontroll av att allt stämmer:
+            manifestet mot sin hash, dokumenten mot manifestet och versionen i dag mot dokumenten.
+            `backfilled` betyder att ärendet kopplades till manifestet i efterhand.
+            """
+    )
+    @Audited(value = AuditAction.CASE_VIEW, entity = "CASE")
+    @GetMapping("/{id}/contract")
+    public ResponseEntity<Map<String, Object>> getContract(@PathVariable UUID id) {
+        caseAccess.requireRead(id);
+        return caseService.verifyContract(id)
+                .map(ResponseEntity::ok)
+                .orElse(ResponseEntity.notFound().build());
+    }
+
     /** Lists of a person's own cases are for that person only; staff search instead. */
     private void requireSelfOrStaff(UUID userId) {
         UserInfo user = CurrentUser.require();

@@ -20,6 +20,10 @@ public class Flow extends BaseEntity {
     @Column(name = "manifest_hash", length = 64)
     private String manifestHash;
 
+    /** The published service application version (contract level 2) this version applies; null = not on the levels yet. */
+    @Column(name = "application_version_id")
+    private UUID applicationVersionId;
+
     /** Who in the organisation may handle its cases: ORGANIZATION, GROUP (the case's handling group) or ASSIGNED. */
     @Column(name = "access_scope", nullable = false, length = 20)
     private String accessScope = "ORGANIZATION";
@@ -420,5 +424,13 @@ public class Flow extends BaseEntity {
 
     public void setManifestHash(String manifestHash) {
         this.manifestHash = manifestHash;
+    }
+
+    public UUID getApplicationVersionId() {
+        return applicationVersionId;
+    }
+
+    public void setApplicationVersionId(UUID applicationVersionId) {
+        this.applicationVersionId = applicationVersionId;
     }
 }

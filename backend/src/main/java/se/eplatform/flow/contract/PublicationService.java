@@ -4,6 +4,7 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
+import se.eplatform.contract.ContractService;
 import se.eplatform.flow.domain.Flow;
 
 import java.time.Instant;
@@ -30,14 +31,24 @@ public class PublicationService {
         this.jdbc = jdbc;
     }
 
+    /** The documents of a version that does not apply a service application (backfill). */
+    public String publish(Flow flow, Instant publishedAt, UUID publishedBy, String origin) {
+        if (flow.getApplicationVersionId() != null) {
+            throw new IllegalStateException("Version " + flow.getId() + " applies a service application; publish it with its binding");
+        }
+        return publish(flow, publishedAt, publishedBy, origin, null);
+    }
+
     /**
      * Store the documents of a version and return the manifest's hash. Runs in
      * the caller's transaction, so a failed publication leaves nothing behind.
+     *
+     * @param binding the service application version the version applies, or null
      */
-    public String publish(Flow flow, Instant publishedAt, UUID publishedBy, String origin) {
+    public String publish(Flow flow, Instant publishedAt, UUID publishedBy, String origin, ContractService.Binding binding) {
         var contract = canonicalizer.contract(flow);
         var projection = canonicalizer.projection(flow);
-        var manifest = canonicalizer.manifest(flow, contract, projection, publishedAt, publishedBy, origin);
+        var manifest = canonicalizer.manifest(flow, contract, projection, publishedAt, publishedBy, origin, binding);
         jdbc.update("INSERT INTO contract_snapshots (hash, organization_id, format, canonical) VALUES (?, ?, ?, ?) " +
                     "ON CONFLICT (hash) DO NOTHING",
                 contract.hash(), flow.getOrganizationId(), contract.format(), contract.canonical());
@@ -45,9 +56,11 @@ public class PublicationService {
                     "ON CONFLICT (hash) DO NOTHING",
                 projection.hash(), flow.getOrganizationId(), projection.format(), projection.canonical());
         jdbc.update("INSERT INTO publication_manifests (hash, organization_id, flow_id, contract_hash, projection_hash, " +
-                    "format, canonical) VALUES (?, ?, ?, ?, ?, ?, ?) ON CONFLICT (hash) DO NOTHING",
+                    "format, canonical, definition_version_id, application_version_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?) " +
+                    "ON CONFLICT (hash) DO NOTHING",
                 manifest.hash(), flow.getOrganizationId(), flow.getId(), contract.hash(), projection.hash(),
-                manifest.format(), manifest.canonical());
+                manifest.format(), manifest.canonical(),
+                binding == null ? null : binding.definitionVersionId(), binding == null ? null : binding.applicationVersionId());
         return manifest.hash();
     }
 

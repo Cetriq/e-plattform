@@ -5,6 +5,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import se.eplatform.common.security.CurrentUser;
+import se.eplatform.contract.ContractService;
 import se.eplatform.flow.domain.*;
 import se.eplatform.flow.repository.CategoryRepository;
 import se.eplatform.flow.repository.FlowRepository;
@@ -37,6 +38,7 @@ public class AdminFlowService {
     private final FlowCopier flowCopier;
     private final se.eplatform.flow.contract.PublicationService publicationService;
     private final jakarta.persistence.EntityManager entityManager;
+    private final ContractService contractService;
 
     public AdminFlowService(
             FlowRepository flowRepository,
@@ -46,8 +48,10 @@ public class AdminFlowService {
             CategoryRepository categoryRepository,
             FlowCopier flowCopier,
             jakarta.persistence.EntityManager entityManager,
-            se.eplatform.flow.contract.PublicationService publicationService) {
+            se.eplatform.flow.contract.PublicationService publicationService,
+            ContractService contractService) {
         this.publicationService = publicationService;
+        this.contractService = contractService;
         this.flowCopier = flowCopier;
         this.entityManager = entityManager;
         this.flowRepository = flowRepository;
@@ -234,9 +238,12 @@ public class AdminFlowService {
                 flowRepository.save(other);
             }
         }
+        // The service application it applies must still be published, and its fields must name its fields
+        ContractService.Binding binding = requireValidLink(flow);
         // The documents of this version, with the manifest binding them; cases
         // created on it are bound to the manifest
-        flow.setManifestHash(publicationService.publish(flow, java.time.Instant.now(), CurrentUser.requireId(), "publish"));
+        flow.setManifestHash(publicationService.publish(flow, java.time.Instant.now(), CurrentUser.requireId(), "publish",
+                binding));
         flow.publish();
         flowRepository.save(flow);
         // With its parts loaded, for the response
@@ -260,6 +267,55 @@ public class AdminFlowService {
         int next = versions.stream().mapToInt(Flow::getVersion).max().orElse(0) + 1;
         Flow copy = flowCopier.copy(original, original.getName(), original.getFamily(), next);
         return getFlowForEdit(copy.getId()).orElseThrow();
+    }
+
+    /**
+     * Let a draft version apply a published service application version (or
+     * none), and name the definition or application field each of its fields
+     * collects. Field keys not given are kept; a blank key removes it.
+     * Without an application, no field has a key.
+     */
+    @Transactional
+    public Flow linkContract(UUID flowId, UUID applicationVersionId, Map<UUID, String> fieldKeys) {
+        Flow flow = ownDraft(flowId);
+        Map<UUID, QueryDefinition> fields = new java.util.HashMap<>();
+        flow.getSteps().forEach(step -> step.getQueryDefinitions().forEach(q -> fields.put(q.getId(), q)));
+        List<String> unknown = new ArrayList<>();
+        Map<UUID, String> keys = fieldKeys == null ? Map.of() : fieldKeys;
+        keys.keySet().stream().filter(id -> !fields.containsKey(id)).sorted()
+                .forEach(id -> unknown.add("$.fieldKeys." + id + ": not a field of this version"));
+        if (!unknown.isEmpty()) throw new ContractService.InvalidDocument(unknown);
+
+        flow.setApplicationVersionId(applicationVersionId);
+        keys.forEach((id, key) -> fields.get(id).setFieldKey(key == null || key.isBlank() ? null : key.trim()));
+        if (applicationVersionId == null) fields.values().forEach(q -> q.setFieldKey(null));
+        requireValidLink(flow);
+        flowRepository.save(flow);
+        return getFlowForEdit(flowId).orElseThrow();
+    }
+
+    /** Field keys belong to the applied application version and name a field at most once; null if none is applied. */
+    private ContractService.Binding requireValidLink(Flow flow) {
+        if (flow.getApplicationVersionId() == null) return null;
+        ContractService.Binding binding = contractService.binding(flow.getApplicationVersionId());
+        List<String> errors = new ArrayList<>();
+        Map<String, UUID> named = new java.util.HashMap<>();
+        for (Step step : flow.getStepsSorted()) {
+            for (QueryDefinition query : step.getQueryDefinitions()) {
+                String key = query.getFieldKey();
+                if (key == null) continue;
+                if (!binding.fieldKeys().contains(key)) {
+                    errors.add("$.fields." + query.getId() + ": " + key + " is not a field of " + binding.definitionKey()
+                            + " or of its application");
+                }
+                UUID other = named.put(key, query.getId());
+                if (other != null) {
+                    errors.add("$.fields." + query.getId() + ": " + key + " is already collected by " + other);
+                }
+            }
+        }
+        if (!errors.isEmpty()) throw new ContractService.InvalidDocument(errors);
+        return binding;
     }
 
     /** The flow, if it is the organisation's and still a draft; published versions are not changed. */

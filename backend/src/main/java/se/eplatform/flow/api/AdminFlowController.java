@@ -162,6 +162,30 @@ public class AdminFlowController {
                 .body(FlowDTO.from(flow));
     }
 
+    /**
+     * Let a draft version apply a service application version and name its fields.
+     */
+    @io.swagger.v3.oas.annotations.Operation(summary = "Koppla till kontraktsnivåerna",
+        description = "Utkastet tillämpar en publicerad tillämpningsversion (nivå 2) som organisationen äger eller har "
+                    + "en roll i, och varje fält kan ange vilket fält i definitionen eller tillämpningen det samlar in "
+                    + "(fieldKeys: fält-id → nyckel, tom nyckel tar bort den). Utan tillämpning har inget fält nyckel. "
+                    + "Publiceras versionen får den kontrakt och manifest i format 2 med nivåernas versioner och hashar. "
+                    + "422 med felen om en nyckel inte finns eller används två gånger.")
+    @Audited(value = AuditAction.FLOW_CHANGE, entity = "FLOW", idParam = "id")
+    @PutMapping("/{id}/contract-link")
+    public ResponseEntity<FlowDTO> linkContract(@PathVariable UUID id, @RequestBody ContractLinkRequest request) {
+        Flow flow = adminFlowService.linkContract(id, request.applicationVersionId(), request.fieldKeys());
+        return ResponseEntity.ok(FlowDTO.from(flow));
+    }
+
+    public record ContractLinkRequest(UUID applicationVersionId, java.util.Map<UUID, String> fieldKeys) {}
+
+    @org.springframework.web.bind.annotation.ExceptionHandler(se.eplatform.contract.ContractService.InvalidDocument.class)
+    public ResponseEntity<java.util.Map<String, Object>> invalid(se.eplatform.contract.ContractService.InvalidDocument e) {
+        return ResponseEntity.status(org.springframework.http.HttpStatus.UNPROCESSABLE_ENTITY)
+                .body(java.util.Map.of("errors", e.errors()));
+    }
+
     // Step management
 
     /**

@@ -100,6 +100,8 @@ class TenantIsolationTest extends IntegrationTest {
         ADMIN_ENDPOINTS.put("POST /api/v1/admin/flows/{id}/archive", i -> post(flows + i.flow() + "/archive"));
         ADMIN_ENDPOINTS.put("POST /api/v1/admin/flows/{id}/duplicate", i -> post(flows + i.flow() + "/duplicate"));
         ADMIN_ENDPOINTS.put("POST /api/v1/admin/flows/{id}/versions", i -> post(flows + i.flow() + "/versions"));
+        ADMIN_ENDPOINTS.put("PUT /api/v1/admin/flows/{id}/contract-link",
+                i -> json(put(flows + i.flow() + "/contract-link"), "{\"applicationVersionId\":null,\"fieldKeys\":{}}"));
         ADMIN_ENDPOINTS.put("POST /api/v1/admin/flows/{flowId}/steps",
                 i -> json(post(flows + i.flow() + "/steps"), "{\"name\":\"Kapat steg\"}"));
         ADMIN_ENDPOINTS.put("PUT /api/v1/admin/flows/{flowId}/steps/reorder",

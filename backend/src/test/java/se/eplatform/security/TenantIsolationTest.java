@@ -136,6 +136,37 @@ class TenantIsolationTest extends IntegrationTest {
                 i -> get("/api/v1/admin/flow-types/" + i.type() + "/categories"));
     }
 
+    /** Ids of an Exempelkommun draft definition and application of the national definition. */
+    record ContractIds(String definition, String application) {}
+
+    /**
+     * Definition and application endpoints. From an organisation that is neither
+     * steward, owner nor participant, each must be refused (403 or 404).
+     */
+    static final Map<String, Function<ContractIds, MockHttpServletRequestBuilder>> CONTRACT_ENDPOINTS = new LinkedHashMap<>();
+    static {
+        String d = "/api/v1/admin/definitions/";
+        String a = "/api/v1/admin/applications/";
+        String draft = "{\"content\":{\"format\":\"eplatform.definition/1\",\"fields\":[],\"rules\":[],\"parameters\":[]," +
+                       "\"extensionPoints\":[],\"decisionTypes\":[]}}";
+        CONTRACT_ENDPOINTS.put("GET /api/v1/admin/definitions/{id}", i -> get(d + i.definition()));
+        CONTRACT_ENDPOINTS.put("POST /api/v1/admin/definitions/{id}/versions", i -> post(d + i.definition() + "/versions"));
+        CONTRACT_ENDPOINTS.put("PUT /api/v1/admin/definitions/{id}/versions/{version}",
+                i -> json(put(d + i.definition() + "/versions/1"), draft));
+        CONTRACT_ENDPOINTS.put("POST /api/v1/admin/definitions/{id}/versions/{version}/publish",
+                i -> post(d + i.definition() + "/versions/1/publish"));
+        CONTRACT_ENDPOINTS.put("GET /api/v1/admin/definitions/{id}/versions/{version}/export",
+                i -> get(d + i.definition() + "/versions/1/export"));
+        CONTRACT_ENDPOINTS.put("GET /api/v1/admin/applications/{id}", i -> get(a + i.application()));
+        CONTRACT_ENDPOINTS.put("PUT /api/v1/admin/applications/{id}/roles", i -> json(put(a + i.application() + "/roles"), "[]"));
+        CONTRACT_ENDPOINTS.put("POST /api/v1/admin/applications/{id}/versions", i -> post(a + i.application() + "/versions"));
+        CONTRACT_ENDPOINTS.put("PUT /api/v1/admin/applications/{id}/versions/{version}",
+                i -> json(put(a + i.application() + "/versions/1"),
+                        "{\"content\":{\"format\":\"eplatform.application/1\",\"parameters\":{},\"extensions\":{}}}"));
+        CONTRACT_ENDPOINTS.put("POST /api/v1/admin/applications/{id}/versions/{version}/publish",
+                i -> post(a + i.application() + "/versions/1/publish"));
+    }
+
     /** Data subject endpoints; another organisation's security officer must get 404. */
     static final Map<String, Function<String, MockHttpServletRequestBuilder>> PEOPLE_ENDPOINTS = new LinkedHashMap<>();
     static {
@@ -473,6 +504,35 @@ class TenantIsolationTest extends IntegrationTest {
         assertThat(jdbc.queryForObject("SELECT active FROM users WHERE id = ?", Boolean.class, UUID.fromString(personId))).isTrue();
     }
 
+
+    // ---------- Service contracts ----------
+
+    @Test
+    void anotherOrganisationCannotReachTheOrganisationsDefinitionsAndApplications() throws Exception {
+        String admin = loginAs(ADMIN);
+        String definition = json.readTree(mvc.perform(as(admin, post("/api/v1/admin/definitions"))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"key\":\"exempel.isolering-" + UUID.randomUUID().toString().substring(0, 8) + "\",\"name\":\"Utkast\"}"))
+                .andExpect(status().isCreated()).andReturn().getResponse().getContentAsString()).get("id").asText();
+        String application = json.readTree(mvc.perform(as(admin, post("/api/v1/admin/applications"))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"definitionId\":\"00000000-0000-0000-000a-000000000001\",\"name\":\"Skolskjuts i Exempelkommun\"}"))
+                .andExpect(status().isCreated()).andReturn().getResponse().getContentAsString()).get("id").asText();
+        var ids = new ContractIds(definition, application);
+        String before = jdbc.queryForObject("SELECT content::text || (SELECT string_agg(content::text, '') FROM " +
+                "service_application_versions WHERE application_id = ?) FROM service_definition_versions WHERE definition_id = ?",
+                String.class, UUID.fromString(application), UUID.fromString(definition));
+
+        String granne = loginAs("admin.grannkommun@example.com");
+        for (var endpoint : CONTRACT_ENDPOINTS.entrySet()) {
+            int status = mvc.perform(as(granne, endpoint.getValue().apply(ids))).andReturn().getResponse().getStatus();
+            assertThat(status).as(endpoint.getKey()).isIn(403, 404);
+        }
+        assertThat(jdbc.queryForObject("SELECT content::text || (SELECT string_agg(content::text, '') FROM " +
+                "service_application_versions WHERE application_id = ?) FROM service_definition_versions WHERE definition_id = ?",
+                String.class, UUID.fromString(application), UUID.fromString(definition))).isEqualTo(before);
+    }
+
     // ---------- Inventory ----------
 
     @Test
@@ -493,7 +553,7 @@ class TenantIsolationTest extends IntegrationTest {
                             .filter(k -> k.endsWith("/**"))
                             .anyMatch(k -> pattern.startsWith(k.substring(0, k.length() - 3)));
                     if (!CASE_ENDPOINTS.containsKey(key) && !ADMIN_ENDPOINTS.containsKey(key)
-                            && !PEOPLE_ENDPOINTS.containsKey(key) && !exempt) {
+                            && !PEOPLE_ENDPOINTS.containsKey(key) && !CONTRACT_ENDPOINTS.containsKey(key) && !exempt) {
                         uncovered.add(key);
                     }
                 }
@@ -506,6 +566,7 @@ class TenantIsolationTest extends IntegrationTest {
         assertThat(seen).containsAll(CASE_ENDPOINTS.keySet());
         assertThat(seen).containsAll(ADMIN_ENDPOINTS.keySet());
         assertThat(seen).containsAll(PEOPLE_ENDPOINTS.keySet());
+        assertThat(seen).containsAll(CONTRACT_ENDPOINTS.keySet());
         assertThat(seen).containsAll(EXEMPT.keySet().stream().filter(k -> !k.endsWith("/**")).toList());
 
     }

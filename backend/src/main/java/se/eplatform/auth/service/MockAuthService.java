@@ -56,7 +56,8 @@ public class MockAuthService {
             "medborgare@example.com",
             "admin.grannkommun@example.com",
             "handlaggare.grannkommun@example.com",
-            "informationssakerhet.grannkommun@example.com");
+            "informationssakerhet.grannkommun@example.com",
+            "tjanstforvaltare@example.com");
 
     private final UserRepository userRepository;
     private final RoleRepository roleRepository;

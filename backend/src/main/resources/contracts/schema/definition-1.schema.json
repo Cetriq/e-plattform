@@ -1,0 +1,132 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://e-plattform.vercel.app/schemas/eplatform.definition-1.json",
+  "title": "eplatform.definition/1",
+  "description": "A service definition (level 1): the fields with their concepts, the rules, the decision types, and what a local application may change.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["format", "fields", "rules", "parameters", "extensionPoints", "decisionTypes"],
+  "properties": {
+    "format": { "const": "eplatform.definition/1" },
+    "purpose": { "type": "string" },
+    "starts": {
+      "description": "Who or what can start a case",
+      "type": "array",
+      "items": { "enum": ["CITIZEN", "STAFF", "EVENT", "SYSTEM"] },
+      "uniqueItems": true
+    },
+    "fields": { "type": "array", "items": { "$ref": "#/$defs/field" } },
+    "rules": { "type": "array", "items": { "$ref": "#/$defs/rule" } },
+    "parameters": { "type": "array", "items": { "$ref": "#/$defs/parameter" } },
+    "extensionPoints": { "type": "array", "items": { "$ref": "#/$defs/extensionPoint" } },
+    "decisionTypes": { "type": "array", "items": { "$ref": "#/$defs/decisionType" } },
+    "operations": { "type": "array", "items": { "$ref": "#/$defs/operation" } }
+  },
+  "$defs": {
+    "key": { "type": "string", "pattern": "^[a-z][a-z0-9-]*(\\.[a-z0-9-]+)*$" },
+    "changePolicy": {
+      "description": "immutable: a local application cannot change it; extendable: it can add at the named extension points; locally_configurable: it can set the named parameters within their bounds",
+      "enum": ["immutable", "extendable", "locally_configurable"]
+    },
+    "field": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["key", "concept", "required", "changePolicy"],
+      "properties": {
+        "key": { "$ref": "#/$defs/key" },
+        "concept": { "type": "string", "pattern": "^[a-z][a-z0-9.-]*@[0-9]+$" },
+        "required": { "type": "boolean" },
+        "changePolicy": { "$ref": "#/$defs/changePolicy" },
+        "purpose": { "type": "string" }
+      }
+    },
+    "expression": {
+      "type": "object",
+      "additionalProperties": false,
+      "minProperties": 1,
+      "properties": {
+        "field": { "$ref": "#/$defs/key" },
+        "op": { "enum": ["eq", "ne", "in", "gt", "gte", "lt", "lte", "empty", "notEmpty"] },
+        "value": {},
+        "parameter": { "$ref": "#/$defs/key" },
+        "all": { "type": "array", "items": { "$ref": "#/$defs/expression" }, "minItems": 1 },
+        "any": { "type": "array", "items": { "$ref": "#/$defs/expression" }, "minItems": 1 },
+        "not": { "$ref": "#/$defs/expression" }
+      }
+    },
+    "rule": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["key", "kind", "when", "changePolicy"],
+      "properties": {
+        "key": { "$ref": "#/$defs/key" },
+        "kind": { "enum": ["eligibility", "visibility", "validation", "completeness"] },
+        "description": { "type": "string" },
+        "when": { "$ref": "#/$defs/expression" },
+        "then": { "type": "object" },
+        "changePolicy": { "$ref": "#/$defs/changePolicy" },
+        "parameters": { "type": "array", "items": { "$ref": "#/$defs/key" }, "uniqueItems": true },
+        "legalBasis": { "type": "array", "items": { "type": "string" } }
+      }
+    },
+    "parameter": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["key", "type"],
+      "properties": {
+        "key": { "$ref": "#/$defs/key" },
+        "type": { "enum": ["number", "integer", "string", "boolean"] },
+        "unit": { "type": "string" },
+        "min": { "type": "number" },
+        "max": { "type": "number" },
+        "allowed": { "type": "array", "items": { "type": "string" } },
+        "default": { "type": ["number", "string", "boolean"] },
+        "required": { "type": "boolean" },
+        "description": { "type": "string" }
+      }
+    },
+    "extensionPoint": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["key", "allows"],
+      "properties": {
+        "key": { "$ref": "#/$defs/key" },
+        "description": { "type": "string" },
+        "allows": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": { "enum": ["field", "visibility-rule", "validation-rule", "eligibility-rule", "fee", "information"] }
+        }
+      }
+    },
+    "decisionType": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["key", "kind", "outcomes", "legalBasis"],
+      "properties": {
+        "key": { "$ref": "#/$defs/key" },
+        "kind": { "enum": ["HUMAN", "AUTOMATED"] },
+        "outcomes": { "type": "array", "items": { "type": "string" }, "minItems": 1, "uniqueItems": true },
+        "legalBasis": { "type": "array", "items": { "type": "string" } },
+        "reconsideration": { "description": "Decision type a request for reconsideration goes to", "$ref": "#/$defs/key" },
+        "changePolicy": { "$ref": "#/$defs/changePolicy" }
+      }
+    },
+    "operation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["key", "actors"],
+      "properties": {
+        "key": { "enum": ["start", "submit", "supplement", "withdraw", "decide", "reconsider"] },
+        "actors": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": { "enum": ["CITIZEN", "AGENT", "STAFF", "SYSTEM"] }
+        },
+        "requiresConfirmationBy": { "enum": ["CITIZEN", "STAFF"] }
+      }
+    }
+  }
+}
